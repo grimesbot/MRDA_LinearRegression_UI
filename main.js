@@ -89,6 +89,8 @@ function teamDetailsModal() {
                 scales: {
                     x: {
                         type: 'time',
+                        min: new Date(team.rankingPointsHistory.keys().next().value),
+                        max: new Date([...team.rankingPointsHistory][team.rankingPointsHistory.size-1][0])
                     }
                 },
                 plugins: {
