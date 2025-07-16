@@ -1,0 +1,7 @@
+.dt-teamDetailsClick {
+    cursor: pointer;
+}
+
+.border-left {
+    border-left: 1px solid rgba(0, 0, 0, 0.3);
+}
