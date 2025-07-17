@@ -102,7 +102,7 @@ def linear_regression(calcDate):
 
         # Games from the last year are used for ranking
         if mrdaGame.date.date() >= (calcDate - relativedelta(years=1)):
-            # Championship and Qualifier games expire after 6 and 9 months respectively, use them for seeing instead of ranking
+            # Championship and Qualifier games expire after 6 and 9 months respectively, use them for seeding instead of ranking
             #if (mrdaGame.championship and mrdaGame.date.date() < (calcDate - relativedelta(months=6))):
             #    seeding_games.append(mrdaGame)
             #elif (mrdaGame.qualifier and mrdaGame.date.date() < (calcDate - relativedelta(months=9))):

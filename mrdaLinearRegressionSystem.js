@@ -31,10 +31,13 @@ class MrdaTeam {
     }
 
     getRankingPointHistory(date) {
+        if (this.rankingPointsHistory.size === 0)
+            return;
+
         let searchDate = new Date(date);
         let oldest = new Date(this.rankingPointsHistory.keys().next().value);
-        
-        if (!oldest || searchDate < oldest)
+
+        if (isNaN(oldest) || searchDate < oldest)
             return;
 
         while(!this.rankingPointsHistory.has(getStandardDateString(searchDate)) ) {
