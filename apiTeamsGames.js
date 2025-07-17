@@ -80,9 +80,17 @@ async function buildTeamsAndGames() {
     //combine the unvalidated and validated games and sort by date
     let apiGames = [...(validatedGames || []), ...(unvalidated3Games || []), ...(unvalidatedGames || [])].sort((a, b) => 
         new Date(a.event.game_datetime) - new Date(b.event.game_datetime));
-
+    
+    let excludedTeams = [];
+    //let excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] //PAN, ORD, RDNA, NDT, RDT
+    
     //build apiTeams from API response
     apiGames.forEach(game => {
+
+        if (excludedTeams.includes(ApiTeam.getTeamId(game.event.home_league, game.event.home_league_charter)) 
+            || excludedTeams.includes(ApiTeam.getTeamId(game.event.away_league, game.event.away_league_charter)))
+            return;
+
         let homeTeamId = ApiTeam.getTeamId(game.event.home_league, game.event.home_league_charter);
         if (homeTeamId && !apiTeams[homeTeamId]) {
             apiTeams[homeTeamId] = new ApiTeam(
@@ -115,6 +123,10 @@ async function buildTeamsAndGames() {
                 awayTeamId = teamId;
             }
             if (homeTeamId && awayTeamId) {
+                if (excludedTeams.includes(homeTeamId) 
+                        || excludedTeams.includes(awayTeamId))
+                    return;
+
                 if (!groupedApiGames.has(game.sanctioning_id)) {
                     groupedApiGames.set(game.sanctioning_id, []);
                 }
@@ -140,6 +152,10 @@ async function buildTeamsAndGames() {
             || !game.event.home_league || !game.event.home_league_charter
             || !game.event.away_league || !game.event.away_league_charter
             || game.event.home_league_score == null || game.event.away_league_score == null)
+            return;
+
+        if (excludedTeams.includes(ApiTeam.getTeamId(game.event.home_league, game.event.home_league_charter)) 
+            || excludedTeams.includes(ApiTeam.getTeamId(game.event.away_league, game.event.away_league_charter)))
             return;
 
         if (!groupedApiGames.has(game.event.sanctioning_id)) {
