@@ -35,8 +35,8 @@ def get_api_gamedata(startDate, status = -1):
     data = response.json()
     payload = data.get('payload', [])
     
-    if not payload or not data["success"]:
-        print("No data found in the payload.")
+    if not data["success"]:
+        print("API did not return successfully.")
         exit()
 
     return payload
@@ -86,6 +86,7 @@ for data in gamedata:
 
 excludedTeams = []
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
+#closeGameTeams = []
 
 def linear_regression(calcDate):
 
@@ -223,17 +224,17 @@ def linear_regression(calcDate):
             ranking_X.append(x_col)
             
             # Count number of close games (less than ratio cap) in the ranking_games
-            close_games_count = 0
-            for g in ranking_games:
-                if (g.homeTeamId == team or g.awayTeamId == team) and g.homeTeamScore/g.awayTeamScore < RATIO_CAP and g.awayTeamScore/g.homeTeamScore < RATIO_CAP:
-                    close_games_count+=1
+            #close_games_count = 0
+            #for g in ranking_games:
+            #    if (g.homeTeamId == team or g.awayTeamId == team) and g.homeTeamScore/g.awayTeamScore < RATIO_CAP and g.awayTeamScore/g.homeTeamScore < RATIO_CAP:
+            #        close_games_count+=1
 
             # Set weight to near zero if there are 5 or more close games.
-            if close_games_count >= 5:
-                ranking_W.append(1/1000000)
-            else:
-                ranking_W.append(1)
-            #ranking_W.append(1)
+            #if close_games_count >= 5:
+            #    ranking_W.append(1/1000000)
+            #else:
+            #    ranking_W.append(1)
+            ranking_W.append(1)
     
     # Execute StatsModels Weighted Least Squares
     ranking_result = sm.WLS(ranking_Y, ranking_X, ranking_W).fit().params

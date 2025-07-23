@@ -215,6 +215,9 @@ function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.rankTeams();
 
+    $("#diffAvg").text(averageFromArray(mrdaLinearRegressionSystem.expectedVsActualRatioDiffs).toFixed(2));
+    $("#diffUnderCapAvg").text(averageFromArray(mrdaLinearRegressionSystem.expectedVsActualRatioDiffsUnderCap).toFixed(2));
+
     displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams), $("#date").val());
 
     let regenerate = DataTable.isDataTable('#mrdaRankingPoints');
