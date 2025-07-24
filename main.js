@@ -217,7 +217,7 @@ function calculateAndDisplayRankings() {
 
     let meal = averageFromArray(mrdaLinearRegressionSystem.absoluteLogErrors);
     let errorPct = (Math.exp(meal) - 1) * 100;
-    $('#pctErrorMeal').text(errorPct.toFixed(2));
+    $('#pctErrorMeal').text(errorPct.toFixed(2) + '%');
 
     displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams), $("#date").val());
 
