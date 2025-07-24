@@ -218,6 +218,10 @@ function calculateAndDisplayRankings() {
     $("#diffAvg").text(averageFromArray(mrdaLinearRegressionSystem.expectedVsActualRatioDiffs).toFixed(2));
     $("#diffUnderCapAvg").text(averageFromArray(mrdaLinearRegressionSystem.expectedVsActualRatioDiffsUnderCap).toFixed(2));
 
+    let meal = averageFromArray(mrdaLinearRegressionSystem.absoluteLogErrors);
+    let errorPct = (Math.exp(meal) - 1) * 100;
+    $('#pctErrorMeal').text(errorPct.toFixed(2));
+
     displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams), $("#date").val());
 
     let regenerate = DataTable.isDataTable('#mrdaRankingPoints');
