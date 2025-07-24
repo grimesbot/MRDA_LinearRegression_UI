@@ -83,8 +83,6 @@ class MrdaLinearRegressionSystem {
     constructor(apiTeams) {
         this.mrdaTeams = {};
         Object.keys(apiTeams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(apiTeams[teamId]));
-        this.expectedVsActualRatioDiffs = [];
-        this.expectedVsActualRatioDiffsUnderCap = [];
         this.absoluteLogErrors = [];
     }
 
@@ -119,13 +117,6 @@ class MrdaLinearRegressionSystem {
                         let awayActualRatio = mrdaGame.scores[mrdaGame.awayTeamId]/mrdaGame.scores[mrdaGame.homeTeamId];
                         mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(homeExpectedRatio);
                         mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(awayExpectedRatio);
-
-                        if (new Date(mrdaGame.date).getFullYear() == 2025 && homeTeam.gameHistory.length >= 5 && awayTeam.gameHistory.length >= 5) {
-                            let diff = Math.abs(homeExpectedRatio - homeActualRatio);
-                            this.expectedVsActualRatioDiffs.push(diff);
-                            if (homeActualRatio < 4 && awayActualRatio < 4)
-                                this.expectedVsActualRatioDiffsUnderCap.push(diff);
-                        }
 
                         if (new Date(mrdaGame.date).getFullYear() == 2025) {
                             this.absoluteLogErrors.push(Math.abs(Math.log(homeExpectedRatio/homeActualRatio)));
