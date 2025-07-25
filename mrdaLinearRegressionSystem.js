@@ -79,6 +79,7 @@ function daysDiff(startDate, endDate) {
     return Math.round(diffInMilliseconds / dayInMilliseconds);;
 }
 
+const q3_2024_deadline = new Date (2024, 9 - 1, 4);
 const q4_2024_deadline = new Date (2024, 12 - 1, 4);
 const q1_2025_deadline = new Date (2025, 3 - 1, 5);
 const q2_2025_deadline = new Date (2025, 6 - 1, 4);
@@ -89,6 +90,7 @@ class MrdaLinearRegressionSystem {
         this.mrdaTeams = {};
         Object.keys(apiTeams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(apiTeams[teamId]));
         this.absoluteLogErrors = [];
+        this.absoluteLogErrors_2024_Q4 = [];        
         this.absoluteLogErrors_2025_Q1 = [];
         this.absoluteLogErrors_2025_Q2 = [];
         this.absoluteLogErrors_2025_Q3 = [];
@@ -128,9 +130,11 @@ class MrdaLinearRegressionSystem {
 
                         let gameDate = new Date(mrdaGame.date);
 
-                        if (gameDate > q4_2024_deadline) {
+                        if (gameDate > q3_2024_deadline) {
                             let absLogError = Math.abs(Math.log(homeExpectedRatio/homeActualRatio));
                             this.absoluteLogErrors.push(absLogError);
+                            if (q3_2024_deadline < gameDate && gameDate < q4_2024_deadline)
+                                this.absoluteLogErrors_2024_Q4.push(absLogError);                            
                             if (q4_2024_deadline < gameDate && gameDate < q1_2025_deadline)
                                 this.absoluteLogErrors_2025_Q1.push(absLogError);
                             if (q1_2025_deadline < gameDate && gameDate < q2_2025_deadline)

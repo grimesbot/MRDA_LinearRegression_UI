@@ -113,6 +113,7 @@ def linear_regression(calcDate):
             ranking_games.append(mrdaGame)
         #games from the previous year are used for seeding
         elif mrdaGame.date.date() >= (calcDate - relativedelta(years=2)):
+        #else: #Seed data goes back to beginning of '23? e.g. Q3-2025 rankings would use >12mo for seeding (17 months, Apr '23 - Sept '24)
             # Championship and Qualifier games expire after 6 and 9 months respectively
             #if (mrdaGame.championship and mrdaGame.date.date() < (calcDate - relativedelta(years=1) - relativedelta(months=6))):
             #    continue
@@ -260,9 +261,9 @@ while True:
         else:
             nextRankingDeadline = nextRankingDeadline + timedelta(weeks=1)
 
-# Start in June 2024. We only have data going back to 2023.
+# Start in Sept 2024. We only have data going back to 2023.
 # Starting off, seed data will only be half of a year (Jan-Jun '23), ranking data will be full year (Jun '23-Jun '24).
-searchDate = date(2024,6,5)
+searchDate = date(2024,9,4)
 
 # Calculate rankings for each week on Wednesday from starting date until the next ranking deadline
 rankings = {}
