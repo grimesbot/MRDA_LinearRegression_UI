@@ -203,6 +203,12 @@ function averageFromArray(array) {
     return total / array.length;
 }
 
+function meanAbsoluteLogErrorPercent(absLogErrorArray) {
+    let meal = averageFromArray(absLogErrorArray);
+    let errorPct = (Math.exp(meal) - 1) * 100;
+    return errorPct.toFixed(2) + '%';
+}
+
 function calculateAndDisplayRankings() {
 
     let mrdaLinearRegressionSystem = new MrdaLinearRegressionSystem(apiTeams);
@@ -215,9 +221,18 @@ function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.rankTeams();
 
-    let meal = averageFromArray(mrdaLinearRegressionSystem.absoluteLogErrors);
-    let errorPct = (Math.exp(meal) - 1) * 100;
-    $('#pctErrorMeal').text(errorPct.toFixed(2) + '%');
+    if (mrdaLinearRegressionSystem.absoluteLogErrors.length > 0)
+    {
+        let $pctErrorDiv = $('#pctErrorMeal');
+        $pctErrorDiv.html("Percent Error using Mean Absolute Log Error: <br />");
+        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q1.length > 0)
+            $pctErrorDiv.append("2025 Q1: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q1) + "<br />");
+        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2.length > 0)
+            $pctErrorDiv.append("2025 Q2: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2) + "<br />");
+        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3.length > 0)
+            $pctErrorDiv.append("2025 Q3: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3) + "<br />");
+        $pctErrorDiv.append("Total: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors));
+    }
 
     displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams), $("#date").val());
 
