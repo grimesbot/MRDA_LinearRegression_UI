@@ -108,13 +108,21 @@ function teamDetailsModal() {
         teamGameHistoryDt = new DataTable('#teamGameHistory', {
             columns: [
                 { name: 'date', data: 'date'},
-                { data: 'score' }
+                { data: 'score' },
+                { data: 'expectedRatio'},
+                { data: 'actualRatio'},
+                { data: 'beforeRankingPoints', className: 'border-left'},
+                { data: 'afterRankingPoints'}                
             ],
             data: Array.from(team.gameHistory, (game) => ({ 
                 date: getStandardDateString(game.date),
                 score: game.scores[team.teamId] + "-" + (game.homeTeamId == team.teamId ? 
                     game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + apiTeams[game.awayTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ") 
                     : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + apiTeams[game.homeTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")),
+                expectedRatio: team.teamId in game.expectedRatios ? game.expectedRatios[team.teamId].toFixed(2) : "",
+                actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId])).toFixed(2) : "",
+                beforeRankingPoints: team.getRankingPointHistoryWithError(game.date) ?? "",
+                afterRankingPoints: team.getRankingPointHistoryWithError(game.date, true) ?? ""
             })),
             lengthChange: false,
             searching: false,

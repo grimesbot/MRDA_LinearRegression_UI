@@ -10,6 +10,7 @@ class MrdaGame {
         this.eventName = apiGame.eventName;
         this.championship = apiGame.championship;
         this.qualifier = apiGame.qualifier;
+        this.expectedRatios = {};        
         this.rankingPoints = {};
     }
 }
@@ -46,6 +47,34 @@ class MrdaTeam {
             searchDate.setDate(searchDate.getDate() - 1);
         }
         return this.rankingPointsHistory.get(getStandardDateString(searchDate))
+    }
+
+    getRankingPointHistoryWithError(date, addWeek = false) {
+        let searchDate = new Date(date);
+
+        if (addWeek)
+            searchDate.setDate(searchDate.getDate() + 7);
+
+        let rp = this.getRankingPointHistory(searchDate);
+        if (!rp)
+            return rp;
+
+        if (this.stdErrMaxHistory.size === 0)
+            return rp.toFixed(2);
+        
+        let oldest = new Date(this.stdErrMaxHistory.keys().next().value);
+
+        if (isNaN(oldest) || searchDate < oldest)
+            return;
+
+        while(!this.stdErrMaxHistory.has(getStandardDateString(searchDate)) ) {
+            searchDate.setDate(searchDate.getDate() - 1);
+        }
+
+        let errMax = this.stdErrMaxHistory.get(getStandardDateString(searchDate));
+        let err = errMax - rp;
+
+        return rp.toFixed(2) + " ± " + err.toFixed(2);
     }
 }
 
@@ -126,17 +155,17 @@ class MrdaLinearRegressionSystem {
                     let homeRankingPoints = homeTeam.getRankingPointHistory(mrdaGame.date);
                     let awayRankingPoints = awayTeam.getRankingPointHistory(mrdaGame.date);
                     if (homeRankingPoints && awayRankingPoints && !mrdaGame.forfeit) {
-                        let homeExpectedRatio = homeRankingPoints/awayRankingPoints;
-                        let awayExpectedRatio = awayRankingPoints/homeRankingPoints;
+                        mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
+                        mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
                         let homeActualRatio = mrdaGame.scores[mrdaGame.homeTeamId]/mrdaGame.scores[mrdaGame.awayTeamId];
                         let awayActualRatio = mrdaGame.scores[mrdaGame.awayTeamId]/mrdaGame.scores[mrdaGame.homeTeamId];
-                        mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(homeExpectedRatio);
-                        mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(awayExpectedRatio);
+                        mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
+                        mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
 
                         let gameDate = new Date(mrdaGame.date);
 
                         if (gameDate > q3_2024_deadline) {
-                            let absLogError = Math.abs(Math.log(homeExpectedRatio/homeActualRatio));
+                            let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
                             this.absoluteLogErrors.push(absLogError);
                             if (q3_2024_deadline < gameDate && gameDate < q4_2024_deadline)
                                 this.absoluteLogErrors_2024_Q4.push(absLogError);                            

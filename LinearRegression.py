@@ -257,8 +257,8 @@ while True:
         else:
             nextRankingDeadline = nextRankingDeadline + timedelta(weeks=1)
 
-# Start first Wednesday after 2024 global champs.
-searchDate = date(2024,10,16)
+# Start first Wednesday after WHC.
+searchDate = date(2023,10,25)
 
 # Calculate rankings for each week on Wednesday from starting date until the next ranking deadline
 rankings = {}
