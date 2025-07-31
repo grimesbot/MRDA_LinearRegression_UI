@@ -136,7 +136,7 @@ def linear_regression(games=[],seeding_team_rankings=None):
 
                 # Add observation as score log ratio
                 # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team]/1.00))
+                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
 
                 # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
                 x_col = []
@@ -163,68 +163,88 @@ def linear_regression(games=[],seeding_team_rankings=None):
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
     #print(wls.summary())
-    #print(wls.params)
-    #print(wls.bse)
     wls_result = wls.params
+    #print(wls.params)
+    wls_stderrs = wls.bse
+    #print(wls.bse)
 
-    # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-    ranking_points = [ math.exp(log_result) * ranking_scale for log_result in wls_result ]
-
-    #print (ranking_points)
-    # Associate teams ids with their rankings
-    team_rankings = {}
+    result = {}
     for i, team in enumerate(teams):
-        team_rankings[team] = ranking_points[i]
+        result[team] = {
+            # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
+            "rp": math.exp(wls_result[i]) * ranking_scale,
+            "eMin": math.exp(wls_result[i] - wls_stderrs[i]) * ranking_scale,
+            "eMax": math.exp(wls_result[i] + wls_stderrs[i]) * ranking_scale
+        }
+    #print(result)
 
-    return team_rankings
+    return result
+
+def format_results(ranking_results):
+    result = {}
+    for team, ranking_result in ranking_results.items():
+        result[team] = {
+            "rp": round(ranking_result["rp"], 2),
+            "eMin": round(ranking_result["eMin"], 2),
+            "eMax": round(ranking_result["eMax"], 2)
+        }
+    return result
 
 def get_rankings(calcDate, seedingCalc=False):
-    seedDate = calcDate - relativedelta(weeks=52)
-    if (calcDate.month in [3,6,9,12] and calcDate.day <= 7 and seedDate.day > 7):
-        seedDate = seedDate - relativedelta(weeks=1)
-
     # All caluclations prior to 2024 global champs are raw, without seeding data
+    # Use all games going back to beginning of 2023. e.g. Q3 2024 rankings in Sept 2024
+    # would include Apr '23-Aug'24 data which is 16 months, more than the typical 12 months.
+    # but if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
+    # future seeding rankings depending on the time of the year the rankings are calculated.
     if calcDate < date(2024,10,11):
         games = []
         for mrdaGame in mrdaGames:
+            if (mrdaGame.homeTeamId in excludedTeams or mrdaGame.awayTeamId in excludedTeams):
+                continue
+    
             # Skip newer games than calcDate
             if mrdaGame.date.date() >= calcDate:
-                continue
-
-            if (mrdaGame.homeTeamId in excludedTeams or mrdaGame.awayTeamId in excludedTeams):
                 continue
 
             games.append(mrdaGame)
         
-        return linear_regression(games)
+        return linear_regression(games) if seedingCalc else format_results(linear_regression(games))
     else:
+        # If seedDate is a greater # weekday of month than calcDate, set seedDate back an additional week
+        # e.g. if calcDate is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
+        # calcDate = Jun 7, 2028, 52 weeks prior would seedDate = Jun 9, 2027 which is 2nd Wednesday of June.
+        # set seedDate back an additional week seedDate = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
+        seedDate = calcDate - relativedelta(weeks=52)
+        if (((seedDate.day - 1) // 7) > ((calcDate.day - 1) // 7)):
+            seedDate = seedDate - relativedelta(weeks=1)
+
         seeding_team_rankings = get_rankings(seedDate, True)        
 
         games = []
         for mrdaGame in mrdaGames:
-            # Skip newer games than calcDate
-            if mrdaGame.date.date() >= calcDate:
-                # Unless calculating seeding, then include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
-                #if (seedingCalc):
-                #    if (mrdaGame.championship and mrdaGame.date.date() <= (calcDate + relativedelta(months=6))):
-                #        games.append(mrdaGame)
-                #    elif (mrdaGame.qualifier and mrdaGame.date.date() <= (calcDate + relativedelta(months=3))):
-                #        games.append(mrdaGame)
-                continue
-
             if (mrdaGame.homeTeamId in excludedTeams or mrdaGame.awayTeamId in excludedTeams):
+                continue
+                        
+            # Skip newer games than calcDate (unless calculating seeding)
+            if mrdaGame.date.date() >= calcDate:
+                # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
+                if (seedingCalc):
+                    if (mrdaGame.championship and mrdaGame.date.date() <= (calcDate + relativedelta(months=6))):
+                        games.append(mrdaGame)
+                    elif (mrdaGame.qualifier and mrdaGame.date.date() <= (calcDate + relativedelta(months=3))):
+                        games.append(mrdaGame)
                 continue
 
             if mrdaGame.date.date() >= seedDate:
                 # Championship and Qualifier games expire after 6 and 9 months respectively, use them for seeding instead of ranking
-                #if (mrdaGame.championship and mrdaGame.date.date() < (calcDate - relativedelta(months=6))):
-                #    continue
-                #elif (mrdaGame.qualifier and mrdaGame.date.date() < (calcDate - relativedelta(months=9))):
-                #    continue
-                #else:
-                #    games.append(mrdaGame)
-                games.append(mrdaGame)
-        return linear_regression(games, seeding_team_rankings)
+                if (mrdaGame.championship and mrdaGame.date.date() < (calcDate - relativedelta(months=6))):
+                    continue
+                elif (mrdaGame.qualifier and mrdaGame.date.date() < (calcDate - relativedelta(months=9))):
+                    continue
+                else:
+                    games.append(mrdaGame)
+                #games.append(mrdaGame)
+        return linear_regression(games, seeding_team_rankings) if seedingCalc else format_results(linear_regression(games, seeding_team_rankings))
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()

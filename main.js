@@ -69,7 +69,7 @@ function teamDetailsModal() {
         $('#teamAverageRankingPoints').text(team.rankingPoints.toFixed(2));
 
         teamChart = new Chart(document.getElementById("teamChart"), {
-            type: 'line',
+            type: 'lineWithErrorBars',
             data: {
                 datasets: [{
                     label: 'Game Ranking Points',
@@ -80,8 +80,8 @@ function teamDetailsModal() {
                             " vs. " + apiTeams[game.awayTeamId].teamName : " @ " + apiTeams[game.homeTeamId].teamName) })),
                     showLine: false
                 }, {
-                    label: 'Average Ranking Points by Linear Regression',
-                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date), y: rp, label: date })),
+                    label: 'Ranking Points by Linear Regression ± Standard Error',
+                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date), y: rp, yMin: team.stdErrMinHistory.get(date), yMax: team.stdErrMaxHistory.get(date), label: date })),
                     showLine: true
                 }],
             },
@@ -113,8 +113,8 @@ function teamDetailsModal() {
             data: Array.from(team.gameHistory, (game) => ({ 
                 date: getStandardDateString(game.date),
                 score: game.scores[team.teamId] + "-" + (game.homeTeamId == team.teamId ? 
-                    game.scores[game.awayTeamId] + " vs. " + apiTeams[game.awayTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ") 
-                    : game.scores[game.homeTeamId] + " @ " + apiTeams[game.homeTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")),
+                    game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + apiTeams[game.awayTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ") 
+                    : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + apiTeams[game.homeTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")),
             })),
             lengthChange: false,
             searching: false,
@@ -248,7 +248,8 @@ function calculateAndDisplayRankings() {
             { name: 'rankingSort', data: 'rankingSort', visible: false},
             { title: 'Position', data: 'ranking', className: 'dt-teamDetailsClick' },
             { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick' },
-            { title: 'Ranking Points', data: 'rankingPoints', render: function (data, type, full) { return data.toFixed(2); }, className: 'dt-teamDetailsClick' },
+            { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
+            { title: 'Standard Error', data: 'stdErr', render: function (data, type, full) { return "± " + data.toFixed(2); }, className: 'dt-teamDetailsClick' },
             { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
             { title: 'Postseason Eligible', data: 'postseasonEligible', render: function (data, type, full) { return data ? 'Yes' : 'No'; }, className: 'dt-teamDetailsClick'},
             { title: "Chart", data: 'chart', render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}

@@ -10,7 +10,6 @@ class MrdaGame {
         this.eventName = apiGame.eventName;
         this.championship = apiGame.championship;
         this.qualifier = apiGame.qualifier;
-        this.expectedRatios = {};
         this.rankingPoints = {};
     }
 }
@@ -23,7 +22,10 @@ class MrdaTeam {
         this.gameHistory = []
         this.activeStatusGameCount = 0;
         this.rankingPoints = 0;
+        this.stdErr = 0;
         this.rankingPointsHistory = new Map();
+        this.stdErrMinHistory = new Map();
+        this.stdErrMaxHistory = new Map();
         this.ranking = null;
         this.rankingSort = null;
         this.postseasonEligible = false;
@@ -100,9 +102,12 @@ class MrdaLinearRegressionSystem {
         for (const [date, rankings] of Object.entries(linear_regression_rankings)) {
             if (daysDiff(date,calcDate) >= 0) {
                 for (const [team, rank] of Object.entries(rankings)) {
-                    if (this.mrdaTeams[team].rankingPoints != rank) {
-                        this.mrdaTeams[team].rankingPointsHistory.set(date, rank);
-                        this.mrdaTeams[team].rankingPoints = rank;
+                    if (this.mrdaTeams[team].rankingPoints != rank.rp) {
+                        this.mrdaTeams[team].rankingPoints = rank.rp;
+                        this.mrdaTeams[team].stdErr = rank.eMax - rank.rp;
+                        this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
+                        this.mrdaTeams[team].stdErrMinHistory.set(date, rank.eMin);
+                        this.mrdaTeams[team].stdErrMaxHistory.set(date, rank.eMax);
                     }
                 }
             }
@@ -158,7 +163,7 @@ class MrdaLinearRegressionSystem {
                     return;
                 if (game.championship && ageDays >= 183) {
                     //championships do not count for active status past 6 months
-                    return
+                    return;
                 } else if (game.qualifier && ageDays >= 271) {
                     //qualifiers do not count for active status past 9 months
                     return;
