@@ -164,18 +164,20 @@ def linear_regression(games=[],seeding_team_rankings=None):
     wls = sm.WLS(Y, X, W).fit()
     #print(wls.summary())
     wls_result = wls.params
-    #print(wls.params)
+    #print(wls_result)
     wls_stderrs = wls.bse
-    #print(wls.bse)
+    #print(wls_stderrs)
 
     result = {}
     for i, team in enumerate(teams):
         result[team] = {
             # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-            "rp": math.exp(wls_result[i]) * ranking_scale,
-            "eMin": math.exp(wls_result[i] - wls_stderrs[i]) * ranking_scale,
-            "eMax": math.exp(wls_result[i] + wls_stderrs[i]) * ranking_scale
+            "rp": math.exp(wls_result[i]) * ranking_scale
         }
+        # Convert standard error
+        result[team]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
+        # Calculate relative standard error
+        result[team]["rse"] = result[team]["se"]/result[team]["rp"] * 100
     #print(result)
 
     return result
@@ -185,8 +187,8 @@ def format_results(ranking_results):
     for team, ranking_result in ranking_results.items():
         result[team] = {
             "rp": round(ranking_result["rp"], 2),
-            "eMin": round(ranking_result["eMin"], 2),
-            "eMax": round(ranking_result["eMax"], 2)
+            "se": round(ranking_result["se"], 2),
+            "rse": round(ranking_result["rse"], 2)
         }
     return result
 

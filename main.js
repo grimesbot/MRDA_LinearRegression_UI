@@ -76,12 +76,20 @@ function teamDetailsModal() {
                     data: Array.from(team.gameHistory, (game) => ({ 
                         x: new Date(game.date), 
                         y: game.rankingPoints[team.teamId], 
-                        label: getStandardDateString(game.date) + (game.homeTeamId == team.teamId ? 
-                            " vs. " + apiTeams[game.awayTeamId].teamName : " @ " + apiTeams[game.homeTeamId].teamName) })),
+                        title: getStandardDateString(game.date) + (game.homeTeamId == team.teamId ? 
+                            (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + apiTeams[game.awayTeamId].teamName 
+                            : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + apiTeams[game.homeTeamId].teamName),
+                        label: game.rankingPoints[team.teamId] ? 'Game Ranking Points: ' + game.rankingPoints[team.teamId].toFixed(2) : "" })),                        
                     showLine: false
                 }, {
                     label: 'Ranking Points by Linear Regression ± Standard Error',
-                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date), y: rp, yMin: team.stdErrMinHistory.get(date), yMax: team.stdErrMaxHistory.get(date), label: date })),
+                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ 
+                        x: new Date(date), 
+                        y: rp, 
+                        yMin: team.stdErrMinHistory.get(date), 
+                        yMax: team.stdErrMaxHistory.get(date), 
+                        title: date, 
+                        label: "Ranking Points: " + rp + " ± " + team.relStdErrHistory.get(date) + " (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"})),
                     showLine: true
                 }],
             },
@@ -97,7 +105,10 @@ function teamDetailsModal() {
                     tooltip: {
                         callbacks: {
                             title: function(context) {
-                                return context[0].raw.label;
+                                return context[0].raw.title;
+                            },
+                            label: function(context) {
+                                return context.raw.label;
                             }
                         }
                     }
@@ -254,13 +265,13 @@ function calculateAndDisplayRankings() {
     new DataTable('#mrdaRankingPoints', {
         columns: [
             { name: 'rankingSort', data: 'rankingSort', visible: false},
-            { title: 'Position', data: 'ranking', className: 'dt-teamDetailsClick' },
+            { title: 'Position', data: 'ranking', className: 'dt-teamDetailsClick', orderData: [0,1] },
             { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick' },
             { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
-            { title: 'Standard Error', data: 'stdErr', render: function (data, type, full) { return "± " + data.toFixed(2); }, className: 'dt-teamDetailsClick' },
+            { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "± " + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
             { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
             { title: 'Postseason Eligible', data: 'postseasonEligible', render: function (data, type, full) { return data ? 'Yes' : 'No'; }, className: 'dt-teamDetailsClick'},
-            { title: "Chart", data: 'chart', render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
+            { title: "Chart", data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: Object.values(mrdaLinearRegressionSystem.mrdaTeams),
         paging: false,
@@ -269,11 +280,11 @@ function calculateAndDisplayRankings() {
         order: {
             name: 'rankingSort',
             dir: 'asc'
-        },
-        ordering: {
-            handler: false
         }
     });
+
+    $("th.relStdErr").tooltip({title: "Relative Standard Error"});
+    $("th.relStdErr .dt-column-title").append(' <i class="bi bi-question-circle"></i>');
     
     if (!regenerate) {
         $("#mrdaRankingPointsContainer").on('change', 'input.chart', function (e) {
