@@ -71,14 +71,14 @@ const gameHistory = [
         "away_team_abbrev": "TMRD",
         "away_team_score": 173,
     },
-//    {
-//        "sanctioning_id": -18,
-//        "game_date": "2023-05-13",
-//        "home_team_abbrev": "RCR",
-//        "home_team_score": 100,
-//        "away_team_abbrev": "SLGK",
-//        "away_team_score": 0,
-//    },
+    {
+        "sanctioning_id": -18,
+        "game_date": "2023-05-13",
+        "home_team_abbrev": "RCR",
+        "home_team_score": 100,
+        "away_team_abbrev": "SLGK",
+        "away_team_score": 0,
+    },
     {
         "sanctioning_id": -18,
         "game_date": "2023-05-13",

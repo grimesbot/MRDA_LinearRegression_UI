@@ -1,3 +1,16 @@
+function daysDiff(startDate, endDate) {
+    
+    // Convert to dates and remove time
+    let dateStart = new Date(new Date(startDate).toDateString());
+    let dateEnd = new Date(new Date(endDate).toDateString());
+    
+    // Calculate the difference in milliseconds
+    let diffInMilliseconds = dateEnd.getTime() - dateStart.getTime();
+
+    // Calculate the number of days and round to the nearest whole number
+    return Math.round(diffInMilliseconds / dayInMilliseconds);;
+}
+
 function populateRankingDates() {
     let months = [3,6,9,12];
     let currentYear = new Date().getFullYear();
@@ -84,7 +97,7 @@ function teamDetailsModal() {
                 }, {
                     label: 'Ranking Points by Linear Regression ± Standard Error',
                     data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ 
-                        x: new Date(date), 
+                        x: new Date(date + " 00:00:00"), 
                         y: rp, 
                         yMin: team.stdErrMinHistory.get(date), 
                         yMax: team.stdErrMaxHistory.get(date), 
@@ -97,8 +110,8 @@ function teamDetailsModal() {
                 scales: {
                     x: {
                         type: 'time',
-                        min: new Date(team.rankingPointsHistory.keys().next().value),
-                        max: new Date([...team.rankingPointsHistory][team.rankingPointsHistory.size-1][0])
+                        min: new Date(team.rankingPointsHistory.keys().next().value + " 00:00:00"),
+                        max: new Date([...team.rankingPointsHistory][team.rankingPointsHistory.size-1][0] + " 00:00:00")
                     }
                 },
                 plugins: {
@@ -162,28 +175,32 @@ function teamDetailsModal() {
 
 function displayRankingChart(teamsArray, calcDate) {
 
-    let rankingChart = Chart.getChart("rankingsChart");
-    if (rankingChart != undefined) {
-        rankingChart.destroy();
-    }
-
-    let dateCalc = calcDate ? new Date(calcDate) : new Date();
-    let dateMax = getStandardDateString(dateCalc);
-    dateCalc.setFullYear(dateCalc.getFullYear() - 1)
-    dateCalc.setDate(dateCalc.getDate() + 1);
-    let dateMin = getStandardDateString(dateCalc);
-
+    let calcDt = new Date(calcDate + " 00:00:00");
+    let minDt = new Date(calcDt);
+    minDt.setDate(calcDt.getDate() - 7 * 52);
+        // If minDt is a greater # weekday of month than calcDt, set minDt back an additional week
+        // e.g. if calcDt is 1st Wednesday of June, minDt should be 1st Wednesday of June last year.
+        // calcDt = Jun 7, 2028, 52 weeks prior would minDt = Jun 9, 2027 which is 2nd Wednesday of June.
+        // set minDt back an additional week minDt = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
+        if (Math.floor((minDt.getDate() - 1) / 7) > Math.floor((calcDt.getDate() - 1) / 7))
+            minDt.setDate(minDt.getDate() - 7);
+        
     let datasets = [];
 
     teamsArray.sort((a, b) => a.rankingSort - b.rankingSort).forEach(team => {
         if (team.chart) {
             datasets.push({
                 label: team.teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "),
-                data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date), y: rp, teamName: team.teamName })),
+                data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date + " 00:00:00"), y: rp, teamName: team.teamName })),
                 showLine: true
             });
         }
     });
+
+    let rankingChart = Chart.getChart("rankingsChart");
+    if (rankingChart != undefined) {
+        rankingChart.destroy();
+    }
 
     rankingChart = new Chart(document.getElementById("rankingsChart"), {
             type: 'line',
@@ -194,8 +211,8 @@ function displayRankingChart(teamsArray, calcDate) {
                 scales: {
                     x: {
                         type: 'time',
-                        min: new Date(dateMin),
-                        max: new Date(dateMax)
+                        min: minDt,
+                        max: calcDt
                     }
                 },
                 plugins: {

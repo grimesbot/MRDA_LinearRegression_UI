@@ -39,7 +39,7 @@ class MrdaTeam {
             return;
 
         let searchDate = new Date(date);
-        let oldest = new Date(this.rankingPointsHistory.keys().next().value);
+        let oldest = new Date(this.rankingPointsHistory.keys().next().value + " 00:00:00");
 
         if (isNaN(oldest) || searchDate < oldest)
             return;
@@ -63,7 +63,7 @@ class MrdaTeam {
         if (this.relStdErrHistory.size === 0)
             return rp.toFixed(2);
         
-        let oldest = new Date(this.relStdErrHistory.keys().next().value);
+        let oldest = new Date(this.relStdErrHistory.keys().next().value + " 00:00:00");
 
         if (isNaN(oldest) || searchDate < oldest)
             return;
@@ -97,18 +97,7 @@ function getStandardDateString(date) {
 // Define the number of milliseconds in one day
 const dayInMilliseconds = 1000 * 60 * 60 * 24;
 
-function daysDiff(startDate, endDate) {
-    
-    // Convert to dates and remove time
-    let dateStart = new Date(new Date(startDate).toDateString());
-    let dateEnd = new Date(new Date(endDate).toDateString());
-    
-    // Calculate the difference in milliseconds
-    let diffInMilliseconds = dateEnd.getTime() - dateStart.getTime();
 
-    // Calculate the number of days and round to the nearest whole number
-    return Math.round(diffInMilliseconds / dayInMilliseconds);;
-}
 
 const q3_2024_deadline = new Date (2024, 9 - 1, 4);
 const q4_2024_deadline = new Date (2024, 12 - 1, 4);
@@ -128,8 +117,10 @@ class MrdaLinearRegressionSystem {
     }
 
     updateRankings(linear_regression_rankings, calcDate) {
+        let calcDt = new Date(calcDate + " 00:00:00");
         for (const [date, rankings] of Object.entries(linear_regression_rankings)) {
-            if (daysDiff(date,calcDate) >= 0) {
+            let rankingDt = new Date(date + " 00:00:00");
+            if (rankingDt <= calcDt) {
                 for (const [team, rank] of Object.entries(rankings)) {
                     if (this.mrdaTeams[team].rankingPoints != rank.rp || this.mrdaTeams[team].relStdErr != rank.rse) {
                         this.mrdaTeams[team].rankingPoints = rank.rp;
@@ -145,10 +136,12 @@ class MrdaLinearRegressionSystem {
     }
 
     addGameHistory(groupedApiGames, calcDate) {
+        let calcDt = new Date(calcDate + " 00:00:00");
         let groupedGames = [...groupedApiGames.values()];
         groupedGames.forEach(gameGroup => {
             gameGroup.forEach(apiGame => {
-                if (daysDiff(apiGame.date, calcDate) > 0)
+                let gameDt = new Date(apiGame.date);
+                if (gameDt < calcDt)
                 {
                     let mrdaGame = new MrdaGame(apiGame);
                     let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
@@ -163,18 +156,16 @@ class MrdaLinearRegressionSystem {
                         mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
                         mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
 
-                        let gameDate = new Date(mrdaGame.date);
-
-                        if (gameDate > q3_2024_deadline) {
+                        if (gameDt > q3_2024_deadline) {
                             let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
                             this.absoluteLogErrors.push(absLogError);
-                            if (q3_2024_deadline < gameDate && gameDate < q4_2024_deadline)
+                            if (q3_2024_deadline < gameDt && gameDt < q4_2024_deadline)
                                 this.absoluteLogErrors_2024_Q4.push(absLogError);                            
-                            if (q4_2024_deadline < gameDate && gameDate < q1_2025_deadline)
+                            if (q4_2024_deadline < gameDt && gameDt < q1_2025_deadline)
                                 this.absoluteLogErrors_2025_Q1.push(absLogError);
-                            if (q1_2025_deadline < gameDate && gameDate < q2_2025_deadline)
+                            if (q1_2025_deadline < gameDt && gameDt < q2_2025_deadline)
                                 this.absoluteLogErrors_2025_Q2.push(absLogError);
-                            if (q2_2025_deadline < gameDate && gameDate < q3_2025_deadline)
+                            if (q2_2025_deadline < gameDt && gameDt < q3_2025_deadline)
                                 this.absoluteLogErrors_2025_Q3.push(absLogError);
                         }
                     }
@@ -186,24 +177,47 @@ class MrdaLinearRegressionSystem {
     }
 
     calculateActiveStatus(calcDate) {
+        let calcDt = new Date(calcDate + " 00:00:00");
+
+        let minDt = new Date(calcDate);
+        minDt.setDate(minDt.getDate() - 7 * 52);
+
+        // If minDt is a greater # weekday of month than calcDt, set minDt back an additional week
+        // e.g. if calcDt is 1st Wednesday of June, minDt should be 1st Wednesday of June last year.
+        // calcDt = Jun 7, 2028, 52 weeks prior would minDt = Jun 9, 2027 which is 2nd Wednesday of June.
+        // set minDt back an additional week minDt = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
+        if (Math.floor((minDt.getDate() - 1) / 7) > Math.floor((calcDt.getDate() - 1) / 7))
+            minDt.setDate(minDt.getDate() - 7);
+        
+        let champsDecayDt = new Date(calcDt);
+        champsDecayDt.setMonth(champsDecayDt.getMonth - 6);
+
+        let qualDecayDt = new Date(calcDt);
+        qualDecayDt.setMonth(qualDecayDt.getMonth() - 9);        
+
         Object.values(this.mrdaTeams).forEach(team => {
             team.gameHistory.forEach(game => {
-                let ageDays = daysDiff(game.date, calcDate);
-                if (ageDays < 0 || ageDays >= 365)
+                let gameDt = new Date (game.date);
+                
+                if (gameDt < minDt || gameDt >= calcDt)
                     return;
-                if (game.championship && ageDays >= 183) {
+                if (game.championship) {
                     //championships do not count for active status past 6 months
-                    return;
-                } else if (game.qualifier && ageDays >= 271) {
-                    //qualifiers do not count for active status past 9 months
-                    return;
-                } else if (game.forfeit 
-                    && ((game.scores[game.homeTeamId] > 0 && game.homeTeamId == team.teamId) 
-                    || (game.scores[game.awayTeamId] > 0 && game.awayTeamId == team.teamId))) {
-                    team.activeStatusGameCount ++;
-                } else {
-                    team.activeStatusGameCount ++;
+                    if (gameDt < champsDecayDt)
+                        return;
                 }
+                if (game.qualifier) {
+                    //qualifiers do not count for active status past 9 months
+                    if (gameDt < qualDecayDt)
+                        return;
+                }
+
+                if (game.forfeit 
+                    && (game.homeTeamId == team.teamId && game.scores[game.homeTeamId] == 0)
+                    || (game.awayTeamId == team.teamId && game.scores[game.awayTeamId] == 0))
+                    return;
+
+                team.activeStatusGameCount ++;
             });
         });
     }
