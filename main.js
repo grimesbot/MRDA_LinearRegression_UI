@@ -89,7 +89,7 @@ function teamDetailsModal() {
                         yMin: team.stdErrMinHistory.get(date), 
                         yMax: team.stdErrMaxHistory.get(date), 
                         title: date, 
-                        label: "Ranking Points: " + rp + " ± " + team.relStdErrHistory.get(date) + " (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"})),
+                        label: "Ranking Points: " + rp + " ± " + team.relStdErrHistory.get(date) + "% (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"})),
                     showLine: true
                 }],
             },
