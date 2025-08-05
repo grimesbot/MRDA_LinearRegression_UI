@@ -41,6 +41,8 @@ def get_api_gamedata(startDate, status = -1):
 
     return payload
 
+team_names = {}
+
 # Add games from API
 gamedata = get_api_gamedata("01/01/2024")
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=30)).strftime("%m/%d/%Y"), 4))
@@ -78,9 +80,10 @@ for data in gamedata:
     championship = not data["sanctioning"]["event_name"] is None and "Mens Roller Derby Association Championships" in data["sanctioning"]["event_name"]
     qualifier = not data["sanctioning"]["event_name"] is None and "Qualifier" in data["sanctioning"]["event_name"]
 
-    # Fix PAN vs PAN game, DRH is away team
-    if (homeTeamId == "2714a" and awayTeamId == "2714a"):
-        awayTeamId = "17404a" 
+    if not homeTeamId in team_names and (not "home_league_name" in data["event"] or data["event"]["home_league_name"]):
+        team_names[homeTeamId] = data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)")
+    if not awayTeamId in team_names and (not "away_league_name" in data["event"] or data["event"]["away_league_name"]):
+        team_names[awayTeamId] = data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)")
     
     mrdaGames.append(MrdaGame(gameDate, homeTeamId, data["event"]["home_league_score"], awayTeamId, data["event"]["away_league_score"], qualifier, championship))
 
@@ -192,8 +195,14 @@ def format_results(ranking_results):
         }
     return result
 
+def print_results(ranking_results):
+    for item in sorted(ranking_results.items(), key=lambda item: item[1]["rp"], reverse=True):
+        print(str(round(item[1]["rp"], 2)) + "\t" + team_names[item[0]])
+
 def get_rankings(calcDate, seedingCalc=False):
-    # All caluclations prior to 2024 global champs are raw, without seeding data
+    result = {}
+    seeding_team_rankings = None
+    # All caluclations prior to 2024 global champs are raw, without seeding data.
     # Use all games going back to beginning of 2023. e.g. Q3 2024 rankings in Sept 2024
     # would include Apr '23-Aug'24 data which is 16 months, more than the typical 12 months.
     # but if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
@@ -209,8 +218,8 @@ def get_rankings(calcDate, seedingCalc=False):
                 continue
 
             games.append(mrdaGame)
-        
-        return linear_regression(games) if seedingCalc else format_results(linear_regression(games))
+
+        result = linear_regression(games)
     else:
         # If seedDate is a greater # weekday of month than calcDate, set seedDate back an additional week
         # e.g. if calcDate is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
@@ -246,7 +255,24 @@ def get_rankings(calcDate, seedingCalc=False):
                 else:
                     games.append(mrdaGame)
                 #games.append(mrdaGame)
-        return linear_regression(games, seeding_team_rankings) if seedingCalc else format_results(linear_regression(games, seeding_team_rankings))
+        result = linear_regression(games, seeding_team_rankings)
+
+    # Print sorted results for ranking deadline dates
+    if calcDate.month in [3,6,9,12] and calcDate.day <= 7 and not seedingCalc:
+        if not seeding_team_rankings is None:
+            print("Seeding rankings for " + calcDate.strftime("%Y-%m-%d") + " (" + seedDate.strftime("%Y-%m-%d") + ")")
+            print_results(seeding_team_rankings)        
+            print("")
+        print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
+        print_results(result)
+        print("")
+        print("")
+        
+    if seedingCalc:
+        return result
+    else:
+        return format_results(result)
+
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
