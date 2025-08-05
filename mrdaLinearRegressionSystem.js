@@ -190,7 +190,7 @@ class MrdaLinearRegressionSystem {
             minDt.setDate(minDt.getDate() - 7);
         
         let champsDecayDt = new Date(calcDt);
-        champsDecayDt.setMonth(champsDecayDt.getMonth - 6);
+        champsDecayDt.setMonth(champsDecayDt.getMonth() - 6);
 
         let qualDecayDt = new Date(calcDt);
         qualDecayDt.setMonth(qualDecayDt.getMonth() - 9);        
