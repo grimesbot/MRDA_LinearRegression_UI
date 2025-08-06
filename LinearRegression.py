@@ -199,7 +199,7 @@ def print_results(ranking_results):
     for item in sorted(ranking_results.items(), key=lambda item: item[1]["rp"], reverse=True):
         print(str(round(item[1]["rp"], 2)) + "\t" + team_names[item[0]])
 
-def get_rankings(calcDate, seedingCalc=False):
+def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierIncludeDt=None):
     result = {}
     seeding_team_rankings = None
     # All caluclations prior to 2024 global champs are raw, without seeding data.
@@ -225,11 +225,19 @@ def get_rankings(calcDate, seedingCalc=False):
         # e.g. if calcDate is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
         # calcDate = Jun 7, 2028, 52 weeks prior would seedDate = Jun 9, 2027 which is 2nd Wednesday of June.
         # set seedDate back an additional week seedDate = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
-        seedDate = calcDate - relativedelta(weeks=52)
+        seedDate = calcDate - relativedelta(weeks=52) #12 months in weeks
         if (((seedDate.day - 1) // 7) > ((calcDate.day - 1) // 7)):
             seedDate = seedDate - relativedelta(weeks=1)
 
-        seeding_team_rankings = get_rankings(seedDate, True)        
+        champsDecayDt = calcDate - relativedelta(weeks=52/2) #6 months in weeks
+        if (((champsDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
+            champsDecayDt = champsDecayDt - relativedelta(weeks=1)
+
+        qualifierDecayDt = calcDate - relativedelta(weeks=52/4*3) #9 months in weeks
+        if (((qualifierDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
+            qualifierDecayDt = qualifierDecayDt - relativedelta(weeks=1)
+
+        seeding_team_rankings = get_rankings(seedDate, True, champsDecayDt, qualifierDecayDt)
 
         games = []
         for mrdaGame in mrdaGames:
@@ -240,17 +248,17 @@ def get_rankings(calcDate, seedingCalc=False):
             if mrdaGame.date.date() >= calcDate:
                 # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
                 if (seedingCalc):
-                    if (mrdaGame.championship and mrdaGame.date.date() <= (calcDate + relativedelta(months=6))):
+                    if (mrdaGame.championship and mrdaGame.date.date() <= champsIncludeDt):
                         games.append(mrdaGame)
-                    elif (mrdaGame.qualifier and mrdaGame.date.date() <= (calcDate + relativedelta(months=3))):
+                    elif (mrdaGame.qualifier and mrdaGame.date.date() <= qualifierIncludeDt):
                         games.append(mrdaGame)
                 continue
 
             if mrdaGame.date.date() >= seedDate:
                 # Championship and Qualifier games expire after 6 and 9 months respectively, use them for seeding instead of ranking
-                if (mrdaGame.championship and mrdaGame.date.date() < (calcDate - relativedelta(months=6))):
+                if (mrdaGame.championship and mrdaGame.date.date() < champsDecayDt):
                     continue
-                elif (mrdaGame.qualifier and mrdaGame.date.date() < (calcDate - relativedelta(months=9))):
+                elif (mrdaGame.qualifier and mrdaGame.date.date() < qualifierDecayDt):
                     continue
                 else:
                     games.append(mrdaGame)
@@ -276,14 +284,13 @@ def get_rankings(calcDate, seedingCalc=False):
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
-while True: 
-    if nextRankingDeadline.weekday() != 2:
-        nextRankingDeadline = nextRankingDeadline + timedelta(days=1)
-    else:
-        if nextRankingDeadline.month in [3,6,9,12] and nextRankingDeadline.day <= 7:
-            break
-        else:
-            nextRankingDeadline = nextRankingDeadline + timedelta(weeks=1)
+if not (nextRankingDeadline.month % 3 == 0 and nextRankingDeadline.day <= 7 and nextRankingDeadline.weekday() <= 2):
+    # Set month to next March, June, Sept or Dec
+    nextRankingDeadline = nextRankingDeadline + relativedelta(months=(3-(nextRankingDeadline.month % 3)))
+# Set to first of month
+nextRankingDeadline = nextRankingDeadline.replace(day=1)
+# Set to Wednesday = 2
+nextRankingDeadline = nextRankingDeadline + timedelta(days=(2 - nextRankingDeadline.weekday() + 7) % 7)
 
 # Start first Wednesday after WHC.
 searchDate = date(2023,10,25)

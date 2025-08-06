@@ -245,6 +245,8 @@ class MrdaLinearRegressionSystem {
 
             if (team.activeStatusGameCount >= 5 || team.distanceClauseApplies)
                 team.postseasonEligible = true;
+
+            //console.log(team.ranking + "\t" + team.teamName + "\t" + team.rankingPoints);
         }
 
         let sortedUnrankedTeams = unrankedTeams.sort((a, b) => b.rankingPoints - a.rankingPoints );

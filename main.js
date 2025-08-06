@@ -1,55 +1,29 @@
-function daysDiff(startDate, endDate) {
-    
-    // Convert to dates and remove time
-    let dateStart = new Date(new Date(startDate).toDateString());
-    let dateEnd = new Date(new Date(endDate).toDateString());
-    
-    // Calculate the difference in milliseconds
-    let diffInMilliseconds = dateEnd.getTime() - dateStart.getTime();
-
-    // Calculate the number of days and round to the nearest whole number
-    return Math.round(diffInMilliseconds / dayInMilliseconds);;
-}
-
 function populateRankingDates() {
-    let months = [3,6,9,12];
-    let currentYear = new Date().getFullYear();
-    let years = [currentYear - 1, currentYear, currentYear + 1];
-    let wednesdays = new Map();
-    let smallestDaysDiff = 365*2;
-    let selectedWednesday = null;
-
-    years.forEach(year => {
-        months.forEach(month => {
-            let searchDate = new Date(year,month-1,1);
-            while (searchDate.getDay() !== 3) {
-                searchDate.setDate(searchDate.getDate() + 1);
-            }
-
-            let daysAge = daysDiff(searchDate,new Date());
-
-            if (daysAge <= 365 && daysAge >= -90) {
-                let wedString = getStandardDateString(searchDate);
-                wednesdays.set(wedString, `Q${months.indexOf(month) + 1} ${year} (${wedString})`);
-                
-                if (Math.abs(daysAge) < smallestDaysDiff)
-                    {
-                        smallestDaysDiff = Math.abs(daysAge);
-                        selectedWednesday = wedString;
-                    }
-            }         
-        });
-    });
 
     let $dropdown = $("#date");
+    
+    let todayDt = new Date(new Date().toDateString()); // Today without time
+    let searchDt = new Date(q3_2024_deadline);
 
-    wednesdays.forEach((text, wedString) => {
-        $dropdown.append($("<option />").val(wedString).text(text));
-    });
+    while (searchDt < todayDt) {
+        searchDt.setMonth(searchDt.getMonth() + 3); // Add 3 months (a quarter)
+        searchDt.setDate(searchDt.getDate() - searchDt.getDay()); // Set to first of month
+        searchDt.setDate(searchDt.getDate() + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
 
-    let todayString = `${new Date().getFullYear()}-${new Date().getMonth() + 1}-${new Date().getDate()}`;
-    $dropdown.append($("<option />").val(todayString).text("Today (" + todayString + ")"));
-    $dropdown.val(selectedWednesday);
+        if (searchDt > todayDt){
+            let thisWedDt = new Date(todayDt);
+            thisWedDt.setDate(thisWedDt.getDate() + ((3 - thisWedDt.getDay() + 7) % 7)); // Set to Wednesday = 3
+            let thisWedStr = getStandardDateString(thisWedDt);
+            $dropdown.append($("<option />").val(thisWedStr).text(`Current (${thisWedStr})`));
+            $dropdown.val(thisWedStr);
+        }
+
+        let dtStr = getStandardDateString(searchDt);
+        $dropdown.append($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()} (${dtStr})`));
+        
+        if (searchDt == todayDt)
+            $dropdown.val(dtStr);
+    }
 }
 
 function renderRatio (data) 
@@ -255,6 +229,7 @@ function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.calculateActiveStatus($("#date").val());
 
+    //console.log("Rankings for " + $("#date").val());
     mrdaLinearRegressionSystem.rankTeams();
 
     if (mrdaLinearRegressionSystem.absoluteLogErrors.length > 0)
