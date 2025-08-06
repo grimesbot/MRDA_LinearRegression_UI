@@ -213,8 +213,14 @@ def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierInc
             if (mrdaGame.homeTeamId in excludedTeams or mrdaGame.awayTeamId in excludedTeams):
                 continue
     
-            # Skip newer games than calcDate
+            # Skip newer games than calcDate (unless calculating seeding)
             if mrdaGame.date.date() >= calcDate:
+                # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
+                if (seedingCalc):
+                    if (mrdaGame.championship and mrdaGame.date.date() <= champsIncludeDt):
+                        games.append(mrdaGame)
+                    elif (mrdaGame.qualifier and mrdaGame.date.date() <= qualifierIncludeDt):
+                        games.append(mrdaGame)                
                 continue
 
             games.append(mrdaGame)
