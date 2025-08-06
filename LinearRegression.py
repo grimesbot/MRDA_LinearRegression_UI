@@ -11,6 +11,7 @@ from GameList_history import games, team_abbrev_id_map
 
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
+POSTSEASON_DECAY = True
 
 mrdaGames = []
 
@@ -45,6 +46,7 @@ team_names = {}
 
 # Add games from API
 gamedata = get_api_gamedata("01/01/2024")
+# Add unvalidated games from the last 30 days
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=30)).strftime("%m/%d/%Y"), 4))
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=30)).strftime("%m/%d/%Y"), 3))
 
@@ -80,6 +82,7 @@ for data in gamedata:
     championship = not data["sanctioning"]["event_name"] is None and "Mens Roller Derby Association Championships" in data["sanctioning"]["event_name"]
     qualifier = not data["sanctioning"]["event_name"] is None and "Qualifier" in data["sanctioning"]["event_name"]
 
+    # Build team names dict for console output
     if not homeTeamId in team_names and (not "home_league_name" in data["event"] or data["event"]["home_league_name"]):
         team_names[homeTeamId] = data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)")
     if not awayTeamId in team_names and (not "away_league_name" in data["event"] or data["event"]["away_league_name"]):
@@ -89,7 +92,6 @@ for data in gamedata:
 
 excludedTeams = []
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
-#closeGameTeams = []
 
 def linear_regression(games=[],seeding_team_rankings=None):
     teams = []
@@ -216,7 +218,7 @@ def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierInc
             # Skip newer games than calcDate (unless calculating seeding)
             if mrdaGame.date.date() >= calcDate:
                 # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
-                if (seedingCalc):
+                if (POSTSEASON_DECAY and seedingCalc):
                     if (mrdaGame.championship and mrdaGame.date.date() <= champsIncludeDt):
                         games.append(mrdaGame)
                     elif (mrdaGame.qualifier and mrdaGame.date.date() <= qualifierIncludeDt):
@@ -235,13 +237,17 @@ def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierInc
         if (((seedDate.day - 1) // 7) > ((calcDate.day - 1) // 7)):
             seedDate = seedDate - relativedelta(weeks=1)
 
-        champsDecayDt = calcDate - relativedelta(weeks=52/2) #6 months in weeks
-        if (((champsDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
-            champsDecayDt = champsDecayDt - relativedelta(weeks=1)
+        if (POSTSEASON_DECAY):
+            champsDecayDt = calcDate - relativedelta(weeks=52/2) #6 months in weeks
+            if (((champsDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
+                champsDecayDt = champsDecayDt - relativedelta(weeks=1)
 
-        qualifierDecayDt = calcDate - relativedelta(weeks=52/4*3) #9 months in weeks
-        if (((qualifierDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
-            qualifierDecayDt = qualifierDecayDt - relativedelta(weeks=1)
+            qualifierDecayDt = calcDate - relativedelta(weeks=52/4*3) #9 months in weeks
+            if (((qualifierDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
+                qualifierDecayDt = qualifierDecayDt - relativedelta(weeks=1)
+        else:
+            champsDecayDt = None
+            qualifierDecayDt = None
 
         seeding_team_rankings = get_rankings(seedDate, True, champsDecayDt, qualifierDecayDt)
 
@@ -253,7 +259,7 @@ def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierInc
             # Skip newer games than calcDate (unless calculating seeding)
             if mrdaGame.date.date() >= calcDate:
                 # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
-                if (seedingCalc):
+                if (POSTSEASON_DECAY and seedingCalc):
                     if (mrdaGame.championship and mrdaGame.date.date() <= champsIncludeDt):
                         games.append(mrdaGame)
                     elif (mrdaGame.qualifier and mrdaGame.date.date() <= qualifierIncludeDt):
@@ -262,13 +268,12 @@ def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierInc
 
             if mrdaGame.date.date() >= seedDate:
                 # Championship and Qualifier games expire after 6 and 9 months respectively, use them for seeding instead of ranking
-                if (mrdaGame.championship and mrdaGame.date.date() < champsDecayDt):
+                if (POSTSEASON_DECAY and mrdaGame.championship and mrdaGame.date.date() < champsDecayDt):
                     continue
-                elif (mrdaGame.qualifier and mrdaGame.date.date() < qualifierDecayDt):
+                elif (POSTSEASON_DECAY and mrdaGame.qualifier and mrdaGame.date.date() < qualifierDecayDt):
                     continue
                 else:
                     games.append(mrdaGame)
-                #games.append(mrdaGame)
         result = linear_regression(games, seeding_team_rankings)
 
     # Print sorted results for ranking deadline dates
