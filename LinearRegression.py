@@ -11,7 +11,7 @@ from GameList_history import games, team_abbrev_id_map
 
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
-POSTSEASON_DECAY = True
+POSTSEASON_DECAY = False
 
 mrdaGames = []
 
