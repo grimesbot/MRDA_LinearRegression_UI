@@ -11,13 +11,12 @@ from GameList_history import games, team_abbrev_id_map
 
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
-POSTSEASON_DECAY = False
 
 mrdaGames = []
 
-# Add games from GameList_history.py
+# Add 2023 games from GameList_history.py
 for game in [game for gameday in games for game in gameday]:
-    mrdaGames.append(MrdaGame(datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"), team_abbrev_id_map[game[1]], game[2], team_abbrev_id_map[game[3]], game[4], False, game[0] == '2023-10-21' or game[0] == '2023-10-22'))
+    mrdaGames.append(MrdaGame(datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"), team_abbrev_id_map[game[1]], game[2], team_abbrev_id_map[game[3]], game[4]))
 
 def get_api_gamedata(startDate, status = -1):
     # Call sanctioning API to get validated scores from Jan 2024 to today
@@ -44,7 +43,7 @@ def get_api_gamedata(startDate, status = -1):
 
 team_names = {}
 
-# Add games from API
+# Add 2024+ games from API
 gamedata = get_api_gamedata("01/01/2024")
 # Add unvalidated games from the last 30 days
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=30)).strftime("%m/%d/%Y"), 4))
@@ -79,8 +78,6 @@ for data in gamedata:
     gameDate = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
     homeTeamId = str(data["event"]["home_league"]) + ("a" if data["event"]["home_league_charter"] == "primary" else "b")
     awayTeamId = str(data["event"]["away_league"]) + ("a" if data["event"]["away_league_charter"] == "primary" else "b")
-    championship = not data["sanctioning"]["event_name"] is None and "Mens Roller Derby Association Championships" in data["sanctioning"]["event_name"]
-    qualifier = not data["sanctioning"]["event_name"] is None and "Qualifier" in data["sanctioning"]["event_name"]
 
     # Build team names dict for console output
     if not homeTeamId in team_names and (not "home_league_name" in data["event"] or data["event"]["home_league_name"]):
@@ -88,10 +85,12 @@ for data in gamedata:
     if not awayTeamId in team_names and (not "away_league_name" in data["event"] or data["event"]["away_league_name"]):
         team_names[awayTeamId] = data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)")
     
-    mrdaGames.append(MrdaGame(gameDate, homeTeamId, data["event"]["home_league_score"], awayTeamId, data["event"]["away_league_score"], qualifier, championship))
+    mrdaGames.append(MrdaGame(gameDate, homeTeamId, data["event"]["home_league_score"], awayTeamId, data["event"]["away_league_score"]))
 
 excludedTeams = []
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
+if len(excludedTeams) > 0:
+    mrdaGames = [game for game in mrdaGames if not game.homeTeamId in excludedTeams and not game.awayTeamId in excludedTeams]
 
 def linear_regression(games=[],seeding_team_rankings=None):
     teams = []
@@ -160,9 +159,9 @@ def linear_regression(games=[],seeding_team_rankings=None):
 
                 # Set weight to near zero if there are 5 or more close games.
                 #if close_games_count >= 5:
-                #    ranking_W.append(1/1000000)
+                #    W.append(1/1000000)
                 #else:
-                #    ranking_W.append(1)
+                #    W.append(1)
                 W.append(1)        
 
     # Execute StatsModels Weighted Least Squares
@@ -181,29 +180,17 @@ def linear_regression(games=[],seeding_team_rankings=None):
         }
         # Convert standard error
         result[team]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
-        # Calculate relative standard error
+        # Calculate relative standard error %
         result[team]["rse"] = result[team]["se"]/result[team]["rp"] * 100
     #print(result)
 
     return result
 
-def format_results(ranking_results):
-    result = {}
-    for team, ranking_result in ranking_results.items():
-        result[team] = {
-            "rp": round(ranking_result["rp"], 2),
-            "se": round(ranking_result["se"], 2),
-            "rse": round(ranking_result["rse"], 2)
-        }
-    return result
+rankings = {}        
 
-def print_results(ranking_results):
-    for item in sorted(ranking_results.items(), key=lambda item: item[1]["rp"], reverse=True):
-        print(str(round(item[1]["rp"], 2)) + "\t" + team_names[item[0]])
-
-def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierIncludeDt=None):
+def get_rankings(calcDate):
     result = {}
-    seeding_team_rankings = None
+
     # All caluclations prior to 2024 global champs are raw, without seeding data.
     # Use all games going back to beginning of 2023. e.g. Q3 2024 rankings in Sept 2024
     # would include Apr '23-Aug'24 data which is 16 months, more than the typical 12 months.
@@ -212,86 +199,37 @@ def get_rankings(calcDate, seedingCalc=False, champsIncludeDt=None, qualifierInc
     if calcDate < date(2024,10,11):
         games = []
         for mrdaGame in mrdaGames:
-            if (mrdaGame.homeTeamId in excludedTeams or mrdaGame.awayTeamId in excludedTeams):
-                continue
-    
-            # Skip newer games than calcDate (unless calculating seeding)
-            if mrdaGame.date.date() >= calcDate:
-                # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
-                if (POSTSEASON_DECAY and seedingCalc):
-                    if (mrdaGame.championship and mrdaGame.date.date() <= champsIncludeDt):
-                        games.append(mrdaGame)
-                    elif (mrdaGame.qualifier and mrdaGame.date.date() <= qualifierIncludeDt):
-                        games.append(mrdaGame)                
-                continue
-
-            games.append(mrdaGame)
+            if mrdaGame.date.date() < calcDate:
+                games.append(mrdaGame)
 
         result = linear_regression(games)
     else:
+        seedDate = calcDate - relativedelta(weeks=52) #12 months in weeks
         # If seedDate is a greater # weekday of month than calcDate, set seedDate back an additional week
         # e.g. if calcDate is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
         # calcDate = Jun 7, 2028, 52 weeks prior would seedDate = Jun 9, 2027 which is 2nd Wednesday of June.
         # set seedDate back an additional week seedDate = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
-        seedDate = calcDate - relativedelta(weeks=52) #12 months in weeks
         if (((seedDate.day - 1) // 7) > ((calcDate.day - 1) // 7)):
             seedDate = seedDate - relativedelta(weeks=1)
 
-        if (POSTSEASON_DECAY):
-            champsDecayDt = calcDate - relativedelta(weeks=52/2) #6 months in weeks
-            if (((champsDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
-                champsDecayDt = champsDecayDt - relativedelta(weeks=1)
-
-            qualifierDecayDt = calcDate - relativedelta(weeks=52/4*3) #9 months in weeks
-            if (((qualifierDecayDt.day - 1) // 7) > ((calcDate.day - 1) // 7)):
-                qualifierDecayDt = qualifierDecayDt - relativedelta(weeks=1)
-        else:
-            champsDecayDt = None
-            qualifierDecayDt = None
-
-        seeding_team_rankings = get_rankings(seedDate, True, champsDecayDt, qualifierDecayDt)
+        # Get previously calculated rankings for seedDate        
+        seeding_team_rankings = rankings[seedDate.strftime("%Y-%#m-%#d")]
 
         games = []
         for mrdaGame in mrdaGames:
-            if (mrdaGame.homeTeamId in excludedTeams or mrdaGame.awayTeamId in excludedTeams):
-                continue
-                        
-            # Skip newer games than calcDate (unless calculating seeding)
-            if mrdaGame.date.date() >= calcDate:
-                # When seeding, include postseason games in the next 3/6 months, since 6/9+ old postseason games are excluded from ranking
-                if (POSTSEASON_DECAY and seedingCalc):
-                    if (mrdaGame.championship and mrdaGame.date.date() <= champsIncludeDt):
-                        games.append(mrdaGame)
-                    elif (mrdaGame.qualifier and mrdaGame.date.date() <= qualifierIncludeDt):
-                        games.append(mrdaGame)
-                continue
+            if (seedDate <= mrdaGame.date.date() < calcDate):
+                games.append(mrdaGame)                        
 
-            if mrdaGame.date.date() >= seedDate:
-                # Championship and Qualifier games expire after 6 and 9 months respectively, use them for seeding instead of ranking
-                if (POSTSEASON_DECAY and mrdaGame.championship and mrdaGame.date.date() < champsDecayDt):
-                    continue
-                elif (POSTSEASON_DECAY and mrdaGame.qualifier and mrdaGame.date.date() < qualifierDecayDt):
-                    continue
-                else:
-                    games.append(mrdaGame)
         result = linear_regression(games, seeding_team_rankings)
 
     # Print sorted results for ranking deadline dates
-    if calcDate.month in [3,6,9,12] and calcDate.day <= 7 and not seedingCalc:
-        if not seeding_team_rankings is None:
-            print("Seeding rankings for " + calcDate.strftime("%Y-%m-%d") + " (" + seedDate.strftime("%Y-%m-%d") + ")")
-            print_results(seeding_team_rankings)        
-            print("")
+    if calcDate.month in [3,6,9,12] and calcDate.day <= 7:
         print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
-        print_results(result)
-        print("")
+        for item in sorted(result.items(), key=lambda item: item[1]["rp"], reverse=True):
+            print(str(round(item[1]["rp"], 2)) + "\t" + team_names[item[0]])
         print("")
         
-    if seedingCalc:
-        return result
-    else:
-        return format_results(result)
-
+    return result
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
@@ -303,14 +241,24 @@ nextRankingDeadline = nextRankingDeadline.replace(day=1)
 # Set to Wednesday = 2
 nextRankingDeadline = nextRankingDeadline + timedelta(days=(2 - nextRankingDeadline.weekday() + 7) % 7)
 
-# Start first Wednesday after WHC.
-searchDate = date(2023,10,25)
+# Start at Q3-2023 ranking deadline
+searchDate = date(2023,9,6)
 
 # Calculate rankings for each week on Wednesday from starting date until the next ranking deadline
-rankings = {}
 while (searchDate <= nextRankingDeadline):
     rankings[searchDate.strftime("%Y-%#m-%#d")] = get_rankings(searchDate)
     searchDate = searchDate + timedelta(weeks=1)
+
+# Format rankings 
+formatted_rankings = {}
+for dt in rankings.keys():
+    formatted_rankings[dt] = {}
+    for team, ranking in rankings[dt].items():
+        formatted_rankings[dt][team] = {
+            "rp": round(ranking["rp"], 2),
+            "se": round(ranking["se"], 2),
+            "rse": round(ranking["rse"], 2)
+        }
 
 # Save rankings JSON to JavaScript file
 json_filename = "linear_regression_rankings.js"
@@ -321,4 +269,4 @@ if os.path.exists(json_filename):
 with open( json_filename , "w" ) as f:
     f.write("//Generated by LinearRegression.py on  " + datetime.now().strftime("%Y-%#m-%#d %H:%M:%S") + "\n")
     f.write("linear_regression_ranking_history = ")
-    json.dump( rankings , f )
+    json.dump( formatted_rankings , f )
