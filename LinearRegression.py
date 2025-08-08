@@ -190,35 +190,26 @@ rankings_history = {}
 def get_rankings(calcDate):
     result = {}
 
-    # All caluclations prior to 2024 global champs are raw, without seeding data.
-    # Use all games going back to beginning of 2023. e.g. Q3 2024 rankings in Sept 2024
-    # would include Apr '23-Aug'24 data which is 16 months, more than the typical 12 months.
-    # but if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
-    # future seeding rankings depending on the time of the year the rankings are calculated.
-    if calcDate < date(2024,10,11):
-        games = []
-        for mrdaGame in mrdaGames:
-            if mrdaGame.date.date() < calcDate:
-                games.append(mrdaGame)
+    seedDate = calcDate - relativedelta(weeks=52) #12 months in weeks
+    # If seedDate is a greater # weekday of month than calcDate, set seedDate back an additional week
+    # e.g. if calcDate is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
+    # calcDate = Jun 7, 2028, 52 weeks prior would seedDate = Jun 9, 2027 which is 2nd Wednesday of June.
+    # set seedDate back an additional week seedDate = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
+    if (((seedDate.day - 1) // 7) > ((calcDate.day - 1) // 7)):
+        seedDate = seedDate - relativedelta(weeks=1)
 
+    # If we don't have a ranking_history for the seedDate, calculate raw without seeding data and
+    # use all games history we have (going back to Apr 2023). E.g. Q3-2024 rankings in Sept 2024
+    # would include Apr '23-Aug'24 data which is 16 months, more than the typical 12 months.
+    # But if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
+    # future seeding rankings depending on the time of the year the rankings are calculated.
+    if not seedDate.strftime("%Y-%#m-%#d") in rankings_history:
+        games = [game for game in mrdaGames if game.date.date() < calcDate]
         result = linear_regression(games)
     else:
-        seedDate = calcDate - relativedelta(weeks=52) #12 months in weeks
-        # If seedDate is a greater # weekday of month than calcDate, set seedDate back an additional week
-        # e.g. if calcDate is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
-        # calcDate = Jun 7, 2028, 52 weeks prior would seedDate = Jun 9, 2027 which is 2nd Wednesday of June.
-        # set seedDate back an additional week seedDate = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
-        if (((seedDate.day - 1) // 7) > ((calcDate.day - 1) // 7)):
-            seedDate = seedDate - relativedelta(weeks=1)
-
         # Get previously calculated rankings for seedDate        
         seeding_team_rankings = rankings_history[seedDate.strftime("%Y-%#m-%#d")]
-
-        games = []
-        for mrdaGame in mrdaGames:
-            if (seedDate <= mrdaGame.date.date() < calcDate):
-                games.append(mrdaGame)                        
-
+        games = [game for game in mrdaGames if seedDate <= game.date.date() < calcDate]
         result = linear_regression(games, seeding_team_rankings)
 
     # Print sorted results for ranking deadline dates
@@ -240,8 +231,8 @@ nextRankingDeadline = nextRankingDeadline.replace(day=1)
 # Set to Wednesday = 2
 nextRankingDeadline = nextRankingDeadline + timedelta(days=(2 - nextRankingDeadline.weekday() + 7) % 7)
 
-# Start at Q3-2023 ranking deadline
-searchDate = date(2023,9,6)
+# Start first Wednesday after WHC
+searchDate = date(2023,10,25)
 
 # Calculate rankings for each week on Wednesday from starting date until the next ranking deadline
 while (searchDate <= nextRankingDeadline):
