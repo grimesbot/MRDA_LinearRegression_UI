@@ -44,9 +44,9 @@ team_names = {}
 
 # Get 2024+ games from API
 gamedata = get_api_gamedata("01/01/2024")
-# Get unvalidated games from the last 30 days
-gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=30)).strftime("%m/%d/%Y"), 3)) #Approved 
-gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=30)).strftime("%m/%d/%Y"), 4)) #Waiting for Documents
+# Get unvalidated games from the last 60 days
+gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 3)) #Approved 
+gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 4)) #Waiting for Documents
 
 # Validate and add games from API to mrdaGames
 for data in gamedata:

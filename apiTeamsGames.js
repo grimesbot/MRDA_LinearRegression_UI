@@ -72,12 +72,12 @@ async function buildTeamsAndGames() {
     let validatedGames = await fetchGames();
     
     let unvalidatedMinDt = new Date();
-    unvalidatedMinDt.setDate(unvalidatedMinDt.getDate() - 30);
+    unvalidatedMinDt.setDate(unvalidatedMinDt.getDate() - 60);
 
-    //get yet-to-be validated games from API
+    //get yet-to-be validated Waiting for Documents games from API
     let unvalidatedGames = await fetchGames(unvalidatedMinDt, null, 4);
 
-    //get status3? yet-to-be validated games from API
+    //get yet-to-be validated Approved games from API
     let unvalidated3Games = await fetchGames(unvalidatedMinDt, null, 3);
 
     //combine the unvalidated and validated games and sort by date

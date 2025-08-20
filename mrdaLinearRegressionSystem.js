@@ -110,8 +110,7 @@ class MrdaLinearRegressionSystem {
     constructor(apiTeams) {
         this.mrdaTeams = {};
         Object.keys(apiTeams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(apiTeams[teamId]));
-        this.absoluteLogErrors = [];
-        this.absoluteLogErrors_2024_Q4 = [];        
+        this.absoluteLogErrors = [];    
         this.absoluteLogErrors_2025_Q1 = [];
         this.absoluteLogErrors_2025_Q2 = [];
         this.absoluteLogErrors_2025_Q3 = [];
@@ -157,11 +156,9 @@ class MrdaLinearRegressionSystem {
                         mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
                         mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
 
-                        if (gameDt > q3_2024_deadline) {
+                        if (gameDt > q4_2024_deadline) {
                             let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
-                            this.absoluteLogErrors.push(absLogError);
-                            if (q3_2024_deadline < gameDt && gameDt < q4_2024_deadline)
-                                this.absoluteLogErrors_2024_Q4.push(absLogError);                            
+                            this.absoluteLogErrors.push(absLogError);       
                             if (q4_2024_deadline < gameDt && gameDt < q1_2025_deadline)
                                 this.absoluteLogErrors_2025_Q1.push(absLogError);
                             if (q1_2025_deadline < gameDt && gameDt < q2_2025_deadline)
