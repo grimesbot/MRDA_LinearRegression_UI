@@ -26,7 +26,7 @@ Terminology
 -   **Seeding Ranking**: The Ranking from last "season" to give the algorithm a starting point for existing teams. The Ranking Points are used in the algorithm to connect all existing teams to a common "virtual" opponent. Since the MRDA generally uses a rolling 12 month season, we are using the Rankings calculated for last year's Ranking Deadline (see Ranking Period). For example, when calculating Rankings for the 3rd Wednesday of August 2025, we would use the Rankings calculated for the 3rd Wednesday of August 2024 as the Seeding Ranking.
 -   **Error**: We are representing the [standard error](https://en.wikipedia.org/wiki/Standard_error) of the linear regression statistical method as a percentage (relative standard error) using ± and % symbols and error bars on team's historical ranking point charts. This helps highlight the algorithm's uncertainty for newer teams and teams who've played fewer games.
 -   **Active Status**: Teams must play a minmum of 3 MRDA Sanctioned games against at least 2 unique opponents in the Ranking Period to achieve Active Status. Teams must maintain Active Status to earn a Rank.
--   **Postseason Eligible**: Teams must maintain Active Status and play a minmum of 5 MRDA Sanctioned in the Ranking Period to be eligible for invites to postseason tournaments. This measure must be met in both the June AND September Ranking periods of that year to qualify/maintain their invite.
+-   **Postseason Eligible**: Teams must maintain Active Status and play a minmum of 5 MRDA Sanctioned games in the Ranking Period to be eligible for invites to postseason tournaments. This measure must be met in both the June AND September Ranking periods of that year to qualify/maintain their invite. Teams who have three or fewer active MRDA Member Leagues located within one thousand (1,000) miles or fifteen hundred (1,500) kilometers are exempt from this additional 5 game requirement.
 
 
 Implementation 
@@ -37,6 +37,24 @@ The Web UI at index.html displays the results in a chart and a table. It also ca
 
 Frequently Asked Questions
 ---------------
+### How are new teams handled?
+Previously, other algorithms have used something like a "Seeding Game" to determine a new team's starting point: the result of their first game determines their starting point with no impact on their opponent. This has been problmeatic when the result of their first game does not accurately rank the new team which happens when their opponent is over/under performing or when teams are geographically isolated. One game is not enough data to accurately rank a team and it would have profound impact on teams they play in the future.
+
+The order in which games are played does not matter in the linear regression algorithm, so a new team's Rank is based on at least 3 games to achieve Active Status or at least 5 games to be Postseason Eligibile. The impact on the new team's opponents is minimal since there's no difference between being a new teams first opponent, third or fifth opponent since order doesn't matter. 
+
+### How are teams returning from hiatus treated?
+When calculating rankings, teams who are not included in the Seeding Rankings are treated as a new team. This means if a team does not play in a 12 month period, they will be treated as a new team when they return.
+
+Previously, other alogithms have not done anything to handle hiatus or decay. Teams could take a hiatus of a year or more and return with the same ranking points or rating as when they last played. This could have a profound impact on future opponents because the ranking of the returning team could be very inaccurate.
+
+### Is there a ratio cap?
+No, but games with a score ratio greater than 4:1 have less weight. These blowouts are less reliable data, so we use a formula to scale the weight based on ratio. For reference, a score ratio of 4:1 or less is weighted at 100%, 5:1 is weighted at 58%, 6:1 at 33%, 7:1 at 19%, and 8:1 at 11%, etc.
+
+### Are all games treated equally? Do we treat postseason games or older games differently?
+No, all games played within the Ranking Period are weighted using the same logic. A Champs game from 11 months ago is treated equally to a regular season game played yesterday. 
+
+### Do we reduce the weight of virtual games once a team has played 5 close games to reduce the impact of seeding?
+No. You may notice this in the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf), but we found this had unexpected and inconsistent impact on MRDA rankings with our rolling 12 month season as opposed to WFTDA's set season. Particularly with geographically isolated teams who may never play 5 games in the Rankings Period, let alone close games, we want to treat teams consistently.
 
 ### Where Do We Start?
 We use a rolling season but came back from a prolonged pandemic break. A decision has to be made about when we start calculating historical rankings and how we handle seeding data. We have the benefit of hindsight with sanctioned game score data going back to late April of 2023. Western Hemisphere Cup is a logical place after which to start calculating Rankings (Wednesday, October 25th 2023), as it marks the first postseason event after the pandemic break. However, with only one season of data we do not have the benefit of any historical data to use as Seeding Rankings. Thankfully we can run the linear regression method without seeding data following the implementation section on page 11 of the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf) which omits virtual games and scales the Ranking Point results by 100. 
