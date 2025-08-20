@@ -50,7 +50,7 @@ Previously, other alogithms have not done anything to handle hiatus or decay. Te
 ### Is there a ratio cap?
 No, but games with a score ratio greater than 4:1 have less weight. These blowouts are less reliable data, so we use a formula to scale the weight based on ratio. For reference, a score ratio of 4:1 or less is weighted at 100%, 5:1 is weighted at 58%, 6:1 at 33%, 7:1 at 19%, and 8:1 at 11%, etc.
 
-### Are all games treated equally? Do we treat postseason games or older games differently?
+### Do we treat postseason games or older games differently?
 No, all games played within the Ranking Period are weighted using the same logic. A Champs game from 11 months ago is treated equally to a regular season game played yesterday. 
 
 ### Where Do We Start?
@@ -67,7 +67,9 @@ No. You may notice this in the [2025 WFTDA Rankings Algorithm update proposal](/
 Using the Mean Absolute Log Error (MALE) as described in Appendix B of the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf) we can compare the accuracy of algorithms. (They admittedly used a "forced anagram" of MEAL for what I assume are very WFTDA reasons). Looking at all games from December 4th, 2024 to August 20th, 2025 as of writing, here are the % error, lower numbers being better:
 
 Linear Regression: 64.31%
+
 Average Game Points (2023 WFTDA adapted for MRDA): 71.46%
+
 Elo Rating: 72.81%
 
 As you can see, this algorithm has 7.15%-8.5% lower error in predicting scores than the algorithms previously used to aide in MRDA rankings.
