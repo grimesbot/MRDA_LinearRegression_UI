@@ -161,7 +161,7 @@ function displayRankingChart(teamsArray, calcDate) {
         
     let datasets = [];
 
-    teamsArray.sort((a, b) => a.rankingSort - b.rankingSort).forEach(team => {
+    teamsArray.sort((a, b) => a.rankSort - b.rankSort).forEach(team => {
         if (team.chart) {
             datasets.push({
                 label: team.teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "),
@@ -256,8 +256,8 @@ function calculateAndDisplayRankings() {
 
     new DataTable('#mrdaRankingPoints', {
         columns: [
-            { name: 'rankingSort', data: 'rankingSort', visible: false},
-            { title: 'Position', data: 'ranking', className: 'dt-teamDetailsClick', orderData: [0,1] },
+            { name: 'rankSort', data: 'rankSort', visible: false},
+            { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', orderData: [0,1] },
             { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick' },
             { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
             { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "± " + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
@@ -270,7 +270,7 @@ function calculateAndDisplayRankings() {
         searching: false,
         info: false,
         order: {
-            name: 'rankingSort',
+            name: 'rankSort',
             dir: 'asc'
         }
     });

@@ -22,14 +22,15 @@ class MrdaTeam {
         this.distanceClauseApplies = apiTeam.distanceClauseApplies;
         this.gameHistory = []
         this.activeStatusGameCount = 0;
+        this.activeUniqueOpponents = [];        
         this.rankingPoints = 0;
         this.relStdErr = 0;        
         this.rankingPointsHistory = new Map();
         this.stdErrMinHistory = new Map();
         this.stdErrMaxHistory = new Map();
         this.relStdErrHistory = new Map();
-        this.ranking = null;
-        this.rankingSort = null;
+        this.rank = null;
+        this.rankSort = null;
         this.postseasonEligible = false;
         this.chart = false;
     }
@@ -218,6 +219,10 @@ class MrdaLinearRegressionSystem {
                     return;
 
                 team.activeStatusGameCount ++;
+                if (game.homeTeamId == team.teamId && !team.activeUniqueOpponents.includes(game.awayTeamId))
+                    team.activeUniqueOpponents.push(game.awayTeamId);
+                if (game.awayTeamId == team.teamId && !team.activeUniqueOpponents.includes(game.homeTeamId))
+                    team.activeUniqueOpponents.push(game.homeTeamId);
             });
         });
     }
@@ -226,7 +231,7 @@ class MrdaLinearRegressionSystem {
         let eligibleForRankingTeams = [];
         let unrankedTeams = [];
         Object.values(this.mrdaTeams).forEach(team => {
-            if (team.activeStatusGameCount >= 3) {
+            if (team.activeStatusGameCount >= 3 && team.activeUniqueOpponents.length >= 2) {
                 eligibleForRankingTeams.push(team);
             } else {
                 unrankedTeams.push(team);
@@ -237,23 +242,21 @@ class MrdaLinearRegressionSystem {
 
         for (let i = 0; i < sortedTeams.length; i++) {
             let team = sortedTeams[i];
-            team.ranking = i + 1;
-            team.rankingSort = i + 1;
+            team.rank = i + 1;
+            team.rankSort = i + 1;
 
-            if (team.ranking < 6)
+            if (team.rank < 6)
                 team.chart = true;
 
             if (team.activeStatusGameCount >= 5 || team.distanceClauseApplies)
                 team.postseasonEligible = true;
-
-            //console.log(team.ranking + "\t" + team.teamName + "\t" + team.rankingPoints);
         }
 
         let sortedUnrankedTeams = unrankedTeams.sort((a, b) => b.rankingPoints - a.rankingPoints );
 
         for (let i = 0; i < sortedUnrankedTeams.length; i++) {
             let team = sortedUnrankedTeams[i];
-            team.rankingSort = sortedTeams.length + i + 1;
+            team.rankSort = sortedTeams.length + i + 1;
         }
     }
 }
