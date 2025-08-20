@@ -53,12 +53,21 @@ No, but games with a score ratio greater than 4:1 have less weight. These blowou
 ### Are all games treated equally? Do we treat postseason games or older games differently?
 No, all games played within the Ranking Period are weighted using the same logic. A Champs game from 11 months ago is treated equally to a regular season game played yesterday. 
 
-### Do we reduce the weight of virtual games once a team has played 5 close games to reduce the impact of seeding?
-No. You may notice this in the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf), but we found this had unexpected and inconsistent impact on MRDA rankings with our rolling 12 month season as opposed to WFTDA's set season. Particularly with geographically isolated teams who may never play 5 games in the Rankings Period, let alone close games, we want to treat teams consistently.
-
 ### Where Do We Start?
 We use a rolling season but came back from a prolonged pandemic break. A decision has to be made about when we start calculating historical rankings and how we handle seeding data. We have the benefit of hindsight with sanctioned game score data going back to late April of 2023. Western Hemisphere Cup is a logical place after which to start calculating Rankings (Wednesday, October 25th 2023), as it marks the first postseason event after the pandemic break. However, with only one season of data we do not have the benefit of any historical data to use as Seeding Rankings. Thankfully we can run the linear regression method without seeding data following the implementation section on page 11 of the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf) which omits virtual games and scales the Ranking Point results by 100. 
 
 Using this method, our rankings will be based entirely on historical sanctioned scores and we do not need to resort to an unreliable or out-of-date source like Flat Track Stats. However, without Seeding Rankings and a common virtual opponent connecting teams the results are less accurate, so we use all data going back to April of 2023 in all of these calculations to improve accuracy. For example, September 2024 Rankings would include games from April '23 through August of '24 which is 16 months. This is longer than the typical 12 month ranking period, but the results will only ever be used as Seeding Rankings to make future calculations (e.g. September 2025) more accurate and never to determine any Rankings on it's own.
 
 Starting Wednesday, October 23rd, 2024, a year after WHC and once we have global crossover data from 2024 Champs, we start using the previous years' results as Seeding Rankings. December 2024 rankings will be based on games from Dec '23 - Dec '24 and use the Dec '23 rankings as Seeding Rankings which were caluclated without historical data. Starting Wednesday, October 22nd, 2025, two years after WHC, all Rankings and the Seeding Rankings will be based on calculations which used virtual games and seeding data for highest accuracy.
+
+### Do we reduce the weight of virtual games once a team has played 5 close games to reduce the impact of seeding?
+No. You may notice this in the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf), but we found this had unexpected and inconsistent impact on MRDA rankings with our rolling 12 month season as opposed to WFTDA's set season. Particularly with geographically isolated teams who may never play 5 games in the Rankings Period, let alone close games, we want to treat teams consistently.
+
+### How does this compare to other algorithms?
+Using the Mean Absolute Log Error (MALE) as described in Appendix B of the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf) we can compare the accuracy of algorithms. (They admittedly used a "forced anagram" of MEAL for what I assume are very WFTDA reasons). Looking at all games from December 4th, 2024 to August 20th, 2025 as of writing, here are the % error, lower numbers being better:
+
+Linear Regression: 64.31%
+Average Game Points (2023 WFTDA adapted for MRDA): 71.46%
+Elo Rating: 72.81%
+
+As you can see, this algorithm has 7.15%-8.5% lower error in predicting scores than the algorithms previously used to aide in MRDA rankings.
