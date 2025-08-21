@@ -3,7 +3,7 @@ function populateRankingDates() {
     let $dropdown = $("#date");
     
     let todayDt = new Date(new Date().toDateString()); // Today without time
-    let searchDt = new Date(q3_2024_deadline);
+    let searchDt = new Date (2023, 9 - 1, 6);
 
     while (searchDt < todayDt) {
         searchDt.setMonth(searchDt.getMonth() + 3); // Add 3 months (a quarter)

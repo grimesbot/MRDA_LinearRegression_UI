@@ -100,7 +100,6 @@ const dayInMilliseconds = 1000 * 60 * 60 * 24;
 
 
 
-const q3_2024_deadline = new Date (2024, 9 - 1, 4);
 const q4_2024_deadline = new Date (2024, 12 - 1, 4);
 const q1_2025_deadline = new Date (2025, 3 - 1, 5);
 const q2_2025_deadline = new Date (2025, 6 - 1, 4);
