@@ -8,7 +8,7 @@ This repository produces rankings for the MRDA based on the [2025 WFTDA Rankings
 
 Simple Explanation 
 ---------------
-Other algorithms that have been used to aide in determining  MRDA rankings such as Elo Rating or the Game Ranking Points based on WFTDA's 2023 algorithm calculate the contributions of each game based on the current standing of each team at the time of the game. Instead, this algorithm evaluates all games played in the rankings period, regardless of the order games are played.
+Other algorithms that have been used to aide in determining MRDA rankings such as Elo Rating or the Average Ranking Points based on WFTDA's 2023 algorithm calculate the contributions of each game based on the current standing of each team at the time of the game. Instead, this algorithm evaluates all games played in the rankings period, regardless of the order games are played.
 
 For example, if Red team played Blue team yesterday, then the Blue team plays Green team today, today's game provides data about Blue and Green teams, but it also puts *yesterday’s* game in context so that we now know more about the Red team too. The advantage of this algorithm is that it will re-evaluate yesterday's game with the new information.
 
@@ -33,13 +33,13 @@ Frequently Asked Questions
 ### How can I find the expected score of a game?
 The predicted score ratio of a game is simply the ratio of the competing teams Ranking Points at the time of the game. For example, to find the predicted score ratio of a game between Red team and Blue team on Saturday, August 23rd 2025, we need the most recent Ranking Points of Red team and Blue team which would be from Wednesday, August 20th, 2025. To find the expected score ratio we divide the Red team Ranking Points by Blue team Ranking Points. If Red team's Ranking Points were 450 and Blue team's Ranking Points were 300, the expected score ratio would be 450 / 300 = 1.5:1
 
-### Can I caluclate how the outcome of a single game will impact my team's rankings?
+### Can I calculate how the outcome of a single game will impact my team's rankings?
 No, not anymore. This was possible with other algorithms in the past, but it's not possible with this algorithm because calculations depend on every other game too, not just the one game in isolation. But generally, obtaining a better score ratio than predicted (see above) will tend to increase your ranking.
 
-The Web UI here should reflect game results and their ranking impact shortly after they are entered in MRDA Central, even before scores are validated. We include score reports in "Approved" and "Waiting for Documents" from the last 60 days assuming sanctioning requirements will be met in good faith. LinearRegression.py needs to be run to recalculate rankings but ideally this will be run on a daily schedule so results will be available within 24 hours or less.
+However, you won't need to wait a month to see how a game impacts your ranking. The Web UI here should reflect game results and their ranking impact shortly after they are entered in MRDA Central, even before scores are validated. We include score reports in "Approved" and "Waiting for Documents" from the last 60 days assuming sanctioning requirements will be met in good faith. LinearRegression.py needs to be run to recalculate rankings but ideally this will be run on a daily schedule so results will be available within 24 hours or less.
 
 ### How are new teams handled?
-Previously, other algorithms have used something like a "Seeding Game" to determine a new team's starting point: the result of their first game determines their starting point with no impact on their opponent. This has been problematic  when the result of their first game does not accurately rank the new team which happens when the new team's opponent is over/under performing or when teams are geographically isolated. One game is not enough data to accurately rank a team and it can have a profound impact on teams they play in the future.
+Previously, other algorithms have used something like a "Seeding Game" to determine a new team's starting point: the result of their first game determines their starting point with no impact on their opponent. This has been problematic when the result of their first game does not accurately rank the new team which happens when the new team's opponent is over/under performing or when teams are geographically isolated. One game is not enough data to accurately rank a team and it can have a profound impact on teams they play in the future.
 
 The order in which games are played does not matter in the linear regression algorithm, so a new team's Rank is based on at least 3 games to achieve Active Status or at least 5 games to be Postseason Eligible. The impact on the new team's opponents is minimal since there's no difference between being a new team's first opponent, third or fifth opponent since the order of games played doesn't matter. 
 
