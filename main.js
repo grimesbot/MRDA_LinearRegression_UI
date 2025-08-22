@@ -289,7 +289,7 @@ function calculateAndDisplayRankings() {
 }
 
 function setupApiGames() {
-    var apiGamesDt = new DataTable('#apiGames', {
+    new DataTable('#apiGames', {
             columns: [
                 { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
                 { title: "Home Team", data: 'homeTeamId', render: function (data) { return apiTeams[data].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
@@ -326,6 +326,9 @@ async function main() {
     setupApiGames();
 
     $("#date").on( "change", calculateAndDisplayRankings );
+
+    $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
+    
 }
 
 window.addEventListener('load', main);
