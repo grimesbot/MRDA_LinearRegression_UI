@@ -45,6 +45,7 @@ async function fetchGames(startDate, endDate, status, apiUrl) {
             endDate = new Date();
         else
             endDate = new Date(endDate);
+        endDate.setDate(endDate.getDate() + 1); //include today's games
         apiUrl += `&end-date=${endDate.getMonth() + 1}/${endDate.getDate()}/${endDate.getFullYear()}`;
         
         if (status)

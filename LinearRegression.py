@@ -22,7 +22,7 @@ def get_api_gamedata(startDate, status=None):
     url = "https://api.mrda.org/v1-public/sanctioning/algorithm"
     params = {
         "start-date": startDate,
-        "end-date": datetime.today().strftime("%m/%d/%Y")
+        "end-date": (datetime.today() + timedelta(days=1)).strftime("%m/%d/%Y") # Tomorrow to include today's games.
     }
 
     if not status is None:
@@ -47,6 +47,20 @@ gamedata = get_api_gamedata("01/01/2024")
 # Get unvalidated games from the last 60 days
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 3)) #Approved 
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 4)) #Waiting for Documents
+
+# Save gamedata to JSON file, only recalculate rankings if it changes.
+gamedata_json_filename = "gamedata.json"
+if os.path.exists(gamedata_json_filename):
+    with open( gamedata_json_filename , "r" ) as f:
+        file_content = f.read()
+        if file_content == json.dumps(gamedata):
+            # gamedata has not changed, exit without recalculating rankings
+            exit() 
+    # different gamedata, delete old file.
+    os.remove(gamedata_json_filename) 
+# Write gamedata JSON to file
+with open( gamedata_json_filename , "w" ) as f:
+    json.dump(gamedata, f)
 
 # Validate and add games from API to mrdaGames
 for data in gamedata:
@@ -261,6 +275,6 @@ json_filename = "linear_regression_rankings.json"
 # Delete if exists
 if os.path.exists(json_filename):
     os.remove(json_filename)
-# Write with comment and JS variable name
+# Write JSON
 with open( json_filename , "w" ) as f:
     json.dump(rankings_history, f) #, indent=4) pretty print
