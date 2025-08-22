@@ -14,12 +14,12 @@ function populateRankingDates() {
             let thisWedDt = new Date(todayDt);
             thisWedDt.setDate(thisWedDt.getDate() + ((3 - thisWedDt.getDay() + 7) % 7)); // Set to Wednesday = 3
             let thisWedStr = getStandardDateString(thisWedDt);
-            $dropdown.append($("<option />").val(thisWedStr).text(`Current (${thisWedStr})`));
+            $dropdown.prepend($("<option />").val(thisWedStr).text(`Current (${thisWedStr})`));
             $dropdown.val(thisWedStr);
         }
 
         let dtStr = getStandardDateString(searchDt);
-        $dropdown.append($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()} (${dtStr})`));
+        $dropdown.prepend($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()} (${dtStr})`));
         
         if (searchDt == todayDt)
             $dropdown.val(dtStr);
