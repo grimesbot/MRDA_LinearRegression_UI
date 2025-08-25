@@ -39,14 +39,17 @@ class MrdaTeam {
         if (this.rankingPointsHistory.size === 0)
             return;
 
+        // Start search from most recent Wednesday on or before date
         let searchDate = new Date(date);
+        searchDate.setDate(searchDate.getDate() - ((searchDate.getDay() - 3 + 7) % 7));
+
         let oldest = new Date(this.rankingPointsHistory.keys().next().value + " 00:00:00");
 
         if (isNaN(oldest) || searchDate < oldest)
             return;
 
         while(!this.rankingPointsHistory.has(getStandardDateString(searchDate)) ) {
-            searchDate.setDate(searchDate.getDate() - 1);
+            searchDate.setDate(searchDate.getDate() - 7);
         }
         return this.rankingPointsHistory.get(getStandardDateString(searchDate))
     }
@@ -95,11 +98,6 @@ function getStandardDateString(date) {
     return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`;
 }
 
-// Define the number of milliseconds in one day
-const dayInMilliseconds = 1000 * 60 * 60 * 24;
-
-
-
 const q4_2024_deadline = new Date (2024, 12 - 1, 4);
 const q1_2025_deadline = new Date (2025, 3 - 1, 5);
 const q2_2025_deadline = new Date (2025, 6 - 1, 4);
@@ -121,14 +119,12 @@ class MrdaLinearRegressionSystem {
             let rankingDt = new Date(date + " 00:00:00");
             if (rankingDt <= calcDt) {
                 for (const [team, rank] of Object.entries(rankings)) {
-                    if (this.mrdaTeams[team].rankingPoints != rank.rp || this.mrdaTeams[team].relStdErr != rank.rse) {
-                        this.mrdaTeams[team].rankingPoints = rank.rp;
-                        this.mrdaTeams[team].relStdErr = rank.rse;
-                        this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
-                        this.mrdaTeams[team].relStdErrHistory.set(date, rank.rse);
-                        this.mrdaTeams[team].stdErrMinHistory.set(date, (rank.rp - rank.se));
-                        this.mrdaTeams[team].stdErrMaxHistory.set(date, (rank.rp + rank.se));
-                    }
+                    this.mrdaTeams[team].rankingPoints = rank.rp;
+                    this.mrdaTeams[team].relStdErr = rank.rse;
+                    this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
+                    this.mrdaTeams[team].relStdErrHistory.set(date, rank.rse);
+                    this.mrdaTeams[team].stdErrMinHistory.set(date, (rank.rp - rank.se));
+                    this.mrdaTeams[team].stdErrMaxHistory.set(date, (rank.rp + rank.se));
                 }
             }
         }
