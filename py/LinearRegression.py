@@ -12,9 +12,9 @@ from GameList_history import games, team_abbrev_id_map
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
 
-mrdaGames = []
+github_actions_run = 'GITHUB_WORKFLOW_REF' in os.environ and '.github/workflows/update_rankings.yml' in os.environ['GITHUB_WORKFLOW_REF']
 
-print(os.environ)
+mrdaGames = []
 
 # Add 2023 games from GameList_history.py to mrdaGames
 for game in [game for gameday in games for game in gameday]:
@@ -51,18 +51,20 @@ gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftim
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 4)) #Waiting for Documents
 
 # Save gamedata to JSON file, only recalculate rankings if it changes.
-gamedata_json_filename = "gamedata.json"
-if os.path.exists(gamedata_json_filename):
-    with open( gamedata_json_filename , "r" ) as f:
-        file_content = f.read()
-        if file_content == json.dumps(gamedata):
-            # gamedata has not changed, exit without recalculating rankings
-            exit() 
-    # different gamedata, delete old file.
-    os.remove(gamedata_json_filename) 
-# Write gamedata JSON to file
-with open( gamedata_json_filename , "w" ) as f:
-    json.dump(gamedata, f)
+if github_actions_run:
+    gamedata_json_filename = "gamedata.json"
+    if os.path.exists(gamedata_json_filename):
+        with open( gamedata_json_filename , "r" ) as f:
+            file_content = f.read()
+            if file_content == json.dumps(gamedata):
+                # gamedata has not changed, exit without recalculating rankings
+                print("Game data from MRDA Central API has not changed, exiting without recalculating rankings.")
+                exit() 
+        # different gamedata, delete old file.
+        os.remove(gamedata_json_filename) 
+    # Write gamedata JSON to file
+    with open( gamedata_json_filename , "w" ) as f:
+        json.dump(gamedata, f)
 
 # Validate and add games from API to mrdaGames
 for data in gamedata:
@@ -244,7 +246,7 @@ def get_rankings(calcDate):
             result = linear_regression(games, seeding_team_rankings)
 
     # Print sorted results for ranking deadline dates when debugging
-    if calcDate.month in [3,6,9,12] and calcDate.day <= 7:
+    if not github_actions_run and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
         print_result = result if not result is None else get_ranking_history(calcDate)
         print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
         for item in sorted(print_result.items(), key=lambda item: item[1]["rp"], reverse=True):
@@ -307,3 +309,6 @@ if os.path.exists(json_filename):
 # Write JSON
 with open( json_filename , "w" ) as f:
     json.dump(formatted_rankings_history, f) #, indent=4) pretty print
+
+if github_actions_run:
+    print("Rankings updated and saved to " + js_filename + " and " + json_filename)
