@@ -14,6 +14,8 @@ RATIO_CAP = 4
 
 mrdaGames = []
 
+print(os.environ)
+
 # Add 2023 games from GameList_history.py to mrdaGames
 for game in [game for gameday in games for game in gameday]:
     mrdaGames.append(MrdaGame(datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"), team_abbrev_id_map[game[1]], game[2], team_abbrev_id_map[game[3]], game[4]))
@@ -48,20 +50,19 @@ gamedata = get_api_gamedata("01/01/2024")
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 3)) #Approved 
 gamedata.extend(get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 4)) #Waiting for Documents
 
-if not __debug__:
-    # Save gamedata to JSON file, only recalculate rankings if it changes.
-    gamedata_json_filename = "gamedata.json"
-    if os.path.exists(gamedata_json_filename):
-        with open( gamedata_json_filename , "r" ) as f:
-            file_content = f.read()
-            if file_content == json.dumps(gamedata):
-                # gamedata has not changed, exit without recalculating rankings
-                exit() 
-        # different gamedata, delete old file.
-        os.remove(gamedata_json_filename) 
-    # Write gamedata JSON to file
-    with open( gamedata_json_filename , "w" ) as f:
-        json.dump(gamedata, f)
+# Save gamedata to JSON file, only recalculate rankings if it changes.
+gamedata_json_filename = "gamedata.json"
+if os.path.exists(gamedata_json_filename):
+    with open( gamedata_json_filename , "r" ) as f:
+        file_content = f.read()
+        if file_content == json.dumps(gamedata):
+            # gamedata has not changed, exit without recalculating rankings
+            exit() 
+    # different gamedata, delete old file.
+    os.remove(gamedata_json_filename) 
+# Write gamedata JSON to file
+with open( gamedata_json_filename , "w" ) as f:
+    json.dump(gamedata, f)
 
 # Validate and add games from API to mrdaGames
 for data in gamedata:
@@ -243,7 +244,7 @@ def get_rankings(calcDate):
             result = linear_regression(games, seeding_team_rankings)
 
     # Print sorted results for ranking deadline dates when debugging
-    if __debug__ and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
+    if calcDate.month in [3,6,9,12] and calcDate.day <= 7:
         print_result = result if not result is None else get_ranking_history(calcDate)
         print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
         for item in sorted(print_result.items(), key=lambda item: item[1]["rp"], reverse=True):
