@@ -12,7 +12,7 @@ from GameList_history import games, team_abbrev_id_map
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
 
-github_actions_run = 'GITHUB_WORKFLOW_REF' in os.environ and '.github/workflows/update_rankings.yml' in os.environ['GITHUB_WORKFLOW_REF']
+github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true'
 
 mrdaGames = []
 
