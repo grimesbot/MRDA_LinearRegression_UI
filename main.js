@@ -26,22 +26,6 @@ function populateRankingDates() {
     }
 }
 
-function renderRatio (data) 
-{ 
-    if (data) {
-        let rounded = data.toFixed(2);
-        if (!config.ratio_cap)
-            return rounded;
-        if (data > config.ratio_cap)
-            return rounded + " (" + config.ratio_cap.toFixed(2) + ")";
-        if (data < 1/config.ratio_cap)
-            return rounded + " (" + (1/config.ratio_cap).toFixed(2) + ")";
-        return rounded;
-    } else {
-        return "";
-    }
-}
-
 function teamDetailsModal() {
     var teamChart;
     var teamGameHistoryDt;
@@ -64,8 +48,8 @@ function teamDetailsModal() {
                         x: new Date(game.date), 
                         y: game.rankingPoints[team.teamId], 
                         title: getStandardDateString(game.date) + (game.homeTeamId == team.teamId ? 
-                            (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + apiTeams[game.awayTeamId].teamName 
-                            : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + apiTeams[game.homeTeamId].teamName),
+                            (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name 
+                            : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + mrda_teams[game.homeTeamId].name),
                         label: game.rankingPoints[team.teamId] ? 'Game Ranking Points: ' + game.rankingPoints[team.teamId].toFixed(2) : "" })),                        
                     showLine: false
                 }, {
@@ -115,8 +99,8 @@ function teamDetailsModal() {
             data: Array.from(team.gameHistory, (game) => ({ 
                 date: getStandardDateString(game.date),
                 score: game.scores[team.teamId] + "-" + (game.homeTeamId == team.teamId ? 
-                    game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + apiTeams[game.awayTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ") 
-                    : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + apiTeams[game.homeTeamId].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")),
+                    game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ") 
+                    : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + mrda_teams[game.homeTeamId].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")),
                 expectedRatio: team.teamId in game.expectedRatios ? game.expectedRatios[team.teamId].toFixed(2) : "",
                 actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId])).toFixed(2) : "",
                 beforeRankingPoints: team.getRankingPointHistoryWithError(game.date) ?? "",
@@ -221,11 +205,11 @@ function meanAbsoluteLogErrorPercent(absLogErrorArray) {
 
 function calculateAndDisplayRankings() {
 
-    let mrdaLinearRegressionSystem = new MrdaLinearRegressionSystem(apiTeams);
+    let mrdaLinearRegressionSystem = new MrdaLinearRegressionSystem(mrda_teams);
 
-    mrdaLinearRegressionSystem.updateRankings(linear_regression_ranking_history, $("#date").val());
+    mrdaLinearRegressionSystem.updateRankings(rankings_history, $("#date").val());
 
-    mrdaLinearRegressionSystem.addGameHistory(groupedApiGames, $("#date").val());
+    mrdaLinearRegressionSystem.addGameHistory(mrda_games, $("#date").val());
 
     mrdaLinearRegressionSystem.calculateActiveStatus($("#date").val());
 
@@ -292,16 +276,15 @@ function setupApiGames() {
     new DataTable('#apiGames', {
             columns: [
                 { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
-                { title: "Home Team", data: 'homeTeamId', render: function (data) { return apiTeams[data].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
-                { title: "Home Score", data: 'homeTeamScore', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }},
-                { title: "Away Score", data: 'awayTeamScore', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }} ,
-                { title: "Away Team", data: 'awayTeamId', render: function (data) { return apiTeams[data].teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
-                { title: "Event Name", data: 'eventName'},
+                { title: "Home Team", data: 'home_team_id', render: function (data) { return mrda_teams[data].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
+                { title: "Home Score", data: 'home_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }},
+                { title: "Away Score", data: 'away_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }} ,
+                { title: "Away Team", data: 'away_team_id', render: function (data) { return mrda_teams[data].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
+                { title: "Event Name", data: 'event_name'},
                 { title: "Type", render: function (data, type, full) { return full.championship ? "Championship" : full.qualifier ? "Qualifier" : "Regular Season"; }},
-                { title: "Validated", data: 'validated'},
-                //{ title: "Excluded", render: function (data, type, full) { return "<input type='checkbox' class='excluded'></input>"; }}
+                { title: "Validated", data: 'status', render: function(data, type, full) { return data  == 7 }} ,
             ],
-            data: [...groupedApiGames.values()].flat(1),
+            data: mrda_games,
             lengthChange: false,
             order: {
                 name: 'date',
@@ -316,8 +299,6 @@ async function main() {
     //document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
     populateRankingDates();
-
-    await buildTeamsAndGames();
 
     calculateAndDisplayRankings();
 

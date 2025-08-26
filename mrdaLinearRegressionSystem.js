@@ -1,25 +1,23 @@
 class MrdaGame {
-    constructor(apiGame) {
-        this.date = apiGame.date;
-        this.homeTeamId = apiGame.homeTeamId;
-        this.awayTeamId = apiGame.awayTeamId;
+    constructor(game) {
+        this.date = game.date;
+        this.homeTeamId = game.home_team_id;
+        this.awayTeamId = game.away_team_id;
         this.scores = {};
-        this.scores[this.homeTeamId] = apiGame.homeTeamScore;
-        this.scores[this.awayTeamId] = apiGame.awayTeamScore;        
-        this.forfeit = apiGame.forfeit;
-        this.eventName = apiGame.eventName;
-        this.championship = apiGame.championship;
-        this.qualifier = apiGame.qualifier;
+        this.scores[this.homeTeamId] = game.home_team_score;
+        this.scores[this.awayTeamId] = game.away_team_score;        
+        this.forfeit = game.forfeit;
+        this.eventName = game.event_name;
         this.expectedRatios = {};        
         this.rankingPoints = {};
     }
 }
 
 class MrdaTeam {
-    constructor(apiTeam) {
-        this.teamId = apiTeam.teamId;
-        this.teamName = apiTeam.teamName;
-        this.distanceClauseApplies = apiTeam.distanceClauseApplies;
+    constructor(teamId, team) {
+        this.teamId = teamId;
+        this.teamName = team.name;
+        this.distanceClauseApplies = team.distance_clause_applies;
         this.gameHistory = []
         this.activeStatusGameCount = 0;
         this.activeUniqueOpponents = [];        
@@ -104,18 +102,18 @@ const q2_2025_deadline = new Date (2025, 6 - 1, 4);
 const q3_2025_deadline = new Date (2025, 9 - 1, 3);
 
 class MrdaLinearRegressionSystem {
-    constructor(apiTeams) {
+    constructor(teams) {
         this.mrdaTeams = {};
-        Object.keys(apiTeams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(apiTeams[teamId]));
+        Object.keys(teams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, teams[teamId]));
         this.absoluteLogErrors = [];    
         this.absoluteLogErrors_2025_Q1 = [];
         this.absoluteLogErrors_2025_Q2 = [];
         this.absoluteLogErrors_2025_Q3 = [];
     }
 
-    updateRankings(linear_regression_rankings, calcDate) {
+    updateRankings(rankings_history, calcDate) {
         let calcDt = new Date(calcDate + " 00:00:00");
-        for (const [date, rankings] of Object.entries(linear_regression_rankings)) {
+        for (const [date, rankings] of Object.entries(rankings_history)) {
             let rankingDt = new Date(date + " 00:00:00");
             if (rankingDt <= calcDt) {
                 for (const [team, rank] of Object.entries(rankings)) {
@@ -130,43 +128,40 @@ class MrdaLinearRegressionSystem {
         }
     }
 
-    addGameHistory(groupedApiGames, calcDate) {
+    addGameHistory(games, calcDate) {
         let calcDt = new Date(calcDate + " 00:00:00");
-        let groupedGames = [...groupedApiGames.values()];
-        groupedGames.forEach(gameGroup => {
-            gameGroup.forEach(apiGame => {
-                let gameDt = new Date(apiGame.date);
-                if (gameDt < calcDt)
-                {
-                    let mrdaGame = new MrdaGame(apiGame);
-                    let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
-                    let awayTeam = this.mrdaTeams[mrdaGame.awayTeamId];
-                    let homeRankingPoints = homeTeam.getRankingPointHistory(mrdaGame.date);
-                    let awayRankingPoints = awayTeam.getRankingPointHistory(mrdaGame.date);
-                    if (homeRankingPoints && awayRankingPoints && !mrdaGame.forfeit) {
-                        mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
-                        mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
-                        let homeActualRatio = mrdaGame.scores[mrdaGame.homeTeamId]/mrdaGame.scores[mrdaGame.awayTeamId];
-                        let awayActualRatio = mrdaGame.scores[mrdaGame.awayTeamId]/mrdaGame.scores[mrdaGame.homeTeamId];
-                        mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
-                        mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
+        games.forEach(game => {
+            let gameDt = new Date(game.date);
+            if (gameDt < calcDt)
+            {
+                let mrdaGame = new MrdaGame(game);
+                let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
+                let awayTeam = this.mrdaTeams[mrdaGame.awayTeamId];
+                let homeRankingPoints = homeTeam.getRankingPointHistory(mrdaGame.date);
+                let awayRankingPoints = awayTeam.getRankingPointHistory(mrdaGame.date);
+                if (homeRankingPoints && awayRankingPoints && !mrdaGame.forfeit) {
+                    mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
+                    mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
+                    let homeActualRatio = mrdaGame.scores[mrdaGame.homeTeamId]/mrdaGame.scores[mrdaGame.awayTeamId];
+                    let awayActualRatio = mrdaGame.scores[mrdaGame.awayTeamId]/mrdaGame.scores[mrdaGame.homeTeamId];
+                    mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
+                    mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
 
-                        if (gameDt > q4_2024_deadline) {
-                            let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
-                            this.absoluteLogErrors.push(absLogError);       
-                            if (q4_2024_deadline < gameDt && gameDt < q1_2025_deadline)
-                                this.absoluteLogErrors_2025_Q1.push(absLogError);
-                            if (q1_2025_deadline < gameDt && gameDt < q2_2025_deadline)
-                                this.absoluteLogErrors_2025_Q2.push(absLogError);
-                            if (q2_2025_deadline < gameDt && gameDt < q3_2025_deadline)
-                                this.absoluteLogErrors_2025_Q3.push(absLogError);
-                        }
+                    if (gameDt > q4_2024_deadline) {
+                        let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
+                        this.absoluteLogErrors.push(absLogError);       
+                        if (q4_2024_deadline < gameDt && gameDt < q1_2025_deadline)
+                            this.absoluteLogErrors_2025_Q1.push(absLogError);
+                        if (q1_2025_deadline < gameDt && gameDt < q2_2025_deadline)
+                            this.absoluteLogErrors_2025_Q2.push(absLogError);
+                        if (q2_2025_deadline < gameDt && gameDt < q3_2025_deadline)
+                            this.absoluteLogErrors_2025_Q3.push(absLogError);
                     }
-                    homeTeam.gameHistory.push(mrdaGame);
-                    awayTeam.gameHistory.push(mrdaGame);
+                }
+                homeTeam.gameHistory.push(mrdaGame);
+                awayTeam.gameHistory.push(mrdaGame);
                 }
             });
-        });
     }
 
     calculateActiveStatus(calcDate) {
