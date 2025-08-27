@@ -3,7 +3,7 @@ name: Update Rankings
 on:
   workflow_dispatch:  # Allows manual triggering
   schedule:
-    - cron: '0 6 * * *'  # Runs daily at 6 AM UTC
+    - cron: '0 */2 * * *'  # Runs every 2 hours
 
 jobs:
   update-files:
@@ -23,7 +23,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests statsmodels python-dateutil
 
-      - name: Run update script
+      - name: Run LinearRegression.py update script
         run: python ./py/LinearRegression.py
 
       - name: Commit and push changes
