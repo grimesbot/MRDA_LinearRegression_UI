@@ -3,7 +3,7 @@ name: Update Rankings
 on:
   workflow_dispatch:  # Allows manual triggering
   schedule:
-    - cron: '0 */2 * * *'  # Runs every 2 hours
+    - cron: '0 */4 * * *'  # Runs every 4 hours
 
 jobs:
   update-files:
