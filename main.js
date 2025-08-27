@@ -213,7 +213,6 @@ function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.calculateActiveStatus($("#date").val());
 
-    //console.log("Rankings for " + $("#date").val());
     mrdaLinearRegressionSystem.rankTeams();
 
     if (mrdaLinearRegressionSystem.absoluteLogErrors.length > 0)
