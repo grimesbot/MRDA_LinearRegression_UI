@@ -38,7 +38,7 @@ print("Added " + str(len(mrda_games)) + " games from 2023 in GameList_history.py
 def get_api_gamedata(startDate, status=None):
     url = "https://api.mrda.org/v1-public/sanctioning/algorithm"
     params = {
-        "start-date": startDate,
+        "start-date": startDate.strftime("%m/%d/%Y"),
         "end-date": (datetime.today() + timedelta(days=1)).strftime("%m/%d/%Y") # Tomorrow to include today's games.
     }
 
@@ -59,14 +59,14 @@ def get_api_gamedata(startDate, status=None):
 
 # Get 2024+ games from API
 print("Begin MRDA Central API game data retrieval...")
-gamedata = get_api_gamedata("01/01/2024")
+gamedata = get_api_gamedata(date(2024, 1, 1))
 print("Retrieved " + str(len(gamedata)) + " games from >=2024 in Pending Processing or Complete status")
 
-approved_gamedata = get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 3)
+approved_gamedata = get_api_gamedata(datetime.today() - timedelta(days=60), 3)
 print("Retrieved " + str(len(approved_gamedata)) + " games from last 60 days in Approved status")
 gamedata.extend(approved_gamedata)
 
-waiting_for_documents_gamedata = get_api_gamedata((datetime.today() - timedelta(days=60)).strftime("%m/%d/%Y"), 4)
+waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=60), 4)
 print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 60 days in Waiting for Documents status")
 gamedata.extend(waiting_for_documents_gamedata)
 
@@ -333,7 +333,7 @@ print("Completed " + str(calc_count) + " ranking calculations in " + str(round(t
 # Format dates to Y-m-d and ranking points and error to 2 decimal points
 formatted_rankings_history = {}
 for dt in rankings_history.keys():
-    dt_key = dt.strftime("%Y-%#m-%#d")
+    dt_key = '{d.year}-{d.month}-{d.day}'.format(d=dt)
     formatted_rankings_history[dt_key] = {}
     for team in rankings_history[dt].keys():
         formatted_rankings_history[dt_key][team] = {}
@@ -354,7 +354,7 @@ print("MRDA teams saved to mrda_teams.js and mrda_teams.json")
 
 # Save mrda_games JSON to JavaScript file for local web UI, format date first
 for game in mrda_games:
-    game["date"] = game["date"].strftime("%Y-%#m-%#d %H:%M:%S")
+    game["date"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=game["date"])
 write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 # Save mrda_games JSON file for external use
 write_json_to_file(mrda_games, "mrda_games.json")

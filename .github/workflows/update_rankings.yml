@@ -3,11 +3,11 @@ name: Update Rankings
 on:
   workflow_dispatch:  # Allows manual triggering
   schedule:
-    - cron: '0 */4 * * *'  # Runs every 4 hours
+    - cron: '0 */2 * * *'  # Runs every 2 hours
 
 jobs:
   update-files:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
