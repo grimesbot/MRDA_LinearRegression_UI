@@ -13,7 +13,8 @@ RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
 DISTANCE_CLAUSE_LEAGUES = [2699,2717,2723,17908] # Concussion, Puget Sound, San Diego, Disorder
 
-github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true' and 'GITHUB_EVENT_NAME' in os.environ and os.environ['GITHUB_EVENT_NAME'] == 'schedule'
+github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true'
+github_actions_scheduled_run = github_actions_run and 'GITHUB_EVENT_NAME' in os.environ and os.environ['GITHUB_EVENT_NAME'] == 'schedule'
 
 mrda_teams = {}
 mrda_games = []
@@ -82,16 +83,18 @@ def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
             f.write(var_name + " = ")
         json.dump( data , f) #, indent=4) pretty print
 
-# Save gamedata to JSON file, only recalculate rankings if it changes.
+# Compare gamedata to JSON file from last calculation for scheduled runs.
+# Only recalculate rankings if gamedata changes (manual runs always recalculate).
 gamedata_json_filename = "mrda_gamedata.json"
-if github_actions_run:
+if github_actions_scheduled_run:
     if os.path.exists(gamedata_json_filename):
         with open( gamedata_json_filename , "r" ) as f:
             file_content = f.read()
             if file_content == json.dumps(gamedata):
                 # gamedata has not changed, exit without recalculating rankings
                 print("Game data from MRDA Central API has not changed, exiting without recalculating rankings.")
-                exit() 
+                exit()
+# Save gamedata to JSON file for future comparison.
 write_json_to_file(gamedata, gamedata_json_filename)
 print("MRDA Central API gamedata saved to mrda_gamedata.json for future comparison.")
 
