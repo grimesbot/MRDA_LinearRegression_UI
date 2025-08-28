@@ -116,9 +116,7 @@ for data in gamedata:
         continue    
     if not "away_league_score" in data["event"] or data["event"]["away_league_score"] is None:
         continue
-
-    # Ignore forfeits
-    if not "forfeit" in data["event"] or data["event"]["forfeit"] == 1:
+    if not "forfeit" in data["event"]:
         continue
 
     # Map API data
@@ -127,12 +125,12 @@ for data in gamedata:
     awayTeamId = str(data["event"]["away_league"]) + ("a" if data["event"]["away_league_charter"] == "primary" else "b")
 
     # Build teams dict
-    if not homeTeamId in mrda_teams and (not "home_league_name" in data["event"] or data["event"]["home_league_name"]):
+    if not homeTeamId in mrda_teams and "home_league_name" in data["event"] and not data["event"]["home_league_name"] is None:
         mrda_teams[homeTeamId] = {
             "name": data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)") ,
             "distance_clause_applies": data["event"]["home_league"] in DISTANCE_CLAUSE_LEAGUES
         }
-    if not awayTeamId in mrda_teams and (not "away_league_name" in data["event"] or data["event"]["away_league_name"]):
+    if not awayTeamId in mrda_teams and "away_league_name" in data["event"] and not data["event"]["away_league_name"] is None:
         mrda_teams[awayTeamId] = {
             "name": data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)"),
             "distance_clause_applies": data["event"]["away_league"] in DISTANCE_CLAUSE_LEAGUES
@@ -167,8 +165,17 @@ def linear_regression(games=[],seeding_team_rankings=None):
 
     for game in games:
 
+        # Skip forfeits
+        if game["forfeit"]:
+            continue
+
+        # Because ln(score_ratio) is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
+        # A blowout game like this will have a very low weight anyway.
+        home_score = game["home_team_score"] if game["home_team_score"] > 0 else 0.1
+        away_score = game["away_team_score"] if game["away_team_score"] > 0 else 0.1
+
         # Add observation as score log ratio
-        Y.append(math.log(game["home_team_score"]/game["away_team_score"]))
+        Y.append(math.log(home_score/away_score))
         
         # Build x column of regressors (teams) and whether they played in the game
         x_col = []
@@ -182,7 +189,7 @@ def linear_regression(games=[],seeding_team_rankings=None):
         X.append(x_col)
 
         # Calculate weight based on score ratio
-        score_ratio = game["home_team_score"]/game["away_team_score"] if game["home_team_score"] > game["away_team_score"] else game["away_team_score"]/game["home_team_score"] 
+        score_ratio = home_score/away_score if home_score > away_score else away_score/home_score
         if score_ratio > RATIO_CAP:
             W.append(max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000))
         else:
