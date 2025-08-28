@@ -4,7 +4,11 @@ MRDA Rankings Algorithm using Linear Regression
 
 Summary
 ---------------
-This repository produces rankings for the MRDA based on the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf) which uses a statistical method called Linear Regression to calculate rankings points using MRDA sanctioned game score data from 2023 and onward.
+This repository produces rankings for the MRDA based on the [2025 WFTDA Rankings Algorithm update proposal](/2025%20WFTDA%20Rankings%20Algorithm%20update%20proposal.pdf) which uses a statistical method called [Linear Regression](https://en.wikipedia.org/wiki/Linear_regression) to calculate rankings points using MRDA sanctioned game score data from 2023 and onward.
+
+Disclaimer
+---------------
+This algorithm is not final and this is NOT an official source of MRDA Rankings. Per MRDA's Policies and Procedures, "Rankings will be determined by a Rankings Panel," and this algorithm is a tool to help the five members of the Rankings Panel make informed and prompt decisions. Any algorithm has limitations and the Rankings Panel will use their experience and judgement to take into account those limitations and the human elements of the sport. This tool and it's source code are publicly available for transparency and informational purposes, use with discretion.
 
 Simple Explanation 
 ---------------
@@ -36,7 +40,7 @@ The predicted score ratio of a game is simply the ratio of the competing teams R
 ### Can I calculate how the outcome of a single game will impact my team's rankings?
 No, not anymore. This was possible with other algorithms in the past, but it's not possible with this algorithm because calculations depend on every other game too, not just the one game in isolation. But generally, obtaining a better score ratio than predicted (see above) will tend to increase your ranking.
 
-However, you won't need to wait a month to see how a game impacts your ranking. The Web UI here should reflect game results and their ranking impact shortly after they are entered in MRDA Central, even before scores are validated. We include score reports in "Approved" and "Waiting for Documents" from the last 60 days assuming sanctioning requirements will be met in good faith. LinearRegression.py needs to be run to recalculate rankings but ideally this will be run on a daily schedule so results will be available within 24 hours or less.
+However, you won't need to wait a month to see how a game impacts your ranking. The Web UI here should reflect game results and their ranking impact within two hours after they are entered in MRDA Central, even before scores are validated. We include score reports in "Approved" and "Waiting for Documents" from the last 60 days assuming sanctioning requirements will be met in good faith.
 
 ### How are new teams handled?
 Previously, other algorithms have used something like a "Seeding Game" to determine a new team's starting point: the result of their first game determines their starting point with no impact on their opponent. This has been problematic when the result of their first game does not accurately rank the new team which happens when the new team's opponent is over/under performing or when teams are geographically isolated. One game is not enough data to accurately rank a team, and this inaccurate ranking could have a profound impact on the teams they play after their seeding game.
@@ -56,7 +60,7 @@ No, all games played within the Ranking Period are weighted using the same logic
 
 Implementation 
 ---------------
-LinearRegression.py gets 2023 game data hardcoded in Python in GameList_history.py and merges it with 2024 and newer game data retrieved from the MRDA Central API. Using this data it calculates Rankings for each Wednesday starting October 25th 2023 (after Western Hemisphere Cup) through the upcoming ranking deadline date using the Weighted Least Squares method of the StatsModel Python package. LinearRegression.py writes all of this historical, current and future ranking data to a JavaScript variable rankings_history in mrda_rankings_history.js for visualization purposes in the local Web UI. It also writes all of these ranking results to as JSON to linear_regression_rankings.json for external use. It is run on a daily schedule to update rankings based on new game data and score updates or corrections on MRDA Central.
+LinearRegression.py gets 2023 game data hardcoded in Python in GameList_history.py and merges it with 2024 and newer game data retrieved from the MRDA Central API. Using this data it calculates Rankings for each Wednesday starting October 25th 2023 (after Western Hemisphere Cup) through the upcoming ranking deadline date using the [Weighted Least Squares](https://en.wikipedia.org/wiki/Weighted_least_squares) method of the [StatsModel](https://www.statsmodels.org/stable/index.html) Python package. LinearRegression.py writes all of this team, game and historical ranking data to JavaScript files for visualization purposes in the local Web UI. It also writes all of these teams, games and historical ranking results to JSON files for external use. It is run every two hours via GitHub Actions and will recalculate all rankings whenever game data from the MRDA Central API has changed, accounting for newly added score reports and historical score corrections.
 
 The Web UI at index.html displays the results in a chart and a table. It also calculates Active Status and Postseason Eligibility using games data produced by LinearRegression.py. Clicking on a team displays their Ranking Points history with error bars. It also shows data points for individual games played and the Game Ranking Points they would have earned in the previous Average Ranking Points algorithm adapted from WFTDA's 2023 system. Game data points will appear above the Ranking Point line the more the team exceeded the predicted score ratio at the time and or below the line the more they underperformed compared to the expected score ratio.
 

@@ -6,7 +6,7 @@ on:
     - cron: '0 */2 * * *'  # Runs every 2 hours
 
 jobs:
-  update-files:
+  update-rankings:
     runs-on: ubuntu-latest
 
     steps:
