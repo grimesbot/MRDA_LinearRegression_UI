@@ -25,6 +25,13 @@ function populateRankingDates() {
             $dropdown.val(dtStr);
     }
 }
+function getShortTeamName(teamName) {
+    return teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")
+}
+
+function getShortTeamNameById(teamId) {
+    return getShortTeamName(mrda_teams[teamId].name);
+}
 
 function teamDetailsModal() {
     var teamChart;
@@ -48,8 +55,8 @@ function teamDetailsModal() {
                         x: new Date(game.date), 
                         y: game.rankingPoints[team.teamId], 
                         title: getStandardDateString(game.date) + (game.homeTeamId == team.teamId ? 
-                            (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name 
-                            : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + mrda_teams[game.homeTeamId].name),
+                            (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + getShortTeamNameById(game.awayTeamId) 
+                            : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + getShortTeamNameById(game.homeTeamId)),
                         label: game.rankingPoints[team.teamId] ? 'Game Ranking Points: ' + game.rankingPoints[team.teamId].toFixed(2) : "" })),                        
                     showLine: false
                 }, {
@@ -99,8 +106,8 @@ function teamDetailsModal() {
             data: Array.from(team.gameHistory, (game) => ({ 
                 date: getStandardDateString(game.date),
                 score: game.scores[team.teamId] + "-" + (game.homeTeamId == team.teamId ? 
-                    game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ") 
-                    : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + mrda_teams[game.homeTeamId].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ")),
+                    game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + getShortTeamNameById(game.awayTeamId) 
+                    : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + getShortTeamNameById(game.homeTeamId)),
                 expectedRatio: team.teamId in game.expectedRatios ? game.expectedRatios[team.teamId].toFixed(2) : "",
                 actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId])).toFixed(2) : "",
                 beforeRankingPoints: team.getRankingPointHistoryWithError(game.date) ?? "",
@@ -148,7 +155,7 @@ function displayRankingChart(teamsArray, calcDate) {
     teamsArray.sort((a, b) => a.rankSort - b.rankSort).forEach(team => {
         if (team.chart) {
             datasets.push({
-                label: team.teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "),
+                label: getShortTeamName(team.teamName),
                 data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date + " 00:00:00"), y: rp, teamName: team.teamName })),
                 showLine: true
             });
@@ -177,7 +184,7 @@ function displayRankingChart(teamsArray, calcDate) {
                     tooltip: {
                         callbacks: {
                             title: function(context) {
-                                return context[0].raw.teamName.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " ");
+                                return getShortTeamName(context[0].raw.teamName);
                             },
                             label: function(context) {
                                 return getStandardDateString(context.raw.x) + ": " + context.raw.y.toFixed(2);
@@ -274,11 +281,11 @@ function calculateAndDisplayRankings() {
 function setupApiGames() {
     new DataTable('#apiGames', {
             columns: [
-                { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
-                { title: "Home Team", data: 'home_team_id', render: function (data) { return mrda_teams[data].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
+                { title: "Date", name: 'date', data: 'date', render: getStandardDateString },
+                { title: "Home Team", data: 'home_team_id', render: getShortTeamNameById },
                 { title: "Home Score", data: 'home_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }},
                 { title: "Away Score", data: 'away_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }} ,
-                { title: "Away Team", data: 'away_team_id', render: function (data) { return mrda_teams[data].name.replaceAll("Roller Derby", "").replaceAll("Derby", "").replaceAll("  ", " "); } },
+                { title: "Away Team", data: 'away_team_id', render: getShortTeamNameById },
                 { title: "Event Name", data: 'event_name'},
                 { title: "Type", render: function (data, type, full) { return full.championship ? "Championship" : full.qualifier ? "Qualifier" : "Regular Season"; }},
                 { title: "Validated", data: 'status', render: function(data, type, full) { return data  == 7 }} ,
@@ -292,6 +299,100 @@ function setupApiGames() {
         });
 }
 
+async function setupUpcomingGames() {
+
+    let payload = null;
+    try {
+        let apiUrl = 'https://api.mrda.org/v1-public/sanctioning/scores?limit=100'
+
+        let today = new Date();
+        apiUrl += `&start-date=${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+        apiUrl += `&end-date=${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear() + 1}`;
+
+        let response = await fetch(apiUrl);
+
+        let data = await response.json();
+
+        if (data.success != true || !data.payload || !Array.isArray(data.payload)) 
+            throw new Error('Invalid data format received');
+
+        payload = data.payload;
+    } catch (error) {
+        console.error('Error fetching games data:', error);
+    }
+
+    let upcomingGames = payload.map(function(game) {
+        let homeTeamId = game.event.home_league + (game.event.home_league_charter == 'primary' ? 'a' : 'b');
+        let awayTeamId = game.event.away_league + (game.event.away_league_charter == 'primary' ? 'a' : 'b');
+
+        let rankingHistoryDate = Object.keys(rankings_history)
+            .filter(date => new Date(date + " 00:00:00") <= new Date(game.event.game_datetime))
+            .sort((a, b) => new Date(b) - new Date(a))[0];
+
+        let homeRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][homeTeamId] ? rankings_history[rankingHistoryDate][homeTeamId].rp : null;
+        let awayRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][awayTeamId] ? rankings_history[rankingHistoryDate][awayTeamId].rp : null;
+
+        let expectedRatio = homeRp && awayRp ? (homeRp > awayRp ? homeRp / awayRp : awayRp / homeRp) : null;
+
+        return {
+            date: game.event.game_datetime,
+            home_team_id: homeTeamId,
+            home_team_rp: homeRp,
+            away_team_id: awayTeamId,
+            away_team_rp: awayRp,
+            expected_ratio: expectedRatio ? expectedRatio.toFixed(2) : null,
+            event_name: game.sanctioning.event_name
+        }
+    });
+
+
+    new DataTable('#upcomingGames', {
+            columns: [
+                { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
+                { title: "Home Team, Ranking Points", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return getShortTeamNameById(data) + ", " + full.home_team_rp }  },
+                { title: "Predicted Ratio", className: 'dt-center', data: 'expected_ratio', render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
+                { title: "Away Team, Ranking Points", data: 'away_team_id', render: function(data, type, full) {return getShortTeamNameById(data) + ", " + full.away_team_rp }  },
+                { title: "Event Name", data: 'event_name'}
+            ],
+            data: upcomingGames,
+            lengthChange: false,
+            order: {
+                name: 'date',
+                dir: 'asc'
+            }
+        });
+}
+
+function calculatePredictedRatio() {
+    let gameDate = $('#gameDate')[0].valueAsDate;
+    let homeTeamId = $('#homeTeam').val();
+    let awayTeamId = $('#awayTeam').val();
+
+    let rankingHistoryDate = Object.keys(rankings_history)
+        .filter(date => new Date(date + " 00:00:00") <= gameDate)
+        .sort((a, b) => new Date(b) - new Date(a))[0];
+
+    let homeRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][homeTeamId] ? rankings_history[rankingHistoryDate][homeTeamId].rp : null;
+    let awayRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][awayTeamId] ? rankings_history[rankingHistoryDate][awayTeamId].rp : null;        
+    let expectedRatio = homeRp && awayRp ? (homeRp > awayRp ? homeRp / awayRp : awayRp / homeRp).toFixed(2) : null;
+
+    $('#homeRankingPoints').text(homeRp);        
+    $('#awayRankingPoints').text(awayRp);
+    $('#expectedScoreRatio').text( expectedRatio ? (homeRp > awayRp ? expectedRatio + " : 1" : "1 : " + expectedRatio) : null);        
+}
+
+function setupPredictedRatioCalc() {
+    $('#gameDate')[0].valueAsDate = new Date();
+    
+    Object.entries(mrda_teams).sort((a, b) => a[1].name.localeCompare(b[1].name)).forEach(([teamId, teamVal]) => {
+        $('#homeTeam').append($("<option />").val(teamId).text(getShortTeamName(teamVal.name)));
+        $('#awayTeam').append($("<option />").val(teamId).text(getShortTeamName(teamVal.name)));
+    });
+
+    $('#homeTeam').change(calculatePredictedRatio);
+    $('#awayTeam').change(calculatePredictedRatio);
+    $('#gameDate').change(calculatePredictedRatio);
+}
 
 async function main() {
 
@@ -305,10 +406,13 @@ async function main() {
 
     setupApiGames();
 
-    $("#date").on( "change", calculateAndDisplayRankings );
+    setupUpcomingGames();
+
+    setupPredictedRatioCalc();
 
     $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
     
+    $("#date").on( "change", calculateAndDisplayRankings );
 }
 
 window.addEventListener('load', main);
