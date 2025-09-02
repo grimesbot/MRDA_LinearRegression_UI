@@ -233,7 +233,7 @@ def linear_regression(games=[],seeding_team_rankings=None):
                 #    W.append(1/1000000)
                 #else:
                 #    W.append(1)
-                W.append(1)        
+                W.append(1)
 
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
@@ -297,7 +297,7 @@ def get_rankings(calcDate):
     else:
         games = [game for game in mrda_games if seedDate <= game["date"].date() < calcDate]
         if games != last_calc_games or seeding_team_rankings != last_calc_seeding:
-            result = linear_regression(games, seeding_team_rankings)
+            result = linear_regression(games, None) #no seeding rankings
 
     # Print sorted results for ranking deadline dates when debugging
     if not github_actions_run and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
