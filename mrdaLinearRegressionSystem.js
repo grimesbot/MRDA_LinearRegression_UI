@@ -119,12 +119,14 @@ class MrdaLinearRegressionSystem {
             let rankingDt = new Date(date + " 00:00:00");
             if (rankingDt <= calcDt) {
                 for (const [team, rank] of Object.entries(rankings)) {
-                    this.mrdaTeams[team].rankingPoints = rank.rp;
-                    this.mrdaTeams[team].relStdErr = rank.rse;
-                    this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
-                    this.mrdaTeams[team].relStdErrHistory.set(date, rank.rse);
-                    this.mrdaTeams[team].stdErrMinHistory.set(date, (rank.rp - rank.se));
-                    this.mrdaTeams[team].stdErrMaxHistory.set(date, (rank.rp + rank.se));
+                    if (this.mrdaTeams[team].rankingPoints != rank.rp || this.mrdaTeams[team].relStdErr != rank.rse) {
+                        this.mrdaTeams[team].rankingPoints = rank.rp;
+                        this.mrdaTeams[team].relStdErr = rank.rse;
+                        this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
+                        this.mrdaTeams[team].relStdErrHistory.set(date, rank.rse);
+                        this.mrdaTeams[team].stdErrMinHistory.set(date, (rank.rp - rank.se));
+                        this.mrdaTeams[team].stdErrMaxHistory.set(date, (rank.rp + rank.se));
+                    }
                 }
             }
         }
