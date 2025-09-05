@@ -204,7 +204,7 @@ teams_east = [
 ]
 
 # Remove games for excludedTeams
-excludedTeams = teams_west
+excludedTeams = teams_east
 mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
 
 def linear_regression(games=[],seeding_team_rankings=None):
