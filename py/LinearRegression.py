@@ -150,9 +150,62 @@ for data in gamedata:
         "status": data["event"]["status"]
     })
 
+teams_west = [
+    "2676a", # Austin Anarchy (A)
+    "2685a", # Carolina Wreckingballs (A)
+    "2686a", # Casco Bay Roller Derby (A)
+    "2686b", # Casco Bay Roller Derby (B)
+    "2687a", # Chicago Bruise Brothers (A)
+    "2687b", # Chicago Bruise Brothers (B)
+    "2689a", # Cleveland Guardians Roller Derby (A)
+    "2693a", # Denver Ground Control (A)
+    "2694a", # Detroit Mens Roller Derby (A)
+    "2696a", # Chinook City Roller Derby (A)
+    "2699a", # Concussion Roller Derby (A)
+    "2699b", # Concussion Roller Derby (B)
+    "2701a", # Magic City Misfits (A)
+    "2706a", # Wisconsin United Roller Derby (A)
+    "2715a", # Philadelphia Hooligans (A)
+    "2715b", # Philadelphia Hooligans (B)
+    "2717a", # Puget Sound Outcast Derby (A)
+    "2719a", # Race City Rebels (A)
+    "2723a", # San Diego Aftershocks (A)
+    "2723b", # San Diego Aftershocks (B)
+    "2727a", # Saint Louis Gatekeepers (A)
+    "2727b", # Saint Louis Gatekeepers (B)
+    "2735a", # Toronto Mens Roller Derby (A)
+    "3013a", # Terminus Roller Derby (A)
+    "17403a", # Pittsburgh Roller Derby (A)
+    "17403b", # Pittsburgh Roller Derby (B)
+    "17405a", # Flour City Roller Derby (A)
+    "17908a", # Disorder (A)
+    "17912a", # Tampa Roller Derby (A)
+    "17914a", # Dallas Derby Devils (A)
+]
+
+teams_east = [
+    "2692a", # Crash Test Brummies (A)
+    "2702a", # Manchester Roller Derby (A)
+    "2702b", # Manchester Roller Derby (B)
+    "2714a", # Panam Squad (A)
+    "2725a", # South Wales Silures (A)
+    "2733a", # The Inhuman League (A)
+    "2737a", # Tyne and Fear Roller Derby (A)
+    "2737b", # Tyne and Fear Roller Derby (B)
+    "13122a", # Kent Mens Roller Derby (A)
+    "17404a", # D.H.R. Men's Roller Derby (A)
+    "17909a", # Borderland Bandits Roller Derby (A)
+    "17910a", # Nordiks de Touraine (A)
+    "17911a", # Roller Derby Toulouse (A)
+    "17913a", # Southern Discomfort Roller Derby (A)
+    "17915a", # Roller Derby Nantes Atlantique (A)
+    "17916a", # Orcet Roller Derby (A)
+    "17917a", # Wirral Roller Derby (A)
+]
+
 # Remove games for excludedTeams
-#excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
-#mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
+excludedTeams = teams_west
+mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
 
 def linear_regression(games=[],seeding_team_rankings=None):
     teams = []
@@ -369,3 +422,7 @@ write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 # Save mrda_games JSON file for external use
 write_json_to_file(mrda_games, "mrda_games.json")
 print("MRDA games updated and saved to mrda_teams.js and mrda_teams.json")
+
+# Sorted teams to console for easy east/west arrays
+#for item in sorted(mrda_teams.items(), key=lambda item: item[0]):
+#    print("\"" + item[0] + "\", # " + item[1]["name"])

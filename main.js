@@ -253,7 +253,7 @@ function calculateAndDisplayRankings() {
             { title: 'Postseason Eligible', data: 'postseasonEligible', render: function (data, type, full) { return data ? 'Yes' : 'No'; }, className: 'dt-teamDetailsClick'},
             { title: "Chart", data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
-        data: Object.values(mrdaLinearRegressionSystem.mrdaTeams),
+        data: Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter((team) => team.activeStatusGameCount > 0),
         paging: false,
         searching: false,
         info: false,
