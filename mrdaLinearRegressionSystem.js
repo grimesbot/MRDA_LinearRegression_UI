@@ -19,8 +19,9 @@ class MrdaTeam {
     constructor(teamId, team) {
         this.teamId = teamId;
         this.teamName = team.name;
-        this.distanceClauseApplies = team.distance_clause_applies;
+        this.region = team.region;
         this.gameHistory = []
+        this.activeStatus = false;
         this.activeStatusGameCount = 0;
         this.activeUniqueOpponents = [];        
         this.rankingPoints = 0;
@@ -119,13 +120,20 @@ class MrdaLinearRegressionSystem {
             let rankingDt = new Date(date + " 00:00:00");
             if (rankingDt <= calcDt) {
                 for (const [team, rank] of Object.entries(rankings)) {
-                    if (this.mrdaTeams[team].rankingPoints != rank.rp || this.mrdaTeams[team].relStdErr != rank.rse) {
+                    if (this.mrdaTeams[team].rankingPoints != rank.rp 
+                        || this.mrdaTeams[team].relStdErr != rank.rse
+                        || this.mrdaTeams[team].activeStatus != (rank.as == 1)
+                        || this.mrdaTeams[team].activeStatusGameCount != rank.gc
+                        || this.mrdaTeams[team].postseasonEligible != (rank.pe == 1) ) {
                         this.mrdaTeams[team].rankingPoints = rank.rp;
                         this.mrdaTeams[team].relStdErr = rank.rse;
                         this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
                         this.mrdaTeams[team].relStdErrHistory.set(date, rank.rse);
                         this.mrdaTeams[team].stdErrMinHistory.set(date, (rank.rp - rank.se));
                         this.mrdaTeams[team].stdErrMaxHistory.set(date, (rank.rp + rank.se));
+                        this.mrdaTeams[team].activeStatus = rank.as == 1;
+                        this.mrdaTeams[team].activeStatusGameCount = rank.gc
+                        this.mrdaTeams[team].postseasonEligible = rank.pe == 1                        
                     }
                 }
             }
@@ -218,36 +226,25 @@ class MrdaLinearRegressionSystem {
         });
     }
 
-    rankTeams() {
-        let eligibleForRankingTeams = [];
-        let unrankedTeams = [];
-        Object.values(this.mrdaTeams).forEach(team => {
-            if (team.activeStatusGameCount >= 3 && team.activeUniqueOpponents.length >= 2) {
-                eligibleForRankingTeams.push(team);
-            } else {
-                unrankedTeams.push(team);
-            }
-        });
+    rankTeams(region) {
+        let sortedActiveTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && (team.region == region || region == "GUR"))
+                                                        .sort((a, b) => b.rankingPoints - a.rankingPoints );
 
-        let sortedTeams = eligibleForRankingTeams.sort((a, b) => b.rankingPoints - a.rankingPoints );
-
-        for (let i = 0; i < sortedTeams.length; i++) {
-            let team = sortedTeams[i];
+        let sortedInactiveTeams = Object.values(this.mrdaTeams).filter(team => !team.activeStatus && (team.region == region || region == "GUR"))
+                                                        .sort((a, b) => b.rankingPoints - a.rankingPoints );
+        
+        for (let i = 0; i < sortedActiveTeams.length; i++) {
+            let team = sortedActiveTeams[i];
             team.rank = i + 1;
             team.rankSort = i + 1;
 
-            if (team.rank < 6)
+            if (team.rank <= 5)
                 team.chart = true;
-
-            if (team.activeStatusGameCount >= 5 || team.distanceClauseApplies)
-                team.postseasonEligible = true;
         }
 
-        let sortedUnrankedTeams = unrankedTeams.sort((a, b) => b.rankingPoints - a.rankingPoints );
-
-        for (let i = 0; i < sortedUnrankedTeams.length; i++) {
-            let team = sortedUnrankedTeams[i];
-            team.rankSort = sortedTeams.length + i + 1;
+        for (let i = 0; i < sortedInactiveTeams.length; i++) {
+            let team = sortedInactiveTeams[i];
+            team.rankSort = sortedActiveTeams.length + i + 1;
         }
     }
 }

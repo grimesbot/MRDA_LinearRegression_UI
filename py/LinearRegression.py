@@ -7,11 +7,11 @@ import time
 from datetime import datetime, date, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
+from TeamInfo import team_info
 from GameList_history import games, team_abbrev_id_map
 
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
-DISTANCE_CLAUSE_LEAGUES = [2699,2717,2723,17908] # Concussion, Puget Sound, San Diego, Disorder
 
 github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true'
 github_actions_scheduled_run = github_actions_run and 'GITHUB_EVENT_NAME' in os.environ and os.environ['GITHUB_EVENT_NAME'] == 'schedule'
@@ -30,7 +30,10 @@ for game in [game for gameday in games for game in gameday]:
         "away_team_id": team_abbrev_id_map[game[3]],
         "away_team_score": game[4],
         "forfeit": (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0),
+        "forfeit_team_id": team_abbrev_id_map[game[1]] if game[2] == 0 and game[4] == 100 else team_abbrev_id_map[game[3]],
         "event_name": game[5] if len(game) > 5 else None,
+        "championship": "Western Hemisphere Cup" in game[5] if len(game) > 5 else False,
+        "qualifier": "Qualifiers" in game[5] if len(game) > 5 else False,
         "status": 7
     })
 
@@ -121,23 +124,27 @@ for data in gamedata:
         continue
     if not "forfeit" in data["event"]:
         continue
+    if data["event"]["forfeit"] == 1 and (not "forfeit_league" in data["event"] or data["event"]["forfeit_league"] is None):
+        continue
 
     # Map API data
     gameDate = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
     homeTeamId = str(data["event"]["home_league"]) + ("a" if data["event"]["home_league_charter"] == "primary" else "b")
     awayTeamId = str(data["event"]["away_league"]) + ("a" if data["event"]["away_league_charter"] == "primary" else "b")
 
-    # Build teams dict
-    if not homeTeamId in mrda_teams and "home_league_name" in data["event"] and not data["event"]["home_league_name"] is None:
-        mrda_teams[homeTeamId] = {
-            "name": data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)") ,
-            "distance_clause_applies": data["event"]["home_league"] in DISTANCE_CLAUSE_LEAGUES
-        }
-    if not awayTeamId in mrda_teams and "away_league_name" in data["event"] and not data["event"]["away_league_name"] is None:
-        mrda_teams[awayTeamId] = {
-            "name": data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)"),
-            "distance_clause_applies": data["event"]["away_league"] in DISTANCE_CLAUSE_LEAGUES
-        }
+    forfeit_team_id = None
+    if (data["event"]["forfeit"] == 1):
+        forfeit_team_id = homeTeamId if data["event"]["forfeit_league"] == data["event"]["home_league"] else awayTeamId
+
+    # Build teams dict    
+    if not homeTeamId in mrda_teams and ((homeTeamId in team_info and "name" in team_info[homeTeamId]) or ("home_league_name" in data["event"] and not data["event"]["home_league_name"] is None)):
+        mrda_teams[homeTeamId] = {}
+        mrda_teams[homeTeamId]["name"] = team_info[homeTeamId]["name"] if homeTeamId in team_info and "name" in team_info[homeTeamId] else data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)")
+        mrda_teams[homeTeamId]["region"] = team_info[homeTeamId]["region"] if homeTeamId in team_info and "region" in team_info[homeTeamId] else "AM"
+    if not awayTeamId in mrda_teams and ((awayTeamId in team_info and "name" in team_info[awayTeamId]) or ("away_league_name" in data["event"] and not data["event"]["away_league_name"] is None)):
+        mrda_teams[awayTeamId] = {}
+        mrda_teams[awayTeamId]["name"] = team_info[awayTeamId]["name"] if awayTeamId in team_info and "name" in team_info[awayTeamId] else data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)")
+        mrda_teams[awayTeamId]["region"] = team_info[awayTeamId]["region"] if awayTeamId in team_info and "region" in team_info[awayTeamId] else "AM"        
 
     mrda_games.append({
         "date": gameDate,
@@ -146,21 +153,44 @@ for data in gamedata:
         "away_team_id": awayTeamId,
         "away_team_score": data["event"]["away_league_score"],
         "forfeit": data["event"]["forfeit"] == 1,
+        "forfeit_team_id": forfeit_team_id,
         "event_name": data["sanctioning"]["event_name"],
-        "status": data["event"]["status"]
+        "championship": not data["sanctioning"]["event_name"] is None and "Mens Roller Derby Association Championships" in data["sanctioning"]["event_name"],
+        "qualifier": not data["sanctioning"]["event_name"] is None and "Qualifiers" in data["sanctioning"]["event_name"],
+        "status": data["event"]["status"],
     })
 
 # Remove games for excludedTeams
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
 #mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
 
-def linear_regression(games=[],seeding_team_rankings=None):
+def linear_regression(games, active_status_games, seeding_team_rankings=None):
     teams = []
     for game in games:
         if not game["home_team_id"] in teams:
             teams.append(game["home_team_id"])
         if not game["away_team_id"] in teams:
             teams.append(game["away_team_id"])
+
+    # Calculate active status and playoff eligibility
+    result = {}
+    for team in teams:
+        game_count = 0
+        unique_opponents = []
+        distance_clause_applies = team in team_info and "distance_clause_applies" in team_info[team] and team_info[team]["distance_clause_applies"]
+        team_games = [game for game in active_status_games if game["home_team_id"] == team or game["away_team_id"] == team]
+        for game in team_games:
+            if not game["forfeit"] or game["forfeit_team_id"] != team:
+                game_count += 1
+                opponent = game["away_team_id"] if game["home_team_id"] == team else game["home_team_id"]
+                if not opponent in unique_opponents:
+                    unique_opponents.append(opponent)
+        active_status = game_count >= 3 and len(unique_opponents) >= 2
+        result[team] = {
+            "gc": game_count,
+            "as": active_status,
+            "pe": active_status and (game_count >= 5 or distance_clause_applies)
+        }
 
     Y = []
     X = []
@@ -198,6 +228,8 @@ def linear_regression(games=[],seeding_team_rankings=None):
         else:
             W.append(1)
 
+    wls_stderrs = None
+
     # If no seeding data, don't add virtual games, just set ranking_scale multiplier to 100
     if seeding_team_rankings is None:
         ranking_scale = RANKING_SCALE
@@ -206,8 +238,8 @@ def linear_regression(games=[],seeding_team_rankings=None):
         ranking_scale = 1
         # Add virtual games for existing teams
         for team in teams:
-            # Existing team if in seeding rankings
-            if team in seeding_team_rankings:
+            # Existing team if in seeding rankings & not postseason eligible, weight will be 1
+            if team in seeding_team_rankings and not result[team]["pe"]:
 
                 # Add observation as score log ratio
                 # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
@@ -222,33 +254,47 @@ def linear_regression(games=[],seeding_team_rankings=None):
                         x_col.append(0)
                 X.append(x_col)
                 
-                # Count number of close games (less than ratio cap)
-                #close_games_count = 0
-                #for g in games:
-                #    if (g["home_team_id"] == team or g["away_team_id"] == team) and g["home_team_score"]/g["away_team_score"] < RATIO_CAP and g["away_team_score"]/g["home_team_score"] < RATIO_CAP:
-                #        close_games_count+=1
+                W.append(1)
+        
+        # Get the standard error now before adding the virtual games for postseason eligible teams at near-zero weight.
+        # Virtual games at near-zero weight drive the standard error numbers crazy for an unknown reason.
+        # Getting standard error here will be close enough since the virtual games for postseason eligible teams will have such a low weight.
+        wls_err = sm.WLS(Y, X, W).fit()
+        wls_stderrs = wls_err.bse
 
-                # Set weight to near zero if there are 5 or more close games.
-                #if close_games_count >= 5:
-                #    W.append(1/1000000)
-                #else:
-                #    W.append(1)
-                W.append(1)        
+        for team in teams:
+            # Existing team if in seeding rankings & postseason eligible
+            if team in seeding_team_rankings and result[team]["pe"]:
+
+                # Add observation as score log ratio
+                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
+                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
+
+                # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
+                x_col = []
+                for t in teams:
+                    if t == team:
+                        x_col.append(1)
+                    else:
+                        x_col.append(0)
+                X.append(x_col)
+                
+                # Set weight will be near-zero (1/1000000) for postseason eligible teams.
+                W.append(1/1000000)
 
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
     #print(wls.summary())
     wls_result = wls.params
     #print(wls_result)
-    wls_stderrs = wls.bse
+    if (wls_stderrs is None):
+        wls_stderrs = wls.bse
     #print(wls_stderrs)
 
-    result = {}
+
     for i, team in enumerate(teams):
-        result[team] = {
-            # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-            "rp": math.exp(wls_result[i]) * ranking_scale
-        }
+        # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
+        result[team]["rp"] = math.exp(wls_result[i]) * ranking_scale
         # Convert standard error
         result[team]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
         # Calculate relative standard error %
@@ -266,10 +312,12 @@ def get_ranking_history(date):
     return rankings_history[ranking_history_dt]
 
 last_calc_games = []
+last_calc_active_status_games = []
 last_calc_seeding = {}
 
 def get_rankings(calcDate):
     global last_calc_games
+    global last_calc_active_status_games
     global last_calc_seeding
 
     result = None
@@ -290,15 +338,18 @@ def get_rankings(calcDate):
     # would include Apr '23-Aug'24 data which is 16 months, more than the typical 12 months.
     # But if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
     # future seeding rankings depending on the time of the year the rankings are calculated.
+
     if seeding_team_rankings is None:
         games = [game for game in mrda_games if game["date"].date() < calcDate]
-        if games != last_calc_games:
-            result = linear_regression(games)
     else:
         games = [game for game in mrda_games if seedDate <= game["date"].date() < calcDate]
-        if games != last_calc_games or seeding_team_rankings != last_calc_seeding:
-            result = linear_regression(games, seeding_team_rankings)
 
+    active_status_games = [game for game in games if (not game["championship"] or game["date"].date() >= (calcDate - relativedelta(months=6))) and (not game["qualifier"] or game["date"].date() >= (calcDate - relativedelta(months=9)))]            
+
+    # Calculate linear regression results if games, seeding rankings or active status games have changed since last calculation.    
+    if games != last_calc_games or seeding_team_rankings != last_calc_seeding or active_status_games != last_calc_active_status_games:
+        result = linear_regression(games, active_status_games, seeding_team_rankings)
+    
     # Print sorted results for ranking deadline dates when debugging
     if not github_actions_run and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
         print_result = result if not result is None else get_ranking_history(calcDate)
@@ -309,6 +360,7 @@ def get_rankings(calcDate):
 
     if not result is None:
         last_calc_games = games
+        last_calc_active_status_games = active_status_games
         last_calc_seeding = seeding_team_rankings
         
     return result
@@ -348,7 +400,12 @@ for dt in rankings_history.keys():
     for team in rankings_history[dt].keys():
         formatted_rankings_history[dt_key][team] = {}
         for key in rankings_history[dt][team]:
-            formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
+            if key in ["rp","se","rse"]:
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
+            elif key in ["as","pe"]:
+                formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
+            else:
+                formatted_rankings_history[dt_key][team][key] = rankings_history[dt][team][key]
 
 # Save rankings JSON to JavaScript file as rankings_history variable for local web UI
 write_json_to_file(formatted_rankings_history, "mrda_rankings_history.js", "rankings_history", "rankings_generated_utc")
@@ -369,3 +426,7 @@ write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 # Save mrda_games JSON file for external use
 write_json_to_file(mrda_games, "mrda_games.json")
 print("MRDA games updated and saved to mrda_teams.js and mrda_teams.json")
+
+#print teams to console for TeamInfo.py
+#for item in sorted(mrda_teams.items(), key=lambda item: item[0], reverse=False):
+#    print("\"" + item[0] + "\": { \"region\": \"A\", \"name\": \"" + item[1]["name"] + "\" }, # " + item[1]["name"])
