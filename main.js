@@ -221,8 +221,6 @@ function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.addGameHistory(mrda_games, calcDate);
 
-    mrdaLinearRegressionSystem.calculateActiveStatus(calcDate);
-
     mrdaLinearRegressionSystem.rankTeams(region);
 
     if (mrdaLinearRegressionSystem.absoluteLogErrors.length > 0)

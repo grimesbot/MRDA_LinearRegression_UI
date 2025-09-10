@@ -119,23 +119,29 @@ class MrdaLinearRegressionSystem {
         for (const [date, rankings] of Object.entries(rankings_history)) {
             let rankingDt = new Date(date + " 00:00:00");
             if (rankingDt <= calcDt) {
-                for (const [team, rank] of Object.entries(rankings)) {
-                    if (this.mrdaTeams[team].rankingPoints != rank.rp 
-                        || this.mrdaTeams[team].relStdErr != rank.rse
-                        || this.mrdaTeams[team].activeStatus != (rank.as == 1)
-                        || this.mrdaTeams[team].activeStatusGameCount != rank.gc
-                        || this.mrdaTeams[team].postseasonEligible != (rank.pe == 1) ) {
-                        this.mrdaTeams[team].rankingPoints = rank.rp;
-                        this.mrdaTeams[team].relStdErr = rank.rse;
-                        this.mrdaTeams[team].rankingPointsHistory.set(date, rank.rp);
-                        this.mrdaTeams[team].relStdErrHistory.set(date, rank.rse);
-                        this.mrdaTeams[team].stdErrMinHistory.set(date, (rank.rp - rank.se));
-                        this.mrdaTeams[team].stdErrMaxHistory.set(date, (rank.rp + rank.se));
-                        this.mrdaTeams[team].activeStatus = rank.as == 1;
-                        this.mrdaTeams[team].activeStatusGameCount = rank.gc
-                        this.mrdaTeams[team].postseasonEligible = rank.pe == 1                        
+                Object.values(this.mrdaTeams).forEach(team => {
+                    let rankingPoints = team.teamId in rankings ? rankings[team.teamId].rp : 0;
+                    let stdErr = team.teamId in rankings ? rankings[team.teamId].se : 0;                    
+                    let relStdErr = team.teamId in rankings ? rankings[team.teamId].rse : 0;
+                    let gameCount = team.teamId in rankings ? rankings[team.teamId].gc : 0;
+                    let activeStatus = team.teamId in rankings ? rankings[team.teamId].as == 1 : false;
+                    let postseasonEligible = team.teamId in rankings ? rankings[team.teamId].pe == 1 : false;
+                    if (team.rankingPoints != rankingPoints
+                        || team.relStdErr != relStdErr
+                        || team.activeStatusGameCount != gameCount                        
+                        || team.activeStatus != activeStatus
+                        || team.postseasonEligible != postseasonEligible) {
+                        team.rankingPoints = rankingPoints;
+                        team.relStdErr = relStdErr;
+                        team.rankingPointsHistory.set(date, rankingPoints);
+                        team.relStdErrHistory.set(date, relStdErr);
+                        team.stdErrMinHistory.set(date, (rankingPoints - stdErr));
+                        team.stdErrMaxHistory.set(date, (rankingPoints + stdErr));
+                        team.activeStatusGameCount = gameCount;
+                        team.activeStatus = activeStatus;
+                        team.postseasonEligible = postseasonEligible
                     }
-                }
+                });
             }
         }
     }
@@ -174,56 +180,6 @@ class MrdaLinearRegressionSystem {
                 awayTeam.gameHistory.push(mrdaGame);
                 }
             });
-    }
-
-    calculateActiveStatus(calcDate) {
-        let calcDt = new Date(calcDate + " 00:00:00");
-
-        let minDt = new Date(calcDate);
-        minDt.setDate(minDt.getDate() - 7 * 52);
-
-        // If minDt is a greater # weekday of month than calcDt, set minDt back an additional week
-        // e.g. if calcDt is 1st Wednesday of June, minDt should be 1st Wednesday of June last year.
-        // calcDt = Jun 7, 2028, 52 weeks prior would minDt = Jun 9, 2027 which is 2nd Wednesday of June.
-        // set minDt back an additional week minDt = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
-        if (Math.floor((minDt.getDate() - 1) / 7) > Math.floor((calcDt.getDate() - 1) / 7))
-            minDt.setDate(minDt.getDate() - 7);
-        
-        let champsDecayDt = new Date(calcDt);
-        champsDecayDt.setMonth(champsDecayDt.getMonth() - 6);
-
-        let qualDecayDt = new Date(calcDt);
-        qualDecayDt.setMonth(qualDecayDt.getMonth() - 9);        
-
-        Object.values(this.mrdaTeams).forEach(team => {
-            team.gameHistory.forEach(game => {
-                let gameDt = new Date (game.date);
-                
-                if (gameDt < minDt || gameDt >= calcDt)
-                    return;
-                if (game.championship) {
-                    //championships do not count for active status past 6 months
-                    if (gameDt < champsDecayDt)
-                        return;
-                }
-                if (game.qualifier) {
-                    //qualifiers do not count for active status past 9 months
-                    if (gameDt < qualDecayDt)
-                        return;
-                }
-
-                if (game.forfeit 
-                    && (game.homeTeamId == team.teamId && game.scores[game.homeTeamId] == 0)
-                    || (game.awayTeamId == team.teamId && game.scores[game.awayTeamId] == 0))
-                    return;
-
-                team.activeStatusGameCount ++;
-                if (game.homeTeamId == team.teamId && !team.activeUniqueOpponents.includes(game.awayTeamId))
-                    team.activeUniqueOpponents.push(game.awayTeamId);
-                if (game.awayTeamId == team.teamId && !team.activeUniqueOpponents.includes(game.homeTeamId))
-                    team.activeUniqueOpponents.push(game.homeTeamId);
-            });
-        });
     }
 
     rankTeams(region) {
