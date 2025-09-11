@@ -167,9 +167,9 @@ for data in gamedata:
 def linear_regression(games, active_status_games, seeding_team_rankings=None):
     teams = []
     for game in games:
-        if not game["home_team_id"] in teams:
+        if not game["home_team_id"] in teams and (not game["forfeit"] or game["forfeit_team_id"] != game["home_team_id"]):
             teams.append(game["home_team_id"])
-        if not game["away_team_id"] in teams:
+        if not game["away_team_id"] in teams and (not game["forfeit"] or game["forfeit_team_id"] != game["away_team_id"]):
             teams.append(game["away_team_id"])
 
     # Calculate active status and playoff eligibility
@@ -207,7 +207,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
         home_score = game["home_team_score"] if game["home_team_score"] > 0 else 0.1
         away_score = game["away_team_score"] if game["away_team_score"] > 0 else 0.1
 
-        # Add observation as score log ratio
+        # Add log of score ratio as observation 
         Y.append(math.log(home_score/away_score))
         
         # Build x column of regressors (teams) and whether they played in the game
