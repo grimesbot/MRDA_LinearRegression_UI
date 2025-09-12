@@ -348,7 +348,7 @@ def get_rankings(calcDate):
 
     # Calculate linear regression results if games, seeding rankings or active status games have changed since last calculation.    
     if games != last_calc_games or seeding_team_rankings != last_calc_seeding or active_status_games != last_calc_active_status_games:
-        result = linear_regression(games, active_status_games, seeding_team_rankings)
+        result = linear_regression(games, active_status_games) # , seeding_team_rankings) #no-seeding
     
     # Print sorted results for ranking deadline dates when debugging
     if not github_actions_run and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
