@@ -80,9 +80,9 @@ def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
         os.remove(filename)
     # Write with optional JS variable name and optional UTC timestamp variable
     with open( filename , "w" ) as f:
-        if (not utc_timestamp_var is None):
+        if not utc_timestamp_var is None:
             f.write(utc_timestamp_var + " = \"" + datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + "\";\n")    
-        if (not var_name is None):
+        if not var_name is None:
             f.write(var_name + " = ")
         json.dump( data , f) #, indent=4) pretty print
 
@@ -230,12 +230,8 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
 
     wls_stderrs = None
 
-    # If no seeding data, don't add virtual games, just set ranking_scale multiplier to 100
-    if seeding_team_rankings is None:
-        ranking_scale = RANKING_SCALE
-    # If we have seeding data, add virtual games & set ranking_scale to 1   
-    else:
-        ranking_scale = 1
+    # Add virtual games if we have seeding_team_rankings
+    if not seeding_team_rankings is None:
         # Add virtual games for existing teams
         for team in teams:
             # Existing team if in seeding rankings & not postseason eligible, weight will be 1
@@ -294,7 +290,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
 
     for i, team in enumerate(teams):
         # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-        result[team]["rp"] = math.exp(wls_result[i]) * ranking_scale
+        result[team]["rp"] = math.exp(wls_result[i])
         # Convert standard error
         result[team]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
         # Calculate relative standard error %
@@ -355,7 +351,7 @@ def get_rankings(calcDate):
         print_result = result if not result is None else get_ranking_history(calcDate)
         print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
         for item in sorted(print_result.items(), key=lambda item: item[1]["rp"], reverse=True):
-            print(str(round(item[1]["rp"], 2)) + "\t" + mrda_teams[item[0]]["name"])
+            print(str(round(item[1]["rp"] * RANKING_SCALE, 2)) + "\t" + mrda_teams[item[0]]["name"])
         print("")
 
     if not result is None:
@@ -400,7 +396,9 @@ for dt in rankings_history.keys():
     for team in rankings_history[dt].keys():
         formatted_rankings_history[dt_key][team] = {}
         for key in rankings_history[dt][team]:
-            if key in ["rp","se","rse"]:
+            if key in ["rp","se"]:
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] * RANKING_SCALE, 2)
+            elif key == "rse":
                 formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
             elif key in ["as","pe"]:
                 formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
