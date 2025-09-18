@@ -234,8 +234,8 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
     if not seeding_team_rankings is None:
         # Add virtual games for existing teams
         for team in teams:
-            # Existing team if in seeding rankings & not postseason eligible, weight will be 1
-            if team in seeding_team_rankings and not result[team]["pe"]:
+            # Existing team if in seeding rankings
+            if team in seeding_team_rankings:
 
                 # Add observation as score log ratio
                 # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
@@ -250,33 +250,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
                         x_col.append(0)
                 X.append(x_col)
                 
-                W.append(1)
-        
-        # Get the standard error now before adding the virtual games for postseason eligible teams at near-zero weight.
-        # Virtual games at near-zero weight drive the standard error numbers crazy for an unknown reason.
-        # Getting standard error here will be close enough since the virtual games for postseason eligible teams will have such a low weight.
-        wls_err = sm.WLS(Y, X, W).fit()
-        wls_stderrs = wls_err.bse
-
-        for team in teams:
-            # Existing team if in seeding rankings & postseason eligible
-            if team in seeding_team_rankings and result[team]["pe"]:
-
-                # Add observation as score log ratio
-                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
-
-                # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
-                x_col = []
-                for t in teams:
-                    if t == team:
-                        x_col.append(1)
-                    else:
-                        x_col.append(0)
-                X.append(x_col)
-                
-                # Set weight will be near-zero (1/1000000) for postseason eligible teams.
-                W.append(1/1000000)
+                W.append(1/4)
 
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
