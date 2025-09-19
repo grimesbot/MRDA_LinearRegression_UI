@@ -333,7 +333,7 @@ async function setupUpcomingGames() {
         let homeRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][homeTeamId] ? rankings_history[rankingHistoryDate][homeTeamId].rp : null;
         let awayRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][awayTeamId] ? rankings_history[rankingHistoryDate][awayTeamId].rp : null;
 
-        let expectedDiff = homeRp && awayRp ? homeRp - awayRp : null;
+        let expectedDiff = homeRp && awayRp ? (homeRp - awayRp).toFixed(2) : null;
 
         return {
             date: game.event.game_datetime,

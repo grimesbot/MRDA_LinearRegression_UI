@@ -164,7 +164,10 @@ for data in gamedata:
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
 #mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
 
+rp_min = 0
+
 def linear_regression(games, active_status_games, seeding_team_rankings=None):
+    global rp_min
     teams = []
     for game in games:
         if not game["home_team_id"] in teams and (not game["forfeit"] or game["forfeit_team_id"] != game["home_team_id"]):
@@ -261,8 +264,6 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
         wls_stderrs = wls.bse
     #print(wls_stderrs)
 
-    rp_min = 0
-
     for i, team in enumerate(teams):
         # Ranking Points
         result[team]["rp"] = wls_result[i]
@@ -272,8 +273,6 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
         # result[team]["rse"] = result[team]["se"]/abs(result[team]["rp"]) * 100
         if wls_result[i] < rp_min:
             rp_min = wls_result[i]
-
-    result["rp_min"] = rp_min
 
     #print(result)
 
@@ -332,7 +331,7 @@ def get_rankings(calcDate):
         print_items = [item for item in print_result.items() if item[0] != "rp_min"]
         print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
         for item in sorted(print_items, key=lambda item: item[1]["rp"], reverse=True):
-            print(str(round(item[1]["rp"] - print_result["rp_min"] + RANKING_POINT_FLOOR, 2)) + "\t" + mrda_teams[item[0]]["name"])
+            print(str(round(item[1]["rp"] - rp_min + RANKING_POINT_FLOOR, 2)) + "\t" + mrda_teams[item[0]]["name"])
         print("")
 
     if not result is None:
@@ -375,19 +374,18 @@ for dt in rankings_history.keys():
     dt_key = '{d.year}-{d.month}-{d.day}'.format(d=dt)
     formatted_rankings_history[dt_key] = {}
     for team in rankings_history[dt].keys():
-        if team != "rp_min":
-            formatted_rankings_history[dt_key][team] = {}
-            for key in rankings_history[dt][team]:
-                if key == "rp":
-                    formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] - rankings_history[dt]["rp_min"] + RANKING_POINT_FLOOR, 2)
-                elif key == "se":
-                    formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
-                elif key == "rse":
-                    formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
-                elif key in ["as","pe"]:
-                    formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
-                else:
-                    formatted_rankings_history[dt_key][team][key] = rankings_history[dt][team][key]
+        formatted_rankings_history[dt_key][team] = {}
+        for key in rankings_history[dt][team]:
+            if key == "rp":
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] - rp_min + RANKING_POINT_FLOOR, 2)
+            elif key == "se":
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
+            elif key == "rse":
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
+            elif key in ["as","pe"]:
+                formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
+            else:
+                formatted_rankings_history[dt_key][team][key] = rankings_history[dt][team][key]
 
 # Save rankings JSON to JavaScript file as rankings_history variable for local web UI
 write_json_to_file(formatted_rankings_history, "mrda_rankings_history.js", "rankings_history", "rankings_generated_utc")
