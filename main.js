@@ -66,7 +66,7 @@ function teamDetailsModal() {
                         yMin: team.stdErrMinHistory.get(date), 
                         yMax: team.stdErrMaxHistory.get(date), 
                         title: date, 
-                        label: "Ranking Points: " + rp + " ± " + team.relStdErrHistory.get(date) + "% (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"})),
+                        label: "Ranking Points: " + rp + " ± " + team.stdErrHistory.get(date) + "% (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"})),
                     showLine: true
                 }],
             },
@@ -97,8 +97,8 @@ function teamDetailsModal() {
             columns: [
                 { name: 'date', data: 'date'},
                 { data: 'score' },
-                { data: 'expectedRatio'},
-                { data: 'actualRatio'},
+                { data: 'expectedDifferential'},
+                { data: 'actualDifferential'},
                 { data: 'beforeRankingPoints', className: 'border-left'},
                 { data: 'afterRankingPoints'}                
             ],
@@ -107,8 +107,8 @@ function teamDetailsModal() {
                 score: game.scores[team.teamId] + "-" + (game.homeTeamId == team.teamId ? 
                     game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name 
                     : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + mrda_teams[game.homeTeamId].name),
-                expectedRatio: team.teamId in game.expectedRatios ? game.expectedRatios[team.teamId].toFixed(2) : "",
-                actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId])).toFixed(2) : "",
+                expectedDifferential: team.teamId in game.expectedDifferentials ? game.expectedDifferentials[team.teamId].toFixed(2) : "",
+                actualDifferential: !game.forfeit ? game.scores[team.teamId] - (game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId]) : "",
                 beforeRankingPoints: team.getRankingPointHistoryWithError(game.date) ?? "",
                 afterRankingPoints: team.getRankingPointHistoryWithError(game.date, true) ?? ""
             })),
@@ -249,7 +249,7 @@ function calculateAndDisplayRankings() {
             { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', orderData: [0,1] },
             { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick' },
             { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
-            { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "± " + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
+            { title: 'Error', data: 'stdErr', render: function (data, type, full) { return "± " + data; }, className: 'dt-teamDetailsClick stdErr' },
             { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
             { title: 'Postseason Eligible', data: 'postseasonEligible', render: function (data, type, full) { return data ? 'Yes' : 'No'; }, className: 'dt-teamDetailsClick'},
             { title: "Chart", data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
@@ -264,8 +264,8 @@ function calculateAndDisplayRankings() {
         }
     });
 
-    $("th.relStdErr").tooltip({title: "Relative Standard Error"});
-    $("th.relStdErr .dt-column-title").append(' <i class="bi bi-question-circle"></i>');
+    //$("th.relStdErr").tooltip({title: "Relative Standard Error"});
+    //$("th.relStdErr .dt-column-title").append(' <i class="bi bi-question-circle"></i>');
     
     if (!regenerate) {
         $("#mrdaRankingPointsContainer").on('change', 'input.chart', function (e) {
@@ -333,7 +333,7 @@ async function setupUpcomingGames() {
         let homeRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][homeTeamId] ? rankings_history[rankingHistoryDate][homeTeamId].rp : null;
         let awayRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][awayTeamId] ? rankings_history[rankingHistoryDate][awayTeamId].rp : null;
 
-        let expectedRatio = homeRp && awayRp ? (homeRp > awayRp ? homeRp / awayRp : awayRp / homeRp) : null;
+        let expectedDiff = homeRp && awayRp ? homeRp - awayRp : null;
 
         return {
             date: game.event.game_datetime,
@@ -341,7 +341,7 @@ async function setupUpcomingGames() {
             home_team_rp: homeRp,
             away_team_id: awayTeamId,
             away_team_rp: awayRp,
-            expected_ratio: expectedRatio ? expectedRatio.toFixed(2) : null,
+            expected_differential: expectedDiff,
             event_name: game.sanctioning.event_name
         }
     });
@@ -351,7 +351,7 @@ async function setupUpcomingGames() {
             columns: [
                 { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
                 { title: "Home Team, Ranking Points", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return mrda_teams[data].name + ", " + full.home_team_rp }  },
-                { title: "Predicted Ratio", className: 'dt-center', data: 'expected_ratio', render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
+                { title: "Predicted Differential", className: 'dt-center', data: 'expected_differential' },
                 { title: "Away Team, Ranking Points", data: 'away_team_id', render: function(data, type, full) {return mrda_teams[data].name + ", " + full.away_team_rp }  },
                 { title: "Event Name", data: 'event_name'}
             ],
@@ -364,7 +364,7 @@ async function setupUpcomingGames() {
         });
 }
 
-function calculatePredictedRatio() {
+function calculatePredictedDifferential() {
     let gameDate = $('#gameDate')[0].valueAsDate;
     let homeTeamId = $('#homeTeam').val();
     let awayTeamId = $('#awayTeam').val();
@@ -375,14 +375,14 @@ function calculatePredictedRatio() {
 
     let homeRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][homeTeamId] ? rankings_history[rankingHistoryDate][homeTeamId].rp : null;
     let awayRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][awayTeamId] ? rankings_history[rankingHistoryDate][awayTeamId].rp : null;        
-    let expectedRatio = homeRp && awayRp ? (homeRp > awayRp ? homeRp / awayRp : awayRp / homeRp).toFixed(2) : null;
+    let expectedDifferential = homeRp && awayRp ? (homeRp - awayRp).toFixed(2) : null;
 
     $('#homeRankingPoints').text(homeRp);        
     $('#awayRankingPoints').text(awayRp);
-    $('#expectedScoreRatio').text( expectedRatio ? (homeRp > awayRp ? expectedRatio + " : 1" : "1 : " + expectedRatio) : null);        
+    $('#expectedScoreDifferential').text(expectedDifferential);        
 }
 
-function setupPredictedRatioCalc() {
+function setupPredictedDifferentialCalc() {
     $('#gameDate')[0].valueAsDate = new Date();
     
     Object.entries(mrda_teams).sort((a, b) => a[1].name.localeCompare(b[1].name)).forEach(([teamId, teamVal]) => {
@@ -390,9 +390,9 @@ function setupPredictedRatioCalc() {
         $('#awayTeam').append($("<option />").val(teamId).text(teamVal.name));
     });
 
-    $('#homeTeam').change(calculatePredictedRatio);
-    $('#awayTeam').change(calculatePredictedRatio);
-    $('#gameDate').change(calculatePredictedRatio);
+    $('#homeTeam').change(calculatePredictedDifferential);
+    $('#awayTeam').change(calculatePredictedDifferential);
+    $('#gameDate').change(calculatePredictedDifferential);
 }
 
 async function main() {
@@ -411,7 +411,7 @@ async function main() {
 
     setupUpcomingGames();
 
-    setupPredictedRatioCalc();
+    setupPredictedDifferentialCalc();
 
     $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
     

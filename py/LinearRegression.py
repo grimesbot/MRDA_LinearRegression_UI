@@ -10,8 +10,8 @@ from dateutil.relativedelta import relativedelta
 from TeamInfo import team_info
 from GameList_history import games, team_abbrev_id_map
 
-RANKING_SCALE = 100 # add scale since we are not using seeds here
-RATIO_CAP = 4
+RANKING_POINT_FLOOR = 1
+DIFFERENTIAL_CAP = 200
 
 github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true'
 github_actions_scheduled_run = github_actions_run and 'GITHUB_EVENT_NAME' in os.environ and os.environ['GITHUB_EVENT_NAME'] == 'schedule'
@@ -204,11 +204,11 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
 
         # Because ln(score_ratio) is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
         # A blowout game like this will have a very low weight anyway.
-        home_score = game["home_team_score"] if game["home_team_score"] > 0 else 0.1
-        away_score = game["away_team_score"] if game["away_team_score"] > 0 else 0.1
+        home_score = game["home_team_score"]# if game["home_team_score"] > 0 else 0.1
+        away_score = game["away_team_score"]# if game["away_team_score"] > 0 else 0.1
 
-        # Add log of score ratio as observation 
-        Y.append(math.log(home_score/away_score))
+        # Add score differential as observation
+        Y.append(home_score - away_score)
         
         # Build x column of regressors (teams) and whether they played in the game
         x_col = []
@@ -221,10 +221,10 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
                 x_col.append(0)
         X.append(x_col)
 
-        # Calculate weight based on score ratio
-        score_ratio = home_score/away_score if home_score > away_score else away_score/home_score
-        if score_ratio > RATIO_CAP:
-            W.append(max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000))
+        # Calculate weight based on score differential
+        score_differential = abs(home_score-away_score)
+        if score_differential > DIFFERENTIAL_CAP:
+            W.append(max(3 ** ((DIFFERENTIAL_CAP - score_differential)/75), 1/1000000))
         else:
             W.append(1)
 
@@ -239,7 +239,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
 
                 # Add observation as score log ratio
                 # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
+                Y.append(seeding_team_rankings[team]["rp"])
 
                 # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
                 x_col = []
@@ -250,33 +250,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
                         x_col.append(0)
                 X.append(x_col)
                 
-                W.append(1)
-        
-        # Get the standard error now before adding the virtual games for postseason eligible teams at near-zero weight.
-        # Virtual games at near-zero weight drive the standard error numbers crazy for an unknown reason.
-        # Getting standard error here will be close enough since the virtual games for postseason eligible teams will have such a low weight.
-        wls_err = sm.WLS(Y, X, W).fit()
-        wls_stderrs = wls_err.bse
-
-        for team in teams:
-            # Existing team if in seeding rankings & postseason eligible
-            if team in seeding_team_rankings and result[team]["pe"]:
-
-                # Add observation as score log ratio
-                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
-
-                # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
-                x_col = []
-                for t in teams:
-                    if t == team:
-                        x_col.append(1)
-                    else:
-                        x_col.append(0)
-                X.append(x_col)
-                
-                # Set weight will be near-zero (1/1000000) for postseason eligible teams.
-                W.append(1/1000000)
+                W.append(1/4)
 
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
@@ -287,14 +261,20 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
         wls_stderrs = wls.bse
     #print(wls_stderrs)
 
+    rp_min = 0
 
     for i, team in enumerate(teams):
-        # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-        result[team]["rp"] = math.exp(wls_result[i])
-        # Convert standard error
-        result[team]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
+        # Ranking Points
+        result[team]["rp"] = wls_result[i]
+        # Standard Error
+        result[team]["se"] = wls_stderrs[i]# (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
         # Calculate relative standard error %
-        result[team]["rse"] = result[team]["se"]/result[team]["rp"] * 100
+        # result[team]["rse"] = result[team]["se"]/abs(result[team]["rp"]) * 100
+        if wls_result[i] < rp_min:
+            rp_min = wls_result[i]
+
+    result["rp_min"] = rp_min
+
     #print(result)
 
     return result
@@ -349,9 +329,10 @@ def get_rankings(calcDate):
     # Print sorted results for ranking deadline dates when debugging
     if not github_actions_run and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
         print_result = result if not result is None else get_ranking_history(calcDate)
+        print_items = [item for item in print_result.items() if item[0] != "rp_min"]
         print("Rankings for " + calcDate.strftime("%Y-%m-%d"))
-        for item in sorted(print_result.items(), key=lambda item: item[1]["rp"], reverse=True):
-            print(str(round(item[1]["rp"] * RANKING_SCALE, 2)) + "\t" + mrda_teams[item[0]]["name"])
+        for item in sorted(print_items, key=lambda item: item[1]["rp"], reverse=True):
+            print(str(round(item[1]["rp"] - print_result["rp_min"] + RANKING_POINT_FLOOR, 2)) + "\t" + mrda_teams[item[0]]["name"])
         print("")
 
     if not result is None:
@@ -394,16 +375,19 @@ for dt in rankings_history.keys():
     dt_key = '{d.year}-{d.month}-{d.day}'.format(d=dt)
     formatted_rankings_history[dt_key] = {}
     for team in rankings_history[dt].keys():
-        formatted_rankings_history[dt_key][team] = {}
-        for key in rankings_history[dt][team]:
-            if key in ["rp","se"]:
-                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] * RANKING_SCALE, 2)
-            elif key == "rse":
-                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
-            elif key in ["as","pe"]:
-                formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
-            else:
-                formatted_rankings_history[dt_key][team][key] = rankings_history[dt][team][key]
+        if team != "rp_min":
+            formatted_rankings_history[dt_key][team] = {}
+            for key in rankings_history[dt][team]:
+                if key == "rp":
+                    formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] - rankings_history[dt]["rp_min"] + RANKING_POINT_FLOOR, 2)
+                elif key == "se":
+                    formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
+                elif key == "rse":
+                    formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
+                elif key in ["as","pe"]:
+                    formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
+                else:
+                    formatted_rankings_history[dt_key][team][key] = rankings_history[dt][team][key]
 
 # Save rankings JSON to JavaScript file as rankings_history variable for local web UI
 write_json_to_file(formatted_rankings_history, "mrda_rankings_history.js", "rankings_history", "rankings_generated_utc")

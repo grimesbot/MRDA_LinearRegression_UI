@@ -11,7 +11,7 @@
     </head>
     <body>
         <div class="container">
-            <h1 style="text-align: center">MRDA Rankings using Rankings Points by Linear Regression</h1>
+            <h1 style="text-align: center">MRDA Rankings with Linear Regression & Score Differential</h1>
             <div class="row g-3 align-items-center">
                 <div class="col-auto">
                     <label for="date" class="col-form-label">Rankings Period:</label>
@@ -36,8 +36,8 @@
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upcomingGamesModal">
                         Upcoming Games
                     </button>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#expectedRatioCalcModal">
-                        Expected Score Ratio Calculator
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#expectedDifferentialCalcModal">
+                        Expected Score Differential Calculator
                     </button>
                 </div>
             </div>
@@ -66,7 +66,7 @@
                         <tr>
                             <th rowspan="2" width="15%">Date</th>
                             <th rowspan="2">Score</th>
-                            <th colspan="2" class="text-center">Ratio</th>
+                            <th colspan="2" class="text-center">Differential</th>
                             <th colspan="2" class="text-center border-left">Ranking Points</th>                            
                         </tr>
                         <tr>
@@ -116,11 +116,11 @@
             </div>
         </div>  
 
-        <div class="modal fade" id="expectedRatioCalcModal" tabindex="-1" aria-labelledby="expectedRatioCalcModalLabel" aria-hidden="true">
+        <div class="modal fade" id="expectedDifferentialCalcModal" tabindex="-1" aria-labelledby="expectedDifferentialCalcModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="expectedRatioCalcModalLabel">Expected Score Ratio Calculator</h1>
+                        <h1 class="modal-title fs-5" id="expectedDifferentialCalcModalLabel">Expected Score Differential Calculator</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -147,8 +147,8 @@
                                     <div id="homeRankingPoints"></div>
                                 </div>
                                 <div class="col-4 text-center" >
-                                    <label for="expectedScoreRatio" style="font-weight: bold;">Expected Score Ratio</label>
-                                    <div id="expectedScoreRatio"></div>
+                                    <label for="expectedScoreDifferential" style="font-weight: bold;">Expected Score Differential</label>
+                                    <div id="expectedScoreDifferential"></div>
                                 </div>
                                 <div class="col-4">
                                     <label for="awayRankingPoints" style="font-weight: bold;">Away Ranking Points</label>
