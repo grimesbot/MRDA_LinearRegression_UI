@@ -247,7 +247,7 @@ function calculateAndDisplayRankings() {
         columns: [
             { name: 'rankSort', data: 'rankSort', visible: false},
             { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', orderData: [0,1] },
-            { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick' },
+            { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data + (full.rank && full.forfeits > 0 ? "<sup class='forfeitPenalty'>*</sup>" : ""); } },
             { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
             { title: 'Error', data: 'stdErr', render: function (data, type, full) { return "± " + data; }, className: 'dt-teamDetailsClick stdErr' },
             { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
@@ -263,6 +263,8 @@ function calculateAndDisplayRankings() {
             dir: 'asc'
         }
     });
+
+    $("sup.forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
 
     //$("th.relStdErr").tooltip({title: "Relative Standard Error"});
     //$("th.relStdErr .dt-column-title").append(' <i class="bi bi-question-circle"></i>');
