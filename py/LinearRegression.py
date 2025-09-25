@@ -23,14 +23,15 @@ print("Initializing MRDA games list...")
 
 # Add 2023 games from GameList_history.py to mrda_games
 for game in [game for gameday in games for game in gameday]:
+    forfeit = (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0)
     mrda_games.append({
         "date": datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"),
         "home_team_id": team_abbrev_id_map[game[1]],
         "home_team_score": game[2],
         "away_team_id": team_abbrev_id_map[game[3]],
         "away_team_score": game[4],
-        "forfeit": (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0),
-        "forfeit_team_id": team_abbrev_id_map[game[1]] if game[2] == 0 and game[4] == 100 else team_abbrev_id_map[game[3]],
+        "forfeit": forfeit,
+        "forfeit_team_id": None if not forfeit else (team_abbrev_id_map[game[1]] if game[2] == 0 and game[4] == 100 else team_abbrev_id_map[game[3]]),
         "event_name": game[5] if len(game) > 5 else None,
         "championship": "Western Hemisphere Cup" in game[5] if len(game) > 5 else False,
         "qualifier": "Qualifiers" in game[5] if len(game) > 5 else False,

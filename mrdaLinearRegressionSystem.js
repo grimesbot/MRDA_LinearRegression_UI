@@ -5,12 +5,13 @@ class MrdaGame {
         this.awayTeamId = game.away_team_id;
         this.scores = {};
         this.scores[this.homeTeamId] = game.home_team_score;
-        this.scores[this.awayTeamId] = game.away_team_score;        
+        this.scores[this.awayTeamId] = game.away_team_score;
         this.forfeit = game.forfeit;
+        this.forfeit_team_id = game.forfeit_team_id;
         this.eventName = game.event_name;
         this.championship = this.eventName && this.eventName.includes('Mens Roller Derby Association Championships');
         this.qualifier = this.eventName && this.eventName.includes('Qualifiers');
-        this.expectedRatios = {};        
+        this.expectedRatios = {};
         this.rankingPoints = {};
     }
 }
@@ -23,9 +24,10 @@ class MrdaTeam {
         this.gameHistory = []
         this.activeStatus = false;
         this.activeStatusGameCount = 0;
-        this.activeUniqueOpponents = [];        
+        this.activeUniqueOpponents = [];
+        this.forfeits = 0;
         this.rankingPoints = 0;
-        this.relStdErr = 0;        
+        this.relStdErr = 0;
         this.rankingPointsHistory = new Map();
         this.stdErrMinHistory = new Map();
         this.stdErrMaxHistory = new Map();
@@ -121,14 +123,14 @@ class MrdaLinearRegressionSystem {
             if (rankingDt <= calcDt) {
                 Object.values(this.mrdaTeams).forEach(team => {
                     let rankingPoints = team.teamId in rankings ? rankings[team.teamId].rp : 0;
-                    let stdErr = team.teamId in rankings ? rankings[team.teamId].se : 0;                    
+                    let stdErr = team.teamId in rankings ? rankings[team.teamId].se : 0;
                     let relStdErr = team.teamId in rankings ? rankings[team.teamId].rse : 0;
                     let gameCount = team.teamId in rankings ? rankings[team.teamId].gc : 0;
                     let activeStatus = team.teamId in rankings ? rankings[team.teamId].as == 1 : false;
                     let postseasonEligible = team.teamId in rankings ? rankings[team.teamId].pe == 1 : false;
                     if (team.rankingPoints != rankingPoints
                         || team.relStdErr != relStdErr
-                        || team.activeStatusGameCount != gameCount                        
+                        || team.activeStatusGameCount != gameCount
                         || team.activeStatus != activeStatus
                         || team.postseasonEligible != postseasonEligible) {
                         team.rankingPoints = rankingPoints;
@@ -148,6 +150,16 @@ class MrdaLinearRegressionSystem {
 
     addGameHistory(games, calcDate) {
         let calcDt = new Date(calcDate + " 00:00:00");
+        let minDt = new Date(calcDate);
+        minDt.setDate(minDt.getDate() - 7 * 52);
+
+        // If minDt is a greater # weekday of month than calcDt, set minDt back an additional week
+        // e.g. if calcDt is 1st Wednesday of June, minDt should be 1st Wednesday of June last year.
+        // calcDt = Jun 7, 2028, 52 weeks prior would minDt = Jun 9, 2027 which is 2nd Wednesday of June.
+        // set minDt back an additional week minDt = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
+        if (Math.floor((minDt.getDate() - 1) / 7) > Math.floor((calcDt.getDate() - 1) / 7))
+            minDt.setDate(minDt.getDate() - 7);
+
         games.forEach(game => {
             let gameDt = new Date(game.date);
             if (gameDt < calcDt)
@@ -167,7 +179,7 @@ class MrdaLinearRegressionSystem {
 
                     if (gameDt > q4_2024_deadline) {
                         let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
-                        this.absoluteLogErrors.push(absLogError);       
+                        this.absoluteLogErrors.push(absLogError);
                         if (q4_2024_deadline < gameDt && gameDt < q1_2025_deadline)
                             this.absoluteLogErrors_2025_Q1.push(absLogError);
                         if (q1_2025_deadline < gameDt && gameDt < q2_2025_deadline)
@@ -176,10 +188,18 @@ class MrdaLinearRegressionSystem {
                             this.absoluteLogErrors_2025_Q3.push(absLogError);
                     }
                 }
+
+                if (gameDt >= minDt && mrdaGame.forfeit) {
+                    if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
+                        homeTeam.forfeits += 1;
+                    else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
+                        awayTeam.forfeits += 1;
+                }
+
                 homeTeam.gameHistory.push(mrdaGame);
                 awayTeam.gameHistory.push(mrdaGame);
-                }
-            });
+            }
+        });
     }
 
     rankTeams(region) {
@@ -197,6 +217,23 @@ class MrdaLinearRegressionSystem {
             if (team.rank <= 5)
                 team.chart = true;
         }
+
+        // Handle forfeits and 2 ranking spot penalty
+        Object.values(this.mrdaTeams).filter(team => team.activeStatus && (team.region == region || region == "GUR") && team.forfeits > 0).forEach(team => {
+            // Each forfeit gets penalty
+            for (let i = 0; i < team.forfeits; i++) {
+                // Try to swap with next team twice
+                for (let j = 0; j < 2; j++) {
+                    let swapTeam = Object.values(this.mrdaTeams).find(t => t.rank == (team.rank + 1));
+                    if (swapTeam) {
+                        swapTeam.rank -= 1;
+                        swapTeam.rankSort -= 1;
+                        team.rank += 1;
+                        team.rankSort += 1;
+                    }
+                }
+            }
+        });
 
         for (let i = 0; i < sortedInactiveTeams.length; i++) {
             let team = sortedInactiveTeams[i];
