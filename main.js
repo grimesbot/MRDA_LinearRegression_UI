@@ -236,6 +236,12 @@ function calculateAndDisplayRankings() {
         $pctErrorDiv.append("Total: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors));
     }
 
+    let $regionGameCounts = $('#regionGameCounts');
+    $regionGameCounts.html("Regular season games by region: <br />");
+    $regionGameCounts.append("The Americas: " + mrdaLinearRegressionSystem.americasGameCount + "<br />");
+    $regionGameCounts.append("Europe: " + mrdaLinearRegressionSystem.europeGameCount + "<br />");
+    $regionGameCounts.append("Total: " + (mrdaLinearRegressionSystem.americasGameCount + mrdaLinearRegressionSystem.europeGameCount) + "<br />");
+
     displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams), calcDate);
 
     let regenerate = DataTable.isDataTable('#mrdaRankingPoints');
