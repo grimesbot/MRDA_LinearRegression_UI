@@ -30,6 +30,8 @@ function setRegion() {
     var offset = new Date().getTimezoneOffset();
     if ((-6*60) < offset && offset < (3*60))
         $("#region").val("EUR");
+    else
+        $("#region").val("AM");
 }
 
 function teamDetailsModal() {
