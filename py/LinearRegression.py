@@ -163,7 +163,7 @@ for data in gamedata:
 
 # Remove games for excludedTeams
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
-#mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
+mrda_games = [game for game in mrda_games if team_info[game["home_team_id"]]["region"] == "AM" and team_info[game["away_team_id"]]["region"] == "AM"]
 
 def linear_regression(games, active_status_games, seeding_team_rankings=None):
     teams = []
