@@ -113,8 +113,6 @@ class MrdaLinearRegressionSystem {
         this.absoluteLogErrors_2025_Q1 = [];
         this.absoluteLogErrors_2025_Q2 = [];
         this.absoluteLogErrors_2025_Q3 = [];
-        this.americasGameCount = 0;
-        this.europeGameCount = 0;
     }
 
     updateRankings(rankings_history, calcDate) {
@@ -190,18 +188,11 @@ class MrdaLinearRegressionSystem {
                     }
                 }
 
-                if (gameDt >= minDt) {
-                    if (mrdaGame.forfeit) {
-                        if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
-                            homeTeam.forfeits += 1;
-                        else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
-                            awayTeam.forfeits += 1;
-                    } else if (!mrdaGame.championship && !mrdaGame.qualifier ) {
-                        if (homeTeam.region == "AM" && awayTeam.region == "AM")
-                            this.americasGameCount += 1;
-                        if (homeTeam.region == "EUR" && awayTeam.region == "EUR")
-                            this.europeGameCount += 1;
-                    }
+                if (gameDt >= minDt && mrdaGame.forfeit) {
+                    if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
+                        homeTeam.forfeits += 1;
+                    else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
+                        awayTeam.forfeits += 1;
                 }
 
                 homeTeam.gameHistory.push(mrdaGame);
