@@ -251,7 +251,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
                         x_col.append(0)
                 X.append(x_col)
                 
-                W.append(1/4)
+                W.append(1)
 
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
