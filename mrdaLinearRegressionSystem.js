@@ -104,6 +104,7 @@ const q4_2024_deadline = new Date (2024, 12 - 1, 4);
 const q1_2025_deadline = new Date (2025, 3 - 1, 5);
 const q2_2025_deadline = new Date (2025, 6 - 1, 4);
 const q3_2025_deadline = new Date (2025, 9 - 1, 3);
+const q4_2025_deadline = new Date (2025, 12 - 1, 3);
 
 class MrdaLinearRegressionSystem {
     constructor(teams) {
@@ -113,6 +114,7 @@ class MrdaLinearRegressionSystem {
         this.absoluteLogErrors_2025_Q1 = [];
         this.absoluteLogErrors_2025_Q2 = [];
         this.absoluteLogErrors_2025_Q3 = [];
+        this.absoluteLogErrors_2025_Q4 = [];
     }
 
     updateRankings(rankings_history, calcDate) {
@@ -179,12 +181,14 @@ class MrdaLinearRegressionSystem {
                     if (gameDt > q4_2024_deadline) {
                         let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
                         this.absoluteLogErrors.push(absLogError);
-                        if (q4_2024_deadline < gameDt && gameDt < q1_2025_deadline)
+                        if (q4_2024_deadline <= gameDt && gameDt < q1_2025_deadline)
                             this.absoluteLogErrors_2025_Q1.push(absLogError);
-                        if (q1_2025_deadline < gameDt && gameDt < q2_2025_deadline)
+                        if (q1_2025_deadline <= gameDt && gameDt < q2_2025_deadline)
                             this.absoluteLogErrors_2025_Q2.push(absLogError);
-                        if (q2_2025_deadline < gameDt && gameDt < q3_2025_deadline)
+                        if (q2_2025_deadline <= gameDt && gameDt < q3_2025_deadline)
                             this.absoluteLogErrors_2025_Q3.push(absLogError);
+                        if (q3_2025_deadline <= gameDt && gameDt < q4_2025_deadline)
+                            this.absoluteLogErrors_2025_Q4.push(absLogError);
                     }
                 }
 

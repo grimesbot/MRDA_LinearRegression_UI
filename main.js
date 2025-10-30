@@ -233,6 +233,8 @@ function calculateAndDisplayRankings() {
             $pctErrorDiv.append("2025 Q2: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2) + "<br />");
         if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3.length > 0)
             $pctErrorDiv.append("2025 Q3: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3) + "<br />");
+        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q4.length > 0)
+            $pctErrorDiv.append("2025 Q4: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q4) + "<br />");        
         $pctErrorDiv.append("Total: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors));
     }
 
