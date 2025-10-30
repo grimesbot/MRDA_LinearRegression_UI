@@ -231,28 +231,6 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
 
     wls_stderrs = None
 
-    # Add virtual games if we have seeding_team_rankings
-    if not seeding_team_rankings is None:
-        # Add virtual games for existing teams
-        for team in teams:
-            # Existing team if in seeding rankings
-            if team in seeding_team_rankings:
-
-                # Add observation as score log ratio
-                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
-
-                # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
-                x_col = []
-                for t in teams:
-                    if t == team:
-                        x_col.append(1)
-                    else:
-                        x_col.append(0)
-                X.append(x_col)
-                
-                W.append(1/4)
-
     # Execute StatsModels Weighted Least Squares
     wls = sm.WLS(Y, X, W).fit()
     #print(wls.summary())
