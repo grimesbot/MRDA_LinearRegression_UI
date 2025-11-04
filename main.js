@@ -225,20 +225,20 @@ function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.rankTeams(region);
 
-    if (mrdaLinearRegressionSystem.absoluteLogErrors.length > 0)
-    {
-        let $pctErrorDiv = $('#pctErrorMeal');
-        $pctErrorDiv.html("Percent Error using Mean Absolute Log Error: <br />");
-        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q1.length > 0)
-            $pctErrorDiv.append("2025 Q1: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q1) + "<br />");
-        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2.length > 0)
-            $pctErrorDiv.append("2025 Q2: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2) + "<br />");
-        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3.length > 0)
-            $pctErrorDiv.append("2025 Q3: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3) + "<br />");
-        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q4.length > 0)
-            $pctErrorDiv.append("2025 Q4: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q4) + "<br />");        
-        $pctErrorDiv.append("Total: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors));
-    }
+//    if (mrdaLinearRegressionSystem.absoluteLogErrors.length > 0)
+//    {
+//        let $pctErrorDiv = $('#pctErrorMeal');
+//        $pctErrorDiv.html("Percent Error using Mean Absolute Log Error: <br />");
+//        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q1.length > 0)
+//            $pctErrorDiv.append("2025 Q1: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q1) + "<br />");
+//        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2.length > 0)
+//            $pctErrorDiv.append("2025 Q2: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q2) + "<br />");
+//        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3.length > 0)
+//            $pctErrorDiv.append("2025 Q3: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q3) + "<br />");
+//        if (mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q4.length > 0)
+//            $pctErrorDiv.append("2025 Q4: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors_2025_Q4) + "<br />");        
+//        $pctErrorDiv.append("Total: " + meanAbsoluteLogErrorPercent(mrdaLinearRegressionSystem.absoluteLogErrors));
+//    }
 
     displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams), calcDate);
 
@@ -407,7 +407,7 @@ async function main() {
 
     populateRankingDates();
 
-    setRegion();
+    //setRegion();
 
     calculateAndDisplayRankings();
 
