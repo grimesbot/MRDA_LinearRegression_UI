@@ -165,7 +165,14 @@ for data in gamedata:
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
 #mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
 
+# Feature to get results for a specific event.
+#mrda_games = [game for game in mrda_games if game["event_name"] == "2025 Mens Roller Derby Association Championships"]
+
 def linear_regression(games, active_status_games, seeding_team_rankings=None):
+
+    if len(games) == 0:
+        return {}
+
     teams = []
     for game in games:
         if not game["home_team_id"] in teams and (not game["forfeit"] or game["forfeit_team_id"] != game["home_team_id"]):
