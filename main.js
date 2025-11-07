@@ -251,7 +251,7 @@ function calculateAndDisplayRankings() {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
             { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
-            { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data + (full.rank && full.forfeits > 0 ? "<sup class='forfeitPenalty'>*</sup>" : ""); } },
+            { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data + (full.activeStatus && full.forfeits > 0 ? "<sup class='forfeitPenalty'>*</sup>" : ""); } },
             { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
             { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "±" + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
             { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
