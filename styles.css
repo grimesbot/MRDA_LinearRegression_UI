@@ -5,3 +5,23 @@
 .border-left {
     border-left: 1px solid rgba(0, 0, 0, 0.3);
 }
+
+.postseasonPosition-GUR {
+    background-color: rgba(99,212,113, 0.18) !important;    
+}
+
+.postseasonPosition-AA {
+    background-color: rgba(255,212,73, 0.4) !important;    
+}
+
+.postseasonPosition-AM {
+    background-color: rgba(241,80,37, 0.18) !important;    
+}
+
+.postseasonPosition-EUR {
+    background-color: rgba(75,136,162, 0.18) !important;    
+}
+
+div[class^="postseasonPosition-"] {
+    padding:.25rem;
+}

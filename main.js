@@ -153,7 +153,7 @@ function displayRankingChart(teamsArray, calcDate) {
         
     let datasets = [];
 
-    teamsArray.sort((a, b) => a.rankSort - b.rankSort).forEach(team => {
+    teamsArray.sort((a, b) => a.rank - b.rank).forEach(team => {
         if (team.chart) {
             datasets.push({
                 label: team.teamName,
@@ -249,23 +249,29 @@ function calculateAndDisplayRankings() {
 
     new DataTable('#mrdaRankingPoints', {
         columns: [
-            { name: 'rankSort', data: 'rankSort', visible: false},
-            { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', orderData: [0,1] },
+            { name: 'rankSort', data: 'rank', visible: false},
+            { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
             { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data + (full.rank && full.forfeits > 0 ? "<sup class='forfeitPenalty'>*</sup>" : ""); } },
             { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
-            { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "± " + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
+            { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "±" + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
             { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
             { title: 'Postseason Eligible', data: 'postseasonEligible', render: function (data, type, full) { return data ? 'Yes' : 'No'; }, className: 'dt-teamDetailsClick'},
             { title: "Chart", data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter(team => team.activeStatusGameCount > 0 && (team.region == region || region == "GUR")),
+        dom: 't',
         paging: false,
         searching: false,
         info: false,
         order: {
             name: 'rankSort',
             dir: 'asc'
+        },
+        createdRow: function (row, data, dataIndex) {
+        if (data.postseasonPosition != null) {
+            $(row).addClass('postseasonPosition-' + data.postseasonPosition);
         }
+    }
     });
 
     $("sup.forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});

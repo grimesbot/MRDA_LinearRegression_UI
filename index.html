@@ -24,30 +24,38 @@
                 </div>
                 <div class="col-auto">
                     <select name="region" id="region" style="display: block; margin: 0 auto;">
+                        <option value="GUR" selected>Global</option>                                                
                         <option value="AM">The Americas</option>
                         <option value="EUR">Europe</option>
-                        <option value="GUR" selected>Global</option>                        
                     </select>
                 </div>                
                 <div class="col-auto">
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#gamesModal">
-                        Games
-                    </button>
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upcomingGamesModal">
                         Upcoming Games
                     </button>
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#expectedRatioCalcModal">
                         Expected Score Ratio Calculator
                     </button>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#gamesModal">
+                        All Games
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div id ="rankingsChartContainer" class="container-xxl" >
+        <div id="rankingsChartContainer" class="container-xxl" >
             <canvas id="rankingsChart"></canvas>
         </div>
+
+        <div id="postseasonLegend" class="container-xxl text-center" style="font-size:.85rem; margin-top:1rem; line-height:1.85rem;">
+            <div class="d-inline">Potential Postseason Invites:</div>
+            <div class="postseasonPosition-GUR d-inline">MRDA Championships</div>
+            <div class="postseasonPosition-EUR d-inline">European Qualifiers</div>
+            <div class="postseasonPosition-AM d-inline">North American Qualifiers</div>
+            <div class="postseasonPosition-AA d-inline">Australasian Qualifiers</div>            
+        </div>
         
-        <div id ="mrdaRankingPointsContainer" class="container-xxl" >
+        <div id="mrdaRankingPointsContainer" class="container-xxl" >
             <table id="mrdaRankingPoints" class="display" width="100%"></table>
         </div>
 
@@ -82,8 +90,10 @@
             </div>
         </div>
 
-        <div class="container">
-            Rankings generated at <span id="rankingsGeneratedDt"></span><br /><br />
+        <div class="container" style="font-size: .85rem;">
+            Last refreshed at <span id="rankingsGeneratedDt"></span>.
+            <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Read Me</a> 
+            <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
         </div>
         <!--
         <div id="pctErrorMeal" class="container">                

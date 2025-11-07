@@ -32,8 +32,9 @@ class MrdaTeam {
         this.stdErrMaxHistory = new Map();
         this.relStdErrHistory = new Map();
         this.rank = null;
-        this.rankSort = null;
+        this.regionRank = null;        
         this.postseasonEligible = false;
+        this.postseasonPosition = null;
         this.chart = false;
     }
 
@@ -100,21 +101,23 @@ function getStandardDateString(date) {
     return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`;
 }
 
-const q4_2024_deadline = new Date (2024, 12 - 1, 4);
-const q1_2025_deadline = new Date (2025, 3 - 1, 5);
-const q2_2025_deadline = new Date (2025, 6 - 1, 4);
-const q3_2025_deadline = new Date (2025, 9 - 1, 3);
-const q4_2025_deadline = new Date (2025, 12 - 1, 3);
+const regions = ['EUR', 'AA', 'AM'];
+
+//const q4_2024_deadline = new Date (2024, 12 - 1, 4);
+//const q1_2025_deadline = new Date (2025, 3 - 1, 5);
+//const q2_2025_deadline = new Date (2025, 6 - 1, 4);
+//const q3_2025_deadline = new Date (2025, 9 - 1, 3);
+//const q4_2025_deadline = new Date (2025, 12 - 1, 3);
 
 class MrdaLinearRegressionSystem {
     constructor(teams) {
         this.mrdaTeams = {};
         Object.keys(teams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, teams[teamId]));
-        this.absoluteLogErrors = [];    
-        this.absoluteLogErrors_2025_Q1 = [];
-        this.absoluteLogErrors_2025_Q2 = [];
-        this.absoluteLogErrors_2025_Q3 = [];
-        this.absoluteLogErrors_2025_Q4 = [];
+//        this.absoluteLogErrors = [];    
+//        this.absoluteLogErrors_2025_Q1 = [];
+//        this.absoluteLogErrors_2025_Q2 = [];
+//        this.absoluteLogErrors_2025_Q3 = [];
+//        this.absoluteLogErrors_2025_Q4 = [];
     }
 
     updateRankings(rankings_history, calcDate) {
@@ -178,18 +181,18 @@ class MrdaLinearRegressionSystem {
                     mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
                     mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
 
-                    if (gameDt > q4_2024_deadline) {
-                        let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
-                        this.absoluteLogErrors.push(absLogError);
-                        if (q4_2024_deadline <= gameDt && gameDt < q1_2025_deadline)
-                            this.absoluteLogErrors_2025_Q1.push(absLogError);
-                        if (q1_2025_deadline <= gameDt && gameDt < q2_2025_deadline)
-                            this.absoluteLogErrors_2025_Q2.push(absLogError);
-                        if (q2_2025_deadline <= gameDt && gameDt < q3_2025_deadline)
-                            this.absoluteLogErrors_2025_Q3.push(absLogError);
-                        if (q3_2025_deadline <= gameDt && gameDt < q4_2025_deadline)
-                            this.absoluteLogErrors_2025_Q4.push(absLogError);
-                    }
+//                    if (gameDt > q4_2024_deadline) {
+//                        let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
+//                        this.absoluteLogErrors.push(absLogError);
+//                        if (q4_2024_deadline <= gameDt && gameDt < q1_2025_deadline)
+//                            this.absoluteLogErrors_2025_Q1.push(absLogError);
+//                        if (q1_2025_deadline <= gameDt && gameDt < q2_2025_deadline)
+//                            this.absoluteLogErrors_2025_Q2.push(absLogError);
+//                        if (q2_2025_deadline <= gameDt && gameDt < q3_2025_deadline)
+//                            this.absoluteLogErrors_2025_Q3.push(absLogError);
+//                        if (q3_2025_deadline <= gameDt && gameDt < q4_2025_deadline)
+//                            this.absoluteLogErrors_2025_Q4.push(absLogError);
+//                    }
                 }
 
                 if (gameDt >= minDt && mrdaGame.forfeit) {
@@ -206,23 +209,21 @@ class MrdaLinearRegressionSystem {
     }
 
     rankTeams(region) {
-        let sortedActiveTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && (team.region == region || region == "GUR"))
-                                                        .sort((a, b) => b.rankingPoints - a.rankingPoints );
 
-        let sortedInactiveTeams = Object.values(this.mrdaTeams).filter(team => !team.activeStatus && (team.region == region || region == "GUR"))
-                                                        .sort((a, b) => b.rankingPoints - a.rankingPoints );
-        
+        // Rank the active teams
+        let sortedActiveTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus)
+                                    .sort((a, b) => b.rankingPoints - a.rankingPoints );
+
         for (let i = 0; i < sortedActiveTeams.length; i++) {
             let team = sortedActiveTeams[i];
             team.rank = i + 1;
-            team.rankSort = i + 1;
 
-            if (team.rank <= 5)
+            if (region == "GUR" && team.rank <= 5)
                 team.chart = true;
         }
 
         // Handle forfeits and 2 ranking spot penalty
-        Object.values(this.mrdaTeams).filter(team => team.activeStatus && (team.region == region || region == "GUR") && team.forfeits > 0).forEach(team => {
+        Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.forfeits > 0).forEach(team => {
             // Each forfeit gets penalty
             for (let i = 0; i < team.forfeits; i++) {
                 // Try to swap with next team twice
@@ -230,17 +231,67 @@ class MrdaLinearRegressionSystem {
                     let swapTeam = Object.values(this.mrdaTeams).find(t => t.rank == (team.rank + 1));
                     if (swapTeam) {
                         swapTeam.rank -= 1;
-                        swapTeam.rankSort -= 1;
                         team.rank += 1;
-                        team.rankSort += 1;
                     }
                 }
             }
         });
 
+        // Rank inactive teams for sorting, rank is hidden
+        let sortedInactiveTeams = Object.values(this.mrdaTeams).filter(team => !team.activeStatus)
+                                                        .sort((a, b) => b.rankingPoints - a.rankingPoints );
+
         for (let i = 0; i < sortedInactiveTeams.length; i++) {
             let team = sortedInactiveTeams[i];
-            team.rankSort = sortedActiveTeams.length + i + 1;
+            team.rank = sortedActiveTeams.length + i + 1;
         }
+
+        // Set regionRank if a region is selected
+        if (region != "GUR") {
+            let regionSortedRankedTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.region == region)
+                                                        .sort((a, b) => a.rank - b.rank);
+            for (let i = 0; i < regionSortedRankedTeams.length; i++) {
+                let team = regionSortedRankedTeams[i];
+                team.regionRank = i + 1;
+
+                if (team.regionRank <= 5)
+                    team.chart = true;
+            }
+        }
+
+        // Assign potential postseason invite positions
+        // Champs go to top 7 globally
+        let sortedPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible)
+                                                .sort((a, b) => a.rank - b.rank );
+        for (let i = 0; i < 7; i++) {
+            let team = sortedPostseasonTeams[i];
+            team.postseasonPosition = "GUR";
+        }
+
+        // Regional Qualifiers
+        regions.forEach(r => {
+            let regionPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible && r == team.region && team.postseasonPosition == null)
+                                            .sort((a, b) => a.rank - b.rank );
+
+            // Handle no postseason eligible teams in this region
+            if (regionPostseasonTeams.length == 0){
+                // Austrasia gets 1 spot, other regions get 2
+                let spots = r == "AA" ? 1 : 2;
+
+                // Spots go to next teams globally
+                let globalPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible && team.postseasonPosition == null)
+                                            .sort((a, b) => a.rank - b.rank );
+                for (let i = 0; i < spots; i++) {
+                    let team = globalPostseasonTeams[i];
+                    team.postseasonPosition = r;
+                }
+            } else {
+                // Assign qualifier spots up to 8
+                for (let i = 0; i < Math.min(8,regionPostseasonTeams.length); i++) {
+                    let team = regionPostseasonTeams[i];
+                    team.postseasonPosition = r;
+                }
+            }
+        });
     }
 }
