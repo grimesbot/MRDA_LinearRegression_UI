@@ -429,6 +429,9 @@ async function main() {
     
     $("#date").on( "change", calculateAndDisplayRankings );
     $("#region").on( "change", calculateAndDisplayRankings );
+
+    $('[data-toggle="tooltip"]').tooltip();
+    $('[data-toggle="tooltip"]').append(' <i class="bi bi-question-circle"></i>')
 }
 
 window.addEventListener('load', main);

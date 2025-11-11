@@ -71,8 +71,8 @@ approved_gamedata = get_api_gamedata(date(2024, 1, 1), 3)
 print("Retrieved " + str(len(approved_gamedata)) + " games in Approved status")
 gamedata.extend(approved_gamedata)
 
-waiting_for_documents_gamedata = get_api_gamedata(date(2024, 1, 1), 4)
-print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games in Waiting for Documents status")
+waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=45), 4)
+print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 45 days in Waiting for Documents status")
 gamedata.extend(waiting_for_documents_gamedata)
 
 def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):

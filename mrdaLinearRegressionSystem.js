@@ -270,22 +270,36 @@ class MrdaLinearRegressionSystem {
 
         // Regional Qualifiers
         regions.forEach(r => {
+            let qualInfo = $("#postseasonLegend .postseasonPosition-" + r + " .qualifiers");
+            let inviteInfo = $("#postseasonLegend .postseasonPosition-" + r + " .invites");
+
+            // Austrasia gets 1 spot, other regions get 2
+            let spots = r == "AA" ? 1 : 2;
+
             let regionPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible && r == team.region && team.postseasonPosition == null)
                                             .sort((a, b) => a.rank - b.rank );
 
-            // Handle no postseason eligible teams in this region
-            if (regionPostseasonTeams.length == 0){
-                // Austrasia gets 1 spot, other regions get 2
-                let spots = r == "AA" ? 1 : 2;
+            // Handle fewer postseason eligible teams in this region than spots
+            if (regionPostseasonTeams < spots){
+                qualInfo.hide();
+                inviteInfo.show();
 
-                // Spots go to next teams globally
-                let globalPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible && team.postseasonPosition == null)
-                                            .sort((a, b) => a.rank - b.rank );
+                //assign the regions spots to next best eligible team in region, or next best eligible team globally.
                 for (let i = 0; i < spots; i++) {
-                    let team = globalPostseasonTeams[i];
-                    team.postseasonPosition = r;
+                    let team = regionPostseasonTeams[i];
+                    if (team) {
+                        team.postseasonPosition = r;
+                    } else {
+                        let globalPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible && team.postseasonPosition == null)
+                                                                            .sort((a, b) => a.rank - b.rank );
+                        team = globalPostseasonTeams[0];
+                        if (team)
+                            team.postseasonPosition = r;
+                    }
                 }
             } else {
+                qualInfo.show();
+                inviteInfo.hide();
                 // Assign qualifier spots up to 8
                 for (let i = 0; i < Math.min(8,regionPostseasonTeams.length); i++) {
                     let team = regionPostseasonTeams[i];

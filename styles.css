@@ -25,3 +25,7 @@
 div[class^="postseasonPosition-"] {
     padding:.25rem;
 }
+
+.invites {
+    display: none;
+}

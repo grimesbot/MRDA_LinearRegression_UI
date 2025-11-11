@@ -48,11 +48,24 @@
         </div>
 
         <div id="postseasonLegend" class="container-xxl text-center" style="font-size:.8rem; margin-top:.8rem; line-height:1.85rem;">
-            <div class="d-inline">Potential Postseason Invites:</div>
-            <div class="postseasonPosition-GUR d-inline">MRDA Championships</div>
-            <div class="postseasonPosition-EUR d-inline">European Qualifiers</div>
-            <div class="postseasonPosition-AM d-inline">North American Qualifiers</div>
-            <div class="postseasonPosition-AA d-inline">Australasian Qualifiers</div>            
+            <div class="d-inline">Potential Postseason Tournament Invites:</div>
+            <div class="postseasonPosition-GUR d-inline" data-toggle="tooltip" title="The top 7 ranked teams globally will receive a bye to MRDA Championships.">
+                MRDA Championships
+            </div>&nbsp;
+            <div class="postseasonPosition-EUR d-inline">
+                European 
+                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked European teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA European Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event there are no European Qualifiers, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships.">Qualifiers</span>
+                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event there are no European Qualifiers, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships. If there are no more eligible European teams, the next eligible team(s) from any region will be invited.">Champs Invites</span>
+            </div>&nbsp;
+            <div class="postseasonPosition-AA d-inline">
+                Australasian 
+                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked Australasian teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Australasian Qualifiers. The top placing team will receive invitations to MRDA Championships. <br><br> In the event there are no European Qualifiers, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.">Qualifiers</span>
+                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event there are no Australasian Qualifiers, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships. <br><br>If there are no eligible Australasian teams, the next eligible team from any region will be invited.">Champs Invite</span>
+            </div>&nbsp;
+            <div class="postseasonPosition-AM d-inline">
+                North American
+                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked teams from the Americas who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Americas Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event there are no Americas Qualifiers, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.">Qualifiers</span>
+                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event there are no Americas Qualifiers, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships. <br><br>If there are no more eligible teams from the Americas, the next eligible team(s) from any region will be invited.">Champs Invites</span></div>
         </div>
         
         <div id="mrdaRankingPointsContainer" class="container-xxl" >
@@ -172,8 +185,7 @@
                 </div>
             </div>
         </div>  
-        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core/dist/umd/popper.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
