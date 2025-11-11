@@ -222,6 +222,8 @@ class MrdaLinearRegressionSystem {
                 team.chart = true;
         }
 
+        let forfeitAsterisk = $('#forfeitAsterisk');
+        forfeitAsterisk.hide();
         // Handle forfeits and 2 ranking spot penalty
         Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.forfeits > 0).forEach(team => {
             // Each forfeit gets penalty
@@ -232,6 +234,7 @@ class MrdaLinearRegressionSystem {
                     if (swapTeam) {
                         swapTeam.rank -= 1;
                         team.rank += 1;
+                        forfeitAsterisk.show();
                     }
                 }
             }

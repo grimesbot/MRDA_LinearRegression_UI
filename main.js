@@ -300,7 +300,7 @@ function setupApiGames() {
                 { title: "Away Score", data: 'away_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }} ,
                 { title: "Away Team", data: 'away_team_id', render: function(data, type, full) { return mrda_teams[data].name } },
                 { title: "Event Name", data: 'event_name'},
-                { title: "Type", render: function (data, type, full) { return full.championship ? "Championship" : full.qualifier ? "Qualifier" : "Regular Season"; }},
+                //{ title: "Type", render: function (data, type, full) { return full.championship ? "Championship" : full.qualifier ? "Qualifier" : "Regular Season"; }},
                 { title: "Validated", data: 'status', render: function(data, type, full) { return data  == 7 }} ,
             ],
             data: mrda_games,

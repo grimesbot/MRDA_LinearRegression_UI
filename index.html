@@ -10,34 +10,34 @@
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
-        <div class="container">
-            <h1 style="text-align: center">MRDA Rankings Algorithm using Linear Regression</h1>
-            <div class="row g-3 align-items-center">
-                <div class="col-auto">
-                    <label for="date" class="col-form-label">Rankings Period:</label>
+        <div class="container-xxl">
+            <h2 style="text-align: center">MRDA Rankings Algorithm using Linear Regression</h2>
+            <div class="d-flex flex-row align-items-center justify-content-center">
+                <div class="p-2">
+                    <div class="form-floating">
+                        <select class="form-select" name="date" id="date" aria-label="Rankings Period">
+                        </select>
+                        <label for="date">Rankings Period</label>
+                    </div>
                 </div>
-                <div class="col-auto">
-                    <select name="date" id="date" style="display: block; margin: 0 auto;"></select>
-                </div>
-                <div class="col-auto">
-                    <label for="region" class="col-form-label">Region:</label>
-                </div>
-                <div class="col-auto">
-                    <select name="region" id="region" style="display: block; margin: 0 auto;">
-                        <option value="GUR" selected>Global</option>                                                
-                        <option value="AM">The Americas</option>
-                        <option value="EUR">Europe</option>
-                    </select>
+                <div class="p-2">
+                    <div class="form-floating">
+                        <select class="form-select" name="region" id="region" style="display: block; margin: 0 auto;" aria-label="Region">
+                            <option value="GUR" selected>Global</option>                                                
+                            <option value="AM">The Americas</option>
+                            <option value="EUR">Europe</option>
+                        </select>
+                        <label for="region" class="col-form-label">Region</label>
+                    </div>
                 </div>                
-                <div class="col-auto">
+                <div class="p-2">
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upcomingGamesModal">
                         Upcoming Games
                     </button>
+                </div>                
+                <div class="p-2">
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#expectedRatioCalcModal">
-                        Expected Score Ratio Calculator
-                    </button>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#gamesModal">
-                        All Games
+                        Predictor
                     </button>
                 </div>
             </div>
@@ -47,22 +47,22 @@
             <canvas id="rankingsChart"></canvas>
         </div>
 
-        <div id="postseasonLegend" class="container-xxl text-center" style="font-size:.8rem; margin-top:.8rem; line-height:1.85rem;">
-            <div class="d-inline">Potential Postseason Tournament Invites:</div>
-            <div class="postseasonPosition-GUR d-inline" data-toggle="tooltip" title="The top 7 ranked teams globally will receive a bye to MRDA Championships.">
+        <div id="postseasonLegend" class="container-xxl text-center" style="font-size:.8rem; margin-top:.5rem;">
+            <div class="d-inline-block">Potential Postseason Tournament Invites:</div>
+            <div class="postseasonPosition-GUR d-inline-block" data-toggle="tooltip" title="The top 7 ranked teams globally will receive a bye to MRDA Championships.">
                 MRDA Championships
             </div>&nbsp;
-            <div class="postseasonPosition-EUR d-inline">
+            <div class="postseasonPosition-EUR d-inline-block">
                 European 
                 <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked European teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA European Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event there are no European Qualifiers, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships.">Qualifiers</span>
                 <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event there are no European Qualifiers, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships. If there are no more eligible European teams, the next eligible team(s) from any region will be invited.">Champs Invites</span>
             </div>&nbsp;
-            <div class="postseasonPosition-AA d-inline">
+            <div class="postseasonPosition-AA d-inline-block">
                 Australasian 
                 <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked Australasian teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Australasian Qualifiers. The top placing team will receive invitations to MRDA Championships. <br><br> In the event there are no European Qualifiers, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.">Qualifiers</span>
                 <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event there are no Australasian Qualifiers, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships. <br><br>If there are no eligible Australasian teams, the next eligible team from any region will be invited.">Champs Invite</span>
             </div>&nbsp;
-            <div class="postseasonPosition-AM d-inline">
+            <div class="postseasonPosition-AM d-inline-block">
                 North American
                 <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked teams from the Americas who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Americas Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event there are no Americas Qualifiers, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.">Qualifiers</span>
                 <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event there are no Americas Qualifiers, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships. <br><br>If there are no more eligible teams from the Americas, the next eligible team(s) from any region will be invited.">Champs Invites</span></div>
@@ -70,6 +70,19 @@
         
         <div id="mrdaRankingPointsContainer" class="container-xxl" >
             <table id="mrdaRankingPoints" class="display" width="100%"></table>
+            <div id="forfeitAsterisk" style="font-size: .85rem;">
+                *Two rank penalty applied for each forfeit.
+            </div>
+            <div style="font-size: .85rem;">
+                Last refreshed at <span id="rankingsGeneratedDt"></span>.
+                <a href="#gamesModal" data-bs-toggle="modal">All Game Data</a>
+                <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Read Me</a> 
+                <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
+            </div>
+            <!--
+            <div id="pctErrorMeal" class="container">                
+            </div>
+            -->
         </div>
 
         <div id="teamDetailModal" class="modal fade" tabindex="-1" aria-labelledby="teamDetailModalLabel" aria-hidden="true">
@@ -103,18 +116,9 @@
             </div>
         </div>
 
-        <div class="container" style="font-size: .85rem; margin-top: .5rem;">
-            Last refreshed at <span id="rankingsGeneratedDt"></span>.
-            <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Read Me</a> 
-            <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
-        </div>
-        <!--
-        <div id="pctErrorMeal" class="container">                
-        </div>
-        -->
         
         <div class="modal fade" id="gamesModal" tabindex="-1" aria-labelledby="gamesModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
+            <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h1 class="modal-title fs-5" id="gamesModalLabel">MRDA Games</h1>
