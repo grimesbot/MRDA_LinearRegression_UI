@@ -283,7 +283,7 @@ class MrdaLinearRegressionSystem {
                                             .sort((a, b) => a.rank - b.rank );
 
             // Handle fewer postseason eligible teams in this region than spots
-            if (regionPostseasonTeams < spots){
+            if (regionPostseasonTeams <= spots){
                 qualInfo.hide();
                 inviteInfo.show();
 
