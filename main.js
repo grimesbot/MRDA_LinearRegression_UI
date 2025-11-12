@@ -51,7 +51,7 @@ function teamDetailsModal() {
             type: 'lineWithErrorBars',
             data: {
                 datasets: [{
-                    label: 'Game Ranking Points',
+                    label: 'Game Ranking Points (2023 Algorithm)',
                     data: Array.from(team.gameHistory, (game) => ({ 
                         x: new Date(game.date), 
                         y: game.rankingPoints[team.teamId], 
@@ -61,7 +61,7 @@ function teamDetailsModal() {
                         label: game.rankingPoints[team.teamId] ? 'Game Ranking Points: ' + game.rankingPoints[team.teamId].toFixed(2) : "" })),                        
                     showLine: false
                 }, {
-                    label: 'Ranking Points by Linear Regression ± Standard Error',
+                    label: 'Ranking Points ± Standard Error',
                     data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ 
                         x: new Date(date + " 00:00:00"), 
                         y: rp, 
@@ -111,8 +111,8 @@ function teamDetailsModal() {
                     : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + mrda_teams[game.homeTeamId].name),
                 expectedRatio: team.teamId in game.expectedRatios ? game.expectedRatios[team.teamId].toFixed(2) : "",
                 actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId])).toFixed(2) : "",
-                beforeRankingPoints: team.getRankingPointHistoryWithError(game.date) ?? "",
-                afterRankingPoints: team.getRankingPointHistoryWithError(game.date, true) ?? ""
+                beforeRankingPoints: team.getRankingPointHistory(game.date) ?? "",
+                afterRankingPoints: team.getRankingPointHistory(game.date, true) ?? ""
             })),
             lengthChange: false,
             searching: false,
@@ -250,13 +250,13 @@ function calculateAndDisplayRankings() {
     new DataTable('#mrdaRankingPoints', {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
-            { title: 'Rank', data: 'rank', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
-            { title: 'Team', data: 'teamName', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data + (full.activeStatus && full.forfeits > 0 ? "<sup class='forfeitPenalty'>*</sup>" : ""); } },
-            { title: 'Ranking Points', data: 'rankingPoints', className: 'dt-teamDetailsClick' },
-            { title: 'Error', data: 'relStdErr', render: function (data, type, full) { return "±" + data + "%"; }, className: 'dt-teamDetailsClick relStdErr' },
-            { title: 'Games Count',  data: 'activeStatusGameCount', className: 'dt-teamDetailsClick'},
-            { title: 'Postseason Eligible', data: 'postseasonEligible', render: function (data, type, full) { return data ? 'Yes' : 'No'; }, className: 'dt-teamDetailsClick'},
-            { title: "Chart", data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
+            { data: 'rank', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
+            { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick', render: function (data, type, full) { return (full.logo ? "<img height='40' class='me-2' src='" + full.logo + "'>" : "") + data + (full.activeStatus && full.forfeits > 0 ? "<sup class='forfeitPenalty'>▼</sup>" : ""); }},
+            { data: 'rankingPoints', className: 'dt-teamDetailsClick' },
+            { data: 'relStdErr', className: 'dt-teamDetailsClick relStdErr', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
+            { data: 'activeStatusGameCount', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
+            //{ data: 'postseasonEligible', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data ? 1 : 0; }, createdCell: function (td, data) { $(td).text(data ? 'Yes' : 'No'); }},
+            { data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter(team => team.activeStatusGameCount > 0 && (team.region == region || region == "GUR")),
         dom: 't',
@@ -274,10 +274,9 @@ function calculateAndDisplayRankings() {
     }
     });
 
-    $("sup.forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
+    $(".forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
+    $(".postseasonIneligible").tooltip({title: "Not enough games to be Postseason Eligible."});
 
-    $("th.relStdErr").tooltip({title: "Relative Standard Error"});
-    $("th.relStdErr .dt-column-title").append(' <i class="bi bi-question-circle"></i>');
     
     if (!regenerate) {
         $("#mrdaRankingPointsContainer").on('change', 'input.chart', function (e) {
@@ -292,23 +291,26 @@ function calculateAndDisplayRankings() {
 }
 
 function setupApiGames() {
-    new DataTable('#apiGames', {
-            columns: [
-                { title: "Date", name: 'date', data: 'date', render: getStandardDateString },
-                { title: "Home Team", data: 'home_team_id', render: function(data, type, full) { return mrda_teams[data].name } },
-                { title: "Home Score", data: 'home_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }},
-                { title: "Away Score", data: 'away_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }} ,
-                { title: "Away Team", data: 'away_team_id', render: function(data, type, full) { return mrda_teams[data].name } },
-                { title: "Event Name", data: 'event_name'},
-                //{ title: "Type", render: function (data, type, full) { return full.championship ? "Championship" : full.qualifier ? "Qualifier" : "Regular Season"; }},
-                { title: "Validated", data: 'status', render: function(data, type, full) { return data  == 7 }} ,
-            ],
-            data: mrda_games,
-            lengthChange: false,
-            order: {
-                name: 'date',
-                dir: 'desc'
-            }
+    $('#gamesModal').on('show.bs.modal', function (e) {
+        if (!DataTable.isDataTable('#apiGames'))
+            new DataTable('#apiGames', {
+                columns: [
+                    { title: "Date", name: 'date', data: 'date', render: getStandardDateString },
+                    { title: "Home Team", data: 'home_team_id', render: function(data, type, full) { return mrda_teams[data].name } },
+                    { title: "Home Score", data: 'home_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }},
+                    { title: "Away Score", data: 'away_team_score', render: function(data, type, full) { return data + (full.forfeit ? "*" : ""); }} ,
+                    { title: "Away Team", data: 'away_team_id', render: function(data, type, full) { return mrda_teams[data].name } },
+                    { title: "Event Name", data: 'event_name'},
+                    //{ title: "Type", render: function (data, type, full) { return full.championship ? "Championship" : full.qualifier ? "Qualifier" : "Regular Season"; }},
+                    { title: "Validated", data: 'status', render: function(data, type, full) { return data  == 7 }} ,
+                ],
+                data: mrda_games,
+                lengthChange: false,
+                order: {
+                    name: 'date',
+                    dir: 'desc'
+                }
+            });
         });
 }
 
@@ -351,8 +353,10 @@ async function setupUpcomingGames() {
             date: game.event.game_datetime,
             home_team_id: homeTeamId,
             home_team_rp: homeRp,
+            home_team_logo: mrda_teams[homeTeamId].logo && mrda_teams[homeTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[homeTeamId].logo : mrda_teams[homeTeamId].logo,
             away_team_id: awayTeamId,
             away_team_rp: awayRp,
+            away_team_logo: mrda_teams[awayTeamId].logo && mrda_teams[awayTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[awayTeamId].logo : mrda_teams[awayTeamId].logo,
             expected_ratio: expectedRatio ? expectedRatio.toFixed(2) : null,
             event_name: game.sanctioning.event_name
         }
@@ -362,9 +366,9 @@ async function setupUpcomingGames() {
     new DataTable('#upcomingGames', {
             columns: [
                 { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
-                { title: "Home Team, Ranking Points", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return mrda_teams[data].name + ", " + full.home_team_rp }  },
+                { title: "Home Team, Ranking Points", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return mrda_teams[data].name + ", " + full.home_team_rp + (full.home_team_logo ? "<img height='40' class='ms-2' src='" + full.home_team_logo + "'>" : "") }  },
                 { title: "Predicted Ratio", className: 'dt-center', data: 'expected_ratio', render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
-                { title: "Away Team, Ranking Points", data: 'away_team_id', render: function(data, type, full) {return mrda_teams[data].name + ", " + full.away_team_rp }  },
+                { title: "Away Team, Ranking Points", data: 'away_team_id', render: function(data, type, full) {return (full.away_team_logo ? "<img height='40' class='me-2' src='" + full.away_team_logo + "'>" : "") + mrda_teams[data].name + ", " + full.away_team_rp }  },
                 { title: "Event Name", data: 'event_name'}
             ],
             data: upcomingGames,
@@ -389,6 +393,8 @@ function calculatePredictedRatio() {
     let awayRp = rankingHistoryDate && rankings_history[rankingHistoryDate] && rankings_history[rankingHistoryDate][awayTeamId] ? rankings_history[rankingHistoryDate][awayTeamId].rp : null;        
     let expectedRatio = homeRp && awayRp ? (homeRp > awayRp ? homeRp / awayRp : awayRp / homeRp).toFixed(2) : null;
 
+    $('#predictorHomeTeamLogo').attr("src",homeTeamId in mrda_teams && mrda_teams[homeTeamId].logo ? mrda_teams[homeTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[homeTeamId].logo : mrda_teams[homeTeamId].logo : "team-logos\\MRDA-Logo-Acronym.png")
+    $('#predictorAwayTeamLogo').attr("src",awayTeamId in mrda_teams && mrda_teams[awayTeamId].logo ? mrda_teams[awayTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[awayTeamId].logo : mrda_teams[awayTeamId].logo : "team-logos\\MRDA-Logo-Acronym.png")
     $('#homeRankingPoints').text(homeRp);        
     $('#awayRankingPoints').text(awayRp);
     $('#expectedScoreRatio').text( expectedRatio ? (homeRp > awayRp ? expectedRatio + " : 1" : "1 : " + expectedRatio) : null);        
@@ -417,21 +423,25 @@ async function main() {
 
     calculateAndDisplayRankings();
 
-    teamDetailsModal();
-
-    setupApiGames();
-
-    setupUpcomingGames();
-
-    setupPredictedRatioCalc();
-
     $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
     
     $("#date").on( "change", calculateAndDisplayRankings );
     $("#region").on( "change", calculateAndDisplayRankings );
 
     $('[data-toggle="tooltip"]').tooltip();
-    $('[data-toggle="tooltip"]').append(' <i class="bi bi-question-circle"></i>')
+    $('[data-toggle="tooltip"]:not(:has(.dt-column-title))').not('th').append(' <i class="bi bi-question-circle"></i>');
+    $('th[data-toggle="tooltip"] .dt-column-title').append(' <i class="bi bi-question-circle"></i>');
+
+    $('.betaFlag').tooltip({title: "This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly."});
+
+    //These are all initially hidden until user input. Setup last.
+    teamDetailsModal();
+
+    setupUpcomingGames();
+
+    setupPredictedRatioCalc();
+
+    setupApiGames();
 }
 
 window.addEventListener('load', main);

@@ -1,4 +1,4 @@
-.dt-teamDetailsClick {
+td.dt-teamDetailsClick {
     cursor: pointer;
 }
 
@@ -29,4 +29,19 @@ div[class^="postseasonPosition-"] {
 
 .invites {
     display: none;
+}
+
+.dt-column-title i.bi-question-circle {
+    font-size:.75rem;
+    vertical-align: text-top;
+}
+
+.betaFlag {
+    background: #970D00;
+    border-radius: 5px;
+    color: #fff;
+    font-size: .5rem;
+    font-weight: 500;
+    padding: 2px 5px;
+    vertical-align: text-top;
 }

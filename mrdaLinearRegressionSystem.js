@@ -21,6 +21,7 @@ class MrdaTeam {
         this.teamId = teamId;
         this.teamName = team.name;
         this.region = team.region;
+        this.logo = team.logo && team.logo.startsWith("/central/") ? "https://assets.mrda.org" + team.logo : team.logo;
         this.gameHistory = []
         this.activeStatus = false;
         this.activeStatusGameCount = 0;
@@ -57,32 +58,6 @@ class MrdaTeam {
         return this.rankingPointsHistory.get(getStandardDateString(searchDate))
     }
 
-    getRankingPointHistoryWithError(date, addWeek = false) {
-        let searchDate = new Date(date);
-
-        if (addWeek)
-            searchDate.setDate(searchDate.getDate() + 7);
-
-        let rp = this.getRankingPointHistory(searchDate);
-        if (!rp)
-            return rp;
-
-        if (this.relStdErrHistory.size === 0)
-            return rp.toFixed(2);
-        
-        let oldest = new Date(this.relStdErrHistory.keys().next().value + " 00:00:00");
-
-        if (isNaN(oldest) || searchDate < oldest)
-            return;
-
-        while(!this.relStdErrHistory.has(getStandardDateString(searchDate)) ) {
-            searchDate.setDate(searchDate.getDate() - 1);
-        }
-
-        let relStdErr = this.relStdErrHistory.get(getStandardDateString(searchDate));
-
-        return rp.toFixed(2) + " ± " + relStdErr.toFixed(2) + "%";
-    }
 }
 
 function ratioCap(ratio) {
