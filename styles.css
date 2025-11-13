@@ -25,6 +25,7 @@ td.dt-teamDetailsClick {
 div[class^="postseasonPosition-"] {
     margin-top:.25rem;
     padding:.25rem;
+    border-radius: 5px;
 }
 
 .invites {

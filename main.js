@@ -423,9 +423,9 @@ function calculatePredictedRatio() {
 
     $('#predictorHomeTeamLogo').attr("src",homeTeamId in mrda_teams && mrda_teams[homeTeamId].logo ? mrda_teams[homeTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[homeTeamId].logo : mrda_teams[homeTeamId].logo : "team-logos\\MRDA-Logo-Acronym.png")
     $('#predictorAwayTeamLogo').attr("src",awayTeamId in mrda_teams && mrda_teams[awayTeamId].logo ? mrda_teams[awayTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[awayTeamId].logo : mrda_teams[awayTeamId].logo : "team-logos\\MRDA-Logo-Acronym.png")
-    $('#homeRankingPoints').text(homeRp);        
-    $('#awayRankingPoints').text(awayRp);
-    $('#expectedScoreRatio').text( expectedRatio ? (homeRp > awayRp ? expectedRatio + " : 1" : "1 : " + expectedRatio) : null);        
+    $('#homeRankingPoints').html(homeRp ?? "&nbsp;");        
+    $('#awayRankingPoints').html(awayRp ?? "&nbsp;");
+    $('#expectedScoreRatio').html( expectedRatio ? (homeRp > awayRp ? expectedRatio + " : 1" : "1 : " + expectedRatio) : "&nbsp;");        
 }
 
 function setupPredictedRatioCalc() {
