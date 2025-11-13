@@ -62,3 +62,6 @@ td.points {
     font-size: .85em;
 }
 
+td.teamLogo {
+    width: 60px;
+}

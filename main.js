@@ -101,7 +101,9 @@ function teamDetailsModal() {
                             }
                         }
                     }
-                }
+                },
+                responsive: true,
+                maintainAspectRatio: false
             }
         });
 
@@ -202,7 +204,9 @@ function displayRankingChart(teamsArray, calcDate) {
                             }
                         }
                     }
-                }
+                },
+                responsive: true,
+                maintainAspectRatio: false
             }
         });
 }
@@ -261,7 +265,7 @@ function calculateAndDisplayRankings() {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
             { data: 'rank', width: '1em', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
-            { data: 'logo', orderable: false, className: 'dt-teamDetailsClick', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
+            { data: 'logo', orderable: false, className: 'dt-teamDetailsClick teamLogo', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
             { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick teamName', 
                 createdCell: function (td, cellData, rowData, row, col) {
                     let $td = $(td);
@@ -437,11 +441,17 @@ function setupPredictedRatioCalc() {
     $('#gameDate').change(calculatePredictedRatio);
 }
 
+function setStickyOffset() {
+    $("thead.sticky-top").css("top", $("nav.sticky-top").outerHeight());
+}
+
 async function main() {
 
     //document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
     populateRankingDates();
+
+    setStickyOffset();
 
     //setRegion();
 
@@ -466,6 +476,10 @@ async function main() {
     setupPredictedRatioCalc();
 
     setupApiGames();
+
+    $( window ).on( "resize", function() {
+        setStickyOffset();
+    });
 }
 
 window.addEventListener('load', main);

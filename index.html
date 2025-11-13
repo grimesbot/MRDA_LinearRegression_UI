@@ -6,7 +6,7 @@
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
-        <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.dataTables.css" />
+        <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.css" />
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
@@ -54,7 +54,7 @@
             </div>
         </nav>
         <div id="rankingsChartContainer" class="container-xxl" >
-            <canvas id="rankingsChart"></canvas>
+            <canvas id="rankingsChart" height="450em"></canvas>
         </div>
 
         <div id="postseasonLegend" class="container-xxl text-center" style="font-size:.8rem; margin-top:.5rem;">
@@ -80,7 +80,7 @@
         
         <main id="mrdaRankingPointsContainer" role="main" class="container-xxl" >
             <table id="mrdaRankingPoints" class="display" width="100%">
-                <thead>
+                <thead class="bg-white sticky-top">
                     <tr>
                         <th>Rank Sort</th>
                         <th width="1em">Rank</th>
@@ -129,7 +129,9 @@
                     </div>
                     <div class="modal-body">
                         <h5 class="text-center">Current Ranking Points: <span style="font-weight: bold;" id="teamAverageRankingPoints"></span></h5>
-                        <canvas id="teamChart"></canvas>
+                        <div>
+                            <canvas id="teamChart"></canvas>
+                        </div>
                         <table id="teamGameHistory" class="display" width="100%">
                             <thead>
                             <tr>
@@ -229,7 +231,7 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+        <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
