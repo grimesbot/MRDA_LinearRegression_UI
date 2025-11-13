@@ -143,12 +143,14 @@ for data in gamedata:
         mrda_teams[homeTeamId]["name"] = team_info[homeTeamId]["name"] if homeTeamId in team_info and "name" in team_info[homeTeamId] else data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)")
         mrda_teams[homeTeamId]["region"] = team_info[homeTeamId]["region"] if homeTeamId in team_info and "region" in team_info[homeTeamId] else "AM"
         mrda_teams[homeTeamId]["logo"] = data["event"]["home_league_logo"] if "home_league_logo" in data["event"] and not data["event"]["home_league_logo"] is None else team_info[homeTeamId]["logo"] if "logo" in team_info[homeTeamId] else None
+        mrda_teams[homeTeamId]["location"] = team_info[homeTeamId]["location"] if homeTeamId in team_info and "location" in team_info[homeTeamId] else None        
     if not awayTeamId in mrda_teams:
         mrda_teams[awayTeamId] = {}
         mrda_teams[awayTeamId]["name"] = team_info[awayTeamId]["name"] if awayTeamId in team_info and "name" in team_info[awayTeamId] else data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)")
         mrda_teams[awayTeamId]["region"] = team_info[awayTeamId]["region"] if awayTeamId in team_info and "region" in team_info[awayTeamId] else "AM"        
         mrda_teams[awayTeamId]["logo"] = data["event"]["away_league_logo"] if "away_league_logo" in data["event"] and not data["event"]["away_league_logo"] is None else team_info[awayTeamId]["logo"] if "logo" in team_info[awayTeamId] else None
-
+        mrda_teams[awayTeamId]["location"] = team_info[awayTeamId]["location"] if awayTeamId in team_info and "location" in team_info[awayTeamId] else None
+        
     mrda_games.append({
         "date": gameDate,
         "home_team_id": homeTeamId,

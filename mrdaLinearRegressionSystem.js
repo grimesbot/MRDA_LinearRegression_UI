@@ -21,6 +21,7 @@ class MrdaTeam {
         this.teamId = teamId;
         this.teamName = team.name;
         this.region = team.region;
+        this.location = team.location;
         this.logo = team.logo && team.logo.startsWith("/central/") ? "https://assets.mrda.org" + team.logo : team.logo;
         this.gameHistory = []
         this.activeStatus = false;

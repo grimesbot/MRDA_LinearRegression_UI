@@ -50,6 +50,15 @@ div[class^="postseasonPosition-"] {
     display:none;
 }
 
+.teamName {
+    line-height: 1.1;
+}
+
+.teamLocation {
+    font-size: .8em;
+}
+
 td.points {
     font-size: .85em;
 }
+

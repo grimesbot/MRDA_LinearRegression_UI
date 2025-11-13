@@ -251,7 +251,16 @@ function calculateAndDisplayRankings() {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
             { data: 'rank', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
-            { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick', render: function (data, type, full) { return (full.logo ? "<img height='40' class='me-2' src='" + full.logo + "'>" : "") + data + (full.activeStatus && full.forfeits > 0 ? "<sup class='forfeitPenalty'>▼</sup>" : ""); }},
+            { data: 'logo', orderable: false, className: 'dt-teamDetailsClick', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
+            { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick teamName', 
+                createdCell: function (td, cellData, rowData, row, col) {
+                    let $td = $(td);
+                    if (rowData.activeStatus && rowData.forfeits > 0)
+                        $td.append("<sup class='forfeitPenalty'>▼</sup>");
+                    if (rowData.location) {
+                        $td.append("<br><span class='teamLocation'>" + rowData.location + "</span>");
+                    }
+                }},
             { data: 'rankingPoints', className: 'dt-teamDetailsClick' },
             { data: 'relStdErr', className: 'dt-teamDetailsClick relStdErr', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
             { data: 'activeStatusGameCount', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
