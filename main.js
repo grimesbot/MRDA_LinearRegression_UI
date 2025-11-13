@@ -47,6 +47,16 @@ function teamDetailsModal() {
         $('#teamName').text(team.teamName);
         $('#teamAverageRankingPoints').text(team.rankingPoints.toFixed(2));
 
+        if (team.logo)
+            $('#teamLogo').attr('src', team.logo).show();
+        else
+            $('#teamLogo').hide();
+
+        if (team.location)
+            $('#teamLocation').text(team.location).show();
+        else
+            $('#teamLocation').hide();
+
         teamChart = new Chart(document.getElementById("teamChart"), {
             type: 'lineWithErrorBars',
             data: {
@@ -250,7 +260,7 @@ function calculateAndDisplayRankings() {
     new DataTable('#mrdaRankingPoints', {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
-            { data: 'rank', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
+            { data: 'rank', width: '1em', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
             { data: 'logo', orderable: false, className: 'dt-teamDetailsClick', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
             { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick teamName', 
                 createdCell: function (td, cellData, rowData, row, col) {

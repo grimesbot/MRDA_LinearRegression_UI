@@ -44,13 +44,16 @@ class MrdaTeam {
         this.chart = false;
     }
 
-    getRankingPointHistory(date) {
+    getRankingPointHistory(date, addWeek=false) {
         if (this.rankingPointsHistory.size === 0)
             return;
 
         // Start search from most recent Wednesday on or before date
         let searchDate = new Date(date);
         searchDate.setDate(searchDate.getDate() - ((searchDate.getDay() - 3 + 7) % 7));
+
+        if (addWeek)
+            searchDate.setDate(searchDate.getDate() + 7);
 
         let oldest = new Date(this.rankingPointsHistory.keys().next().value + " 00:00:00");
 
