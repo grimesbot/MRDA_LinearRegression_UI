@@ -12,9 +12,6 @@
     <body>
         <nav class="navbar navbar-expand-lg sticky-top bg-light">
             <div class="container-xxl d-flex flex-row align-items-center justify-content-center">
-                <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler" aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
                 <a class="navbar-brand" href="#">
                     <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" height="50" class="d-inline-block">
                     Rankings Algorithm
@@ -32,6 +29,9 @@
                     </select>
                     <label for="region" class="col-form-label">Region</label>
                 </div>
+                <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler" aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
                 <div class="collapse navbar-collapse" id="navbarToggler">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
@@ -39,6 +39,15 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#expectedRatioCalcModal">Predictor</a>
+                        </li>
+                        <li class="nav-item onlyCollapsed">
+                            <a class="nav-link" href="https://mrda.org/rankings/">Official MRDA Rankings & Policy</a>                
+                        </li>
+                        <li class="nav-item onlyCollapsed">
+                            <a class="nav-link" href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation</a> 
+                        </li>
+                        <li class="nav-item onlyCollapsed">
+                            <a class="nav-link" href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
                         </li>
                     </ul>
                 </div>
@@ -74,12 +83,17 @@
                 <thead>
                     <tr>
                         <th>Rank Sort</th>
-                        <th width="5%">Rank</th>
+                        <th width="1em">Rank</th>
                         <th>Team</th>
-                        <th data-toggle="tooltip" title="The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">Ranking Points</th>
-                        <th data-toggle="tooltip" title="Relative Standard Error">Error</th>
-                        <th data-toggle="tooltip" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
-                        <th width="5%">Chart</th>                            
+                        <th width="5em" data-toggle="tooltip" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP</th>
+                        <th width="5em" data-toggle="tooltip" title="Relative Standard Error">RSE</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Wins">W</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Losses">L</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Points For">PF</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Points Against">PA</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Point Differential">PD</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Display team's Ranking Point history in line chart above.">Chart</th>
                     </tr>
                 </thead>
             </table>
@@ -91,8 +105,9 @@
             </div>
             <div style="font-size:.85rem; margin-top:.5rem;">
                 Last refreshed at <span id="rankingsGeneratedDt"></span>.
-                <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Read Me</a> 
+                <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation</a> 
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
+                <a href="https://mrda.org/rankings/">Official MRDA Rankings & Policy</a>                
                 <a href="#gamesModal" data-bs-toggle="modal">All Game Data</a>
             </div>
             <!--
@@ -185,21 +200,21 @@
                         </div>
                         <div class="d-flex flex-row align-items-center justify-content-center">
                             <div class="p-2 text-end">
-                                <label for="homeRankingPoints" style="font-weight: bold;">Home Ranking Points</label>
+                                <label for="homeRankingPoints" style="font-weight: bold;">Ranking Points</label>
                                 <div id="homeRankingPoints"></div>
                             </div>
                             <div class="p-2">
-                                <img id="predictorHomeTeamLogo" height="100" src="team-logos\MRDA-Logo-Acronym.png" >
+                                <img id="predictorHomeTeamLogo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2 text-center">
                                 <label for="expectedScoreRatio" style="font-weight: bold;">Expected Score Ratio</label>
                                 <div id="expectedScoreRatio"></div>
                             </div>
                             <div class="p-2">
-                                <img id="predictorAwayTeamLogo" height="100" src="team-logos\MRDA-Logo-Acronym.png" >
+                                <img id="predictorAwayTeamLogo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2">
-                                <label for="awayRankingPoints" style="font-weight: bold;">Away Ranking Points</label>
+                                <label for="awayRankingPoints" style="font-weight: bold;">Ranking Points</label>
                                 <div id="awayRankingPoints"></div>
                             </div>
                         </div>

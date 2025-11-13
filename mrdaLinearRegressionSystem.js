@@ -25,6 +25,8 @@ class MrdaTeam {
         this.gameHistory = []
         this.activeStatus = false;
         this.activeStatusGameCount = 0;
+        this.wins = 0;
+        this.losses = 0;
         this.forfeits = 0;
         this.rankingPoints = 0;
         this.relStdErr = 0;
@@ -36,6 +38,8 @@ class MrdaTeam {
         this.regionRank = null;        
         this.postseasonEligible = false;
         this.postseasonPosition = null;
+        this.pointsFor = 0;
+        this.pointsAgainst = 0;
         this.chart = false;
     }
 
@@ -170,11 +174,26 @@ class MrdaLinearRegressionSystem {
 //                    }
                 }
 
-                if (gameDt >= minDt && mrdaGame.forfeit) {
-                    if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
-                        homeTeam.forfeits += 1;
-                    else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
-                        awayTeam.forfeits += 1;
+                if (gameDt >= minDt) {
+                    if (mrdaGame.forfeit) {
+                        if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
+                            homeTeam.forfeits += 1;
+                        else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
+                            awayTeam.forfeits += 1;
+                    } else {
+                        homeTeam.pointsFor += mrdaGame.scores[mrdaGame.homeTeamId];
+                        homeTeam.pointsAgainst += mrdaGame.scores[mrdaGame.awayTeamId];
+                        awayTeam.pointsFor += mrdaGame.scores[mrdaGame.awayTeamId];
+                        awayTeam.pointsAgainst += mrdaGame.scores[mrdaGame.homeTeamId];
+
+                        if (mrdaGame.scores[mrdaGame.homeTeamId] > mrdaGame.scores[mrdaGame.awayTeamId]) {
+                            homeTeam.wins++;
+                            awayTeam.losses++;
+                        } else {
+                            awayTeam.wins++;
+                            homeTeam.losses++;
+                        }
+                    }
                 }
 
                 homeTeam.gameHistory.push(mrdaGame);

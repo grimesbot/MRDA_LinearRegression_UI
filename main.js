@@ -255,10 +255,15 @@ function calculateAndDisplayRankings() {
             { data: 'rankingPoints', className: 'dt-teamDetailsClick' },
             { data: 'relStdErr', className: 'dt-teamDetailsClick relStdErr', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
             { data: 'activeStatusGameCount', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
+            { data: 'wins', orderable: false, className: 'dt-teamDetailsClick'},
+            { data: 'losses', orderable: false, className: 'dt-teamDetailsClick'},
+            { data: 'pointsFor', orderable: false, className: 'dt-teamDetailsClick points'},
+            { data: 'pointsFor', data: 'pointsAgainst', orderable: false, className: 'dt-teamDetailsClick points'},       
+            { data: function (row) { return row.pointsFor - row.pointsAgainst; }, className: 'dt-teamDetailsClick points', createdCell: function (td, data) { if (data > 0) $(td).prepend("+"); }},                        
             //{ data: 'postseasonEligible', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data ? 1 : 0; }, createdCell: function (td, data) { $(td).text(data ? 'Yes' : 'No'); }},
             { data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
-        data: Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter(team => team.activeStatusGameCount > 0 && (team.region == region || region == "GUR")),
+        data: Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR")),
         dom: 't',
         paging: false,
         searching: false,
@@ -366,9 +371,9 @@ async function setupUpcomingGames() {
     new DataTable('#upcomingGames', {
             columns: [
                 { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
-                { title: "Home Team, Ranking Points", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return mrda_teams[data].name + ", " + full.home_team_rp + (full.home_team_logo ? "<img height='40' class='ms-2' src='" + full.home_team_logo + "'>" : "") }  },
+                { title: "Home Team", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return mrda_teams[data].name + (full.home_team_logo ? "<img height='40' class='ms-2' src='" + full.home_team_logo + "'>" : "") }  },
                 { title: "Predicted Ratio", className: 'dt-center', data: 'expected_ratio', render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
-                { title: "Away Team, Ranking Points", data: 'away_team_id', render: function(data, type, full) {return (full.away_team_logo ? "<img height='40' class='me-2' src='" + full.away_team_logo + "'>" : "") + mrda_teams[data].name + ", " + full.away_team_rp }  },
+                { title: "Away Team", data: 'away_team_id', render: function(data, type, full) {return (full.away_team_logo ? "<img height='40' class='me-2' src='" + full.away_team_logo + "'>" : "") + mrda_teams[data].name }  },
                 { title: "Event Name", data: 'event_name'}
             ],
             data: upcomingGames,
@@ -429,8 +434,8 @@ async function main() {
     $("#region").on( "change", calculateAndDisplayRankings );
 
     $('[data-toggle="tooltip"]').tooltip();
-    $('[data-toggle="tooltip"]:not(:has(.dt-column-title))').not('th').append(' <i class="bi bi-question-circle"></i>');
-    $('th[data-toggle="tooltip"] .dt-column-title').append(' <i class="bi bi-question-circle"></i>');
+    $('[data-toggle="tooltip"]:not(.noIcon):not(:has(.dt-column-title))').not('th').append(' <i class="bi bi-question-circle"></i>');
+    $('th[data-toggle="tooltip"]:not(.noIcon) .dt-column-title').append(' <i class="bi bi-question-circle"></i>');
 
     $('.betaFlag').tooltip({title: "This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly."});
 

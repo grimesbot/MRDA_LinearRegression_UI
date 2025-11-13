@@ -45,3 +45,11 @@ div[class^="postseasonPosition-"] {
     padding: 2px 5px;
     vertical-align: text-top;
 }
+
+.navbar-collapse:not(.collapsing):not(.show) .onlyCollapsed {
+    display:none;
+}
+
+td.points {
+    font-size: .85em;
+}
