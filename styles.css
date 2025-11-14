@@ -1,3 +1,7 @@
+body {
+  min-width: 667px;
+}
+
 td.dt-teamDetailsClick {
     cursor: pointer;
 }
@@ -6,19 +10,23 @@ td.dt-teamDetailsClick {
     border-left: 1px solid rgba(0, 0, 0, 0.3);
 }
 
-.postseasonPosition-GUR {
+div.postseasonPosition-GUR,
+.postseasonPosition-GUR td {
     background-color: rgba(99,212,113, 0.18) !important;    
 }
 
-.postseasonPosition-AA {
+div.postseasonPosition-AA,
+.postseasonPosition-AA td {
     background-color: rgba(255,212,73, 0.4) !important;    
 }
 
-.postseasonPosition-AM {
+div.postseasonPosition-AM,
+.postseasonPosition-AM td {
     background-color: rgba(241,80,37, 0.18) !important;    
 }
 
-.postseasonPosition-EUR {
+div.postseasonPosition-EUR,
+.postseasonPosition-EUR td {
     background-color: rgba(75,136,162, 0.18) !important;    
 }
 
@@ -67,7 +75,25 @@ td.teamLogo {
     width: 60px;
 }
 
+td {
+    vertical-align: middle;
+}
+
 #rankingsChart,
 #teamChart {
-    height: 30rem;
+    height: 25rem;
+}
+
+.form-floating>.form-select {
+    font-size: .95em !important;
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+    padding-left: .5rem !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0 !important;
+}
+
+.form-floating>label {
+    font-size: .9em !important;
+    padding: 0.5rem 0.5rem !important;
 }

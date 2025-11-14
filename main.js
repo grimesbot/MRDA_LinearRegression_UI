@@ -14,12 +14,12 @@ function populateRankingDates() {
             let thisWedDt = new Date(todayDt);
             thisWedDt.setDate(thisWedDt.getDate() + ((3 - thisWedDt.getDay() + 7) % 7)); // Set to Wednesday = 3
             let thisWedStr = getStandardDateString(thisWedDt);
-            $dropdown.prepend($("<option />").val(thisWedStr).text(`Current (${thisWedStr})`));
+            $dropdown.prepend($("<option />").val(thisWedStr).text('Today'));
             $dropdown.val(thisWedStr);
         }
 
         let dtStr = getStandardDateString(searchDt);
-        $dropdown.prepend($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()} (${dtStr})`));
+        $dropdown.prepend($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()}`));
         
         if (searchDt == todayDt)
             $dropdown.val(dtStr);
@@ -280,9 +280,9 @@ function calculateAndDisplayRankings() {
             { data: 'activeStatusGameCount', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
             { data: 'wins', orderable: false, className: 'dt-teamDetailsClick'},
             { data: 'losses', orderable: false, className: 'dt-teamDetailsClick'},
-            { data: 'pointsFor', orderable: false, className: 'dt-teamDetailsClick points'},
-            { data: 'pointsFor', data: 'pointsAgainst', orderable: false, className: 'dt-teamDetailsClick points'},       
-            { data: function (row) { return row.pointsFor - row.pointsAgainst; }, className: 'dt-teamDetailsClick points', createdCell: function (td, data) { if (data > 0) $(td).prepend("+"); }},                        
+            //{ data: 'pointsFor', orderable: false, className: 'dt-teamDetailsClick points'},
+            //{ data: 'pointsAgainst', orderable: false, className: 'dt-teamDetailsClick points'},       
+            //{ data: function (row) { return row.pointsFor - row.pointsAgainst; }, className: 'dt-teamDetailsClick points', createdCell: function (td, data) { if (data > 0) $(td).prepend("+"); }},                        
             //{ data: 'postseasonEligible', className: 'dt-teamDetailsClick', render: function (data, type, full) { return data ? 1 : 0; }, createdCell: function (td, data) { $(td).text(data ? 'Yes' : 'No'); }},
             { data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
@@ -441,9 +441,9 @@ function setupPredictedRatioCalc() {
     $('#gameDate').change(calculatePredictedRatio);
 }
 
-function setStickyOffset() {
-    $("thead.sticky-top").css("top", $("nav.sticky-top").outerHeight());
-}
+//function setStickyOffset() {
+    //$("thead.sticky-top").css("top", $("nav.sticky-top").outerHeight());
+//}
 
 async function main() {
 
@@ -451,7 +451,7 @@ async function main() {
 
     populateRankingDates();
 
-    setStickyOffset();
+    //setStickyOffset();
 
     //setRegion();
 
@@ -477,9 +477,11 @@ async function main() {
 
     setupApiGames();
 
-    $( window ).on( "resize", function() {
-        setStickyOffset();
-    });
+    //$('#mrdaRankingPoints').DataTable().columns.adjust().draw();
+
+    //$( window ).on( "resize", function() {
+        //$('#mrdaRankingPoints').DataTable().columns.adjust().draw();
+    //});
 }
 
 window.addEventListener('load', main);

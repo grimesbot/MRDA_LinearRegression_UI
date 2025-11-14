@@ -2,24 +2,26 @@
 <html lang="en" data-bs-theme>
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        
         <title>MRDA Rankings Algorithm using Linear Regression</title>
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
-        <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.css" />
+        <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
         <nav class="navbar navbar-expand-lg sticky-top bg-light">
-            <div class="container-xxl d-flex flex-row align-items-center justify-content-center">
+            <div class="container-xl d-flex flex-row align-items-center justify-content-center">
                 <a class="navbar-brand" href="#">
-                    <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" height="50" class="d-inline-block">
+                    <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" height="40" class="d-inline-block">
                     Rankings Algorithm
                     <span class="betaFlag">BETA</span>
                 </a>
                 <div class="me-2 form-floating">
                     <select class="form-select" name="date" id="date" aria-label="Rankings Date"></select>
-                    <label for="date">Rankings Date</label>
+                    <label for="date">Date</label>
                 </div>
                 <div class="me-2 form-floating">
                     <select class="form-select" name="region" id="region" aria-label="Region">
@@ -53,11 +55,11 @@
                 </div>
             </div>
         </nav>
-        <div id="rankingsChartContainer" class="container-xxl" >
+        <div id="rankingsChartContainer" class="container-xl" >
             <canvas id="rankingsChart"></canvas>
         </div>
 
-        <div id="postseasonLegend" class="container-xxl text-center" style="font-size:.8rem; margin-top:.5rem;">
+        <div id="postseasonLegend" class="container-xl text-center" style="font-size:.8rem; margin-top:.5rem;">
             <div class="d-inline-block">Potential Postseason Tournament Invites:</div>
             <div class="postseasonPosition-GUR d-inline-block" data-toggle="tooltip" title="The top 7 ranked teams globally will receive a bye to MRDA Championships.">
                 MRDA Championships
@@ -73,26 +75,27 @@
                 <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event Australasian Qualifiers are not held, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.<br><br>If there are no eligible Australasian teams, the next eligible team from any region will be invited.">Champs Invite</span>
             </div>&nbsp;
             <div class="postseasonPosition-AM d-inline-block">
-                North American
+                Americas
                 <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked teams from the Americas who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Americas Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event Americas Qualifiers are not held, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.">Qualifiers</span>
                 <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event Americas Qualifiers are not held, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.<br><br>If there are no more eligible teams from the Americas, the next eligible team(s) from any region will be invited.">Champs Invites</span></div>
         </div>
         
-        <main id="mrdaRankingPointsContainer" role="main" class="container-xxl" >
-            <table id="mrdaRankingPoints" class="display" width="100%">
-                <thead class="bg-white sticky-top">
+        <main id="mrdaRankingPointsContainer" role="main" class="container-xl table-responsive" >
+            <table id="mrdaRankingPoints" class="table table-striped" width="100%">
+                <thead>
                     <tr>
                         <th>Rank Sort</th>
-                        <th width="1em">Rank</th>
+                        <th width="1em"></th>
                         <th colspan="2">Team</th>
-                        <th width="5em" data-toggle="tooltip" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP</th>
-                        <th width="5em" data-toggle="tooltip" title="Relative Standard Error">RSE</th>
+                        <th width="6em" data-toggle="tooltip" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP</th>
+                        <th width="6em" data-toggle="tooltip" title="Relative Standard Error">RSE</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Wins">W</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Losses">L</th>
-                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Points For">PF</th>
+                        <!--<th width="1em" data-toggle="tooltip" class="noIcon" title="Points For">PF</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Points Against">PA</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Point Differential">PD</th>
+                        -->
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Display team's Ranking Point history in line chart above.">Chart</th>
                     </tr>
                 </thead>
@@ -104,7 +107,7 @@
                 <sup>▼</sup>Two rank penalty applied for each forfeit.
             </div>
             <div style="font-size:.85rem; margin-top:.5rem;">
-                Last refreshed at <span id="rankingsGeneratedDt"></span>.
+                Last refreshed at <span id="rankingsGeneratedDt"></span>.<br>
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation</a> 
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
                 <a href="https://mrda.org/rankings/">Official MRDA Rankings & Policy</a>                
@@ -132,7 +135,7 @@
                         <div>
                             <canvas id="teamChart"></canvas>
                         </div>
-                        <table id="teamGameHistory" class="display" width="100%">
+                        <table id="teamGameHistory" class="table table-striped" width="100%">
                             <thead>
                             <tr>
                                 <th rowspan="2" width="15%">Date</th>
@@ -162,7 +165,9 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <table id="apiGames" class="display" width="100%"></table>
+                        <div class="table-responsive">
+                            <table id="apiGames" class="table table-striped" width="100%"></table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -176,7 +181,9 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <table id="upcomingGames" class="display" width="100%"></table>
+                        <div class="table-responsive">
+                            <table id="upcomingGames" class="table table-striped" width="100%"></table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -227,11 +234,11 @@
                     </div>
                 </div>
             </div>
-        </div>  
+        </div>          
         <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/2.3.5/js/dataTables.bootstrap5.min.js"></script>   
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
