@@ -160,6 +160,7 @@ for data in gamedata:
         "forfeit": data["event"]["forfeit"] == 1,
         "forfeit_team_id": forfeit_team_id,
         "event_name": data["sanctioning"]["event_name"],
+        "sanctioning_id": data["event"]["sanctioning_id"],
         "championship": not data["sanctioning"]["event_name"] is None and "Mens Roller Derby Association Championships" in data["sanctioning"]["event_name"],
         "qualifier": not data["sanctioning"]["event_name"] is None and "Qualifiers" in data["sanctioning"]["event_name"],
         "status": data["event"]["status"],

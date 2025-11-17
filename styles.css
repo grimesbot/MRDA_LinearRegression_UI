@@ -1,61 +1,23 @@
+/* Minimum width, it's responsive but only to a point.*/
 body,
 .container-xl,
 .modal-xl {
   min-width: 667px;
 }
 
+/* Bootstrap modal has a bug on mobile devices, fix */
 .modal-xl {
     padding-right: 0px !important;
 }
-
 .modal-backdrop {
     width: 100%;
     height: 100%;
 }
 
-td.dt-teamDetailsClick {
-    cursor: pointer;
+/* Navbar styling */
+.navbar-collapse:not(.collapsing):not(.show) .onlyCollapsed {
+    display:none;
 }
-
-.border-left {
-    border-left: 1px solid rgba(0, 0, 0, 0.3);
-}
-
-div.postseasonPosition-GUR,
-.postseasonPosition-GUR td {
-    background-color: rgba(99,212,113, 0.18) !important;    
-}
-
-div.postseasonPosition-AA,
-.postseasonPosition-AA td {
-    background-color: rgba(255,212,73, 0.4) !important;    
-}
-
-div.postseasonPosition-AM,
-.postseasonPosition-AM td {
-    background-color: rgba(241,80,37, 0.18) !important;    
-}
-
-div.postseasonPosition-EUR,
-.postseasonPosition-EUR td {
-    background-color: rgba(75,136,162, 0.18) !important;    
-}
-
-div[class^="postseasonPosition-"] {
-    margin-top:.25rem;
-    padding:.25rem;
-    border-radius: 5px;
-}
-
-.invites {
-    display: none;
-}
-
-.dt-column-title i.bi-question-circle {
-    font-size:.75rem;
-    vertical-align: text-top;
-}
-
 .betaFlag {
     background: #970D00;
     border-radius: 5px;
@@ -65,41 +27,7 @@ div[class^="postseasonPosition-"] {
     padding: 2px 5px;
     vertical-align: text-top;
 }
-
-.navbar-collapse:not(.collapsing):not(.show) .onlyCollapsed {
-    display:none;
-}
-
-/*
-#mrdaRankingPoints thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-*/
-
-.teamLocation,
-.teamRp {
-    font-size: .8em;
-}
-
-td.points {
-    font-size: .85em;
-}
-
-td.teamLogo {
-    width: 60px;
-}
-
-td {
-    vertical-align: middle;
-}
-
-#rankingsChart,
-#teamChart {
-    height: 25rem;
-}
-
+/* Make Floating selects in navbar more compact */ 
 nav .form-floating>.form-select {
     font-size: .95em !important;
     height: 2.5rem !important;
@@ -108,8 +36,74 @@ nav .form-floating>.form-select {
     padding-top: 0.75rem !important;
     padding-bottom: 0 !important;
 }
-
 nav .form-floating>label {
     font-size: .9em !important;
     padding: 0.5rem 0.5rem !important;
+}
+
+/* Chart heights */
+#rankingsChart,
+#teamChart {
+    height: 25rem;
+}
+
+/* Vertical line separating ratios and ranking points on team details */
+.border-left {
+    border-left: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+/* Postseason Position Background Colors */
+div.postseasonPosition-GUR,
+.postseasonPosition-GUR td {
+    background-color: rgba(99,212,113, 0.18) !important;    
+}
+div.postseasonPosition-AA,
+.postseasonPosition-AA td {
+    background-color: rgba(255,212,73, 0.4) !important;    
+}
+div.postseasonPosition-AM,
+.postseasonPosition-AM td {
+    background-color: rgba(241,80,37, 0.18) !important;    
+}
+div.postseasonPosition-EUR,
+.postseasonPosition-EUR td {
+    background-color: rgba(75,136,162, 0.18) !important;    
+}
+/* Postseason Position legend */
+div[class^="postseasonPosition-"] {
+    margin-top:.25rem;
+    padding:.25rem;
+    border-radius: 5px;
+}
+.invites {
+    display: none;
+}
+
+/* General DataTable styles and team rows */
+td {
+    vertical-align: middle;
+}
+td.teamLogo {
+    width: 60px;
+}
+.teamLocation,
+.teamRp {
+    font-size: .8em;
+}
+/* Tooltip icon in column title */
+.dt-column-title i.bi-question-circle {
+    font-size:.75rem;
+    vertical-align: text-top;
+}
+/* Click entire row to see team details */
+td.dt-teamDetailsClick {
+    cursor: pointer;
+}
+
+/* Team detail styling */
+.text-overflow-ellipsis {
+    max-width: 14em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }

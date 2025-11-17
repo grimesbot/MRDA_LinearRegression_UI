@@ -8,9 +8,10 @@ class MrdaGame {
         this.scores[this.awayTeamId] = game.away_team_score;
         this.forfeit = game.forfeit;
         this.forfeit_team_id = game.forfeit_team_id;
-        this.eventName = game.event_name;
-        this.championship = this.eventName && this.eventName.includes('Mens Roller Derby Association Championships');
-        this.qualifier = this.eventName && this.eventName.includes('Qualifiers');
+        this.event_name = game.event_name;
+        this.sanctioning_id = game.sanctioning_id;
+        this.championship = this.event_name && this.event_name.includes('Mens Roller Derby Association Championships');
+        this.qualifier = this.event_name && this.event_name.includes('Qualifiers');
         this.expectedRatios = {};
         this.rankingPoints = {};
     }
@@ -39,8 +40,6 @@ class MrdaTeam {
         this.regionRank = null;        
         this.postseasonEligible = false;
         this.postseasonPosition = null;
-        this.pointsFor = 0;
-        this.pointsAgainst = 0;
         this.chart = false;
     }
 
@@ -86,28 +85,19 @@ function getStandardDateString(date) {
 
 const regions = ['EUR', 'AA', 'AM'];
 
-//const q4_2024_deadline = new Date (2024, 12 - 1, 4);
-//const q1_2025_deadline = new Date (2025, 3 - 1, 5);
-//const q2_2025_deadline = new Date (2025, 6 - 1, 4);
-//const q3_2025_deadline = new Date (2025, 9 - 1, 3);
-//const q4_2025_deadline = new Date (2025, 12 - 1, 3);
-
 class MrdaLinearRegressionSystem {
-    constructor(teams) {
+    constructor(teams, rankingPeriodDeadlineDt, rankingPeriodStartDt, region) {
         this.mrdaTeams = {};
         Object.keys(teams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, teams[teamId]));
-//        this.absoluteLogErrors = [];    
-//        this.absoluteLogErrors_2025_Q1 = [];
-//        this.absoluteLogErrors_2025_Q2 = [];
-//        this.absoluteLogErrors_2025_Q3 = [];
-//        this.absoluteLogErrors_2025_Q4 = [];
+        this.rankingPeriodDeadlineDt = rankingPeriodDeadlineDt;
+        this.rankingPeriodStartDt = rankingPeriodStartDt;
+        this.region = region;
     }
 
-    updateRankings(rankings_history, calcDate) {
-        let calcDt = new Date(calcDate + " 00:00:00");
+    updateRankings(rankings_history) {
         for (const [date, rankings] of Object.entries(rankings_history)) {
             let rankingDt = new Date(date + " 00:00:00");
-            if (rankingDt <= calcDt) {
+            if (rankingDt <= rankingPeriodDeadlineDt) {
                 Object.values(this.mrdaTeams).forEach(team => {
                     let rankingPoints = team.teamId in rankings ? rankings[team.teamId].rp : 0;
                     let stdErr = team.teamId in rankings ? rankings[team.teamId].se : 0;
@@ -135,21 +125,10 @@ class MrdaLinearRegressionSystem {
         }
     }
 
-    addGameHistory(games, calcDate) {
-        let calcDt = new Date(calcDate + " 00:00:00");
-        let minDt = new Date(calcDate);
-        minDt.setDate(minDt.getDate() - 7 * 52);
-
-        // If minDt is a greater # weekday of month than calcDt, set minDt back an additional week
-        // e.g. if calcDt is 1st Wednesday of June, minDt should be 1st Wednesday of June last year.
-        // calcDt = Jun 7, 2028, 52 weeks prior would minDt = Jun 9, 2027 which is 2nd Wednesday of June.
-        // set minDt back an additional week minDt = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
-        if (Math.floor((minDt.getDate() - 1) / 7) > Math.floor((calcDt.getDate() - 1) / 7))
-            minDt.setDate(minDt.getDate() - 7);
-
+    addGameHistory(games) {
         games.forEach(game => {
             let gameDt = new Date(game.date);
-            if (gameDt < calcDt)
+            if (gameDt < this.rankingPeriodDeadlineDt)
             {
                 let mrdaGame = new MrdaGame(game);
                 let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
@@ -163,33 +142,15 @@ class MrdaLinearRegressionSystem {
                     let awayActualRatio = mrdaGame.scores[mrdaGame.awayTeamId]/mrdaGame.scores[mrdaGame.homeTeamId];
                     mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
                     mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
-
-//                    if (gameDt > q4_2024_deadline) {
-//                        let absLogError = Math.abs(Math.log(mrdaGame.expectedRatios[mrdaGame.homeTeamId]/homeActualRatio));
-//                        this.absoluteLogErrors.push(absLogError);
-//                        if (q4_2024_deadline <= gameDt && gameDt < q1_2025_deadline)
-//                            this.absoluteLogErrors_2025_Q1.push(absLogError);
-//                        if (q1_2025_deadline <= gameDt && gameDt < q2_2025_deadline)
-//                            this.absoluteLogErrors_2025_Q2.push(absLogError);
-//                        if (q2_2025_deadline <= gameDt && gameDt < q3_2025_deadline)
-//                            this.absoluteLogErrors_2025_Q3.push(absLogError);
-//                        if (q3_2025_deadline <= gameDt && gameDt < q4_2025_deadline)
-//                            this.absoluteLogErrors_2025_Q4.push(absLogError);
-//                    }
                 }
 
-                if (gameDt >= minDt) {
+                if (gameDt >= this.rankingPeriodStartDt) {
                     if (mrdaGame.forfeit) {
                         if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
                             homeTeam.forfeits += 1;
                         else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
                             awayTeam.forfeits += 1;
                     } else {
-                        homeTeam.pointsFor += mrdaGame.scores[mrdaGame.homeTeamId];
-                        homeTeam.pointsAgainst += mrdaGame.scores[mrdaGame.awayTeamId];
-                        awayTeam.pointsFor += mrdaGame.scores[mrdaGame.awayTeamId];
-                        awayTeam.pointsAgainst += mrdaGame.scores[mrdaGame.homeTeamId];
-
                         if (mrdaGame.scores[mrdaGame.homeTeamId] > mrdaGame.scores[mrdaGame.awayTeamId]) {
                             homeTeam.wins++;
                             awayTeam.losses++;
@@ -206,7 +167,7 @@ class MrdaLinearRegressionSystem {
         });
     }
 
-    rankTeams(region) {
+    rankTeams() {
 
         // Rank the active teams
         let sortedActiveTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus)
@@ -216,7 +177,7 @@ class MrdaLinearRegressionSystem {
             let team = sortedActiveTeams[i];
             team.rank = i + 1;
 
-            if (region == "GUR" && team.rank <= 5)
+            if (this.region == "GUR" && team.rank <= 5)
                 team.chart = true;
         }
 
@@ -248,8 +209,8 @@ class MrdaLinearRegressionSystem {
         }
 
         // Set regionRank if a region is selected
-        if (region != "GUR") {
-            let regionSortedRankedTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.region == region)
+        if (this.region != "GUR") {
+            let regionSortedRankedTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.region == this.region)
                                                         .sort((a, b) => a.rank - b.rank);
             for (let i = 0; i < regionSortedRankedTeams.length; i++) {
                 let team = regionSortedRankedTeams[i];

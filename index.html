@@ -9,10 +9,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
-        <!--
         <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.bootstrap5.min.css" />
-        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.7/css/responsive.bootstrap5.min.css" />
-        -->
         <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.6.0/css/rowGroup.bootstrap5.min.css" />
         <link rel="stylesheet" href="styles.css" />
     </head>
@@ -46,6 +43,9 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#expectedRatioCalcModal">Predictor</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#gamesModal">All Scores</a>
                         </li>
                         <li class="nav-item onlyCollapsed">
                             <a class="nav-link" href="https://mrda.org/rankings/">Official MRDA Rankings & Policy</a>                
@@ -97,10 +97,6 @@
                         <th width="1em" data-toggle="tooltip" class="noIcon" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Wins">W</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Losses">L</th>
-                        <!--<th width="1em" data-toggle="tooltip" class="noIcon" title="Points For">PF</th>
-                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Points Against">PA</th>
-                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Point Differential">PD</th>
-                        -->
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Display team's Ranking Point history in line chart above.">📈</th>
                     </tr>
                 </thead>
@@ -109,19 +105,14 @@
                 *Not enough games to be Postseason Eligible.
             </div>
             <div id="forfeitAsterisk" style="font-size:.85rem;">
-                <sup>▼</sup>Two rank penalty applied for each forfeit.
+                <sup>↓</sup>Two rank penalty applied for each forfeit.
             </div>
             <div style="font-size:.85rem; margin-top:.5rem;">
-                Last refreshed at <span id="rankingsGeneratedDt"></span>.<br>
+                Last refreshed at <span id="rankingsGeneratedDt"></span>.
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation</a> 
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
                 <a href="https://mrda.org/rankings/">Official MRDA Rankings & Policy</a>                
-                <a href="#gamesModal" data-bs-toggle="modal">All Game Data</a>
             </div>
-            <!--
-            <div id="pctErrorMeal" class="container">                
-            </div>
-            -->
         </main>
 
         <div id="teamDetailModal" class="modal fade" tabindex="-1" aria-labelledby="teamDetailModalLabel" aria-hidden="true">
@@ -143,16 +134,16 @@
                         <table id="teamGameHistory" class="table table-striped" width="100%">
                             <thead>
                             <tr>
-                                <th rowspan="2" width="15%">Date</th>
+                                <th rowspan="2" width="7em">Date</th>
                                 <th rowspan="2">Score</th>
                                 <th colspan="2" class="text-center">Ratio</th>
                                 <th colspan="2" class="text-center border-left">Ranking Points</th>                            
                             </tr>
                             <tr>
-                                <th width="5%">Expected</th>
-                                <th width="5%">Actual</th>
-                                <th width="10%" class="border-left">Before</th>
-                                <th width="10%">After</th>
+                                <th width="1em" data-toggle="tooltip" class="noIcon" title="Expected Score Ratio">Exp</th>
+                                <th width="1em" data-toggle="tooltip" class="noIcon" title="Actual Score Ratio">Act</th>
+                                <th width="4em" class="border-left">Before</th>
+                                <th width="4em">After</th>
                             </tr>
                             </thead>
                         </table>
@@ -166,12 +157,29 @@
             <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="gamesModalLabel">All MRDA Sanctioned Games Used in Rankings Calculations</h1>
+                        <h1 class="modal-title fs-5" id="gamesModalLabel">All score data used in current rankings calculation</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="table-responsive">
-                            <table id="apiGames" class="table table-striped" width="100%"></table>
+                            <table id="apiGames" class="table table-striped" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th class="dt-right">Home Team</th>
+                                        <th></th>
+                                        <th class="dt-center">Score</th>
+                                        <th></th>
+                                        <th>Away Team</th>
+                                        <th class="dt-center">Weight</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            <div id="peAsterisk" style="font-size:.85rem;">
+                                <sup>†</sup>Scores not yet validated
+                            </div>
+                            <div id="forfeitAsterisk" style="font-size:.85rem;">
+                                <sup>↓</sup>Forfeit
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -254,11 +262,7 @@
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/2.3.5/js/dataTables.bootstrap5.min.js"></script>   
-        <!--
         <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/dataTables.fixedHeader.min.js"></script>
-        <script src="https://cdn.datatables.net/responsive/3.0.7/js/dataTables.responsive.min.js"></script>
-        <script src="https://cdn.datatables.net/responsive/3.0.7/js/responsive.bootstrap5.js"></script>
-        -->
         <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/dataTables.rowGroup.min.js"></script>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
