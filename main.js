@@ -237,7 +237,7 @@ function calculateAndDisplayRankings() {
     new DataTable('#mrdaRankingPoints', {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
-            { data: 'rank', width: '1em', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
+            { data: 'rank', width: '1em', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (mrdaLinearRegressionSystem.region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
             { data: 'logo', orderable: false, className: 'dt-teamDetailsClick teamLogo', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
             { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick teamName', 
                 createdCell: function (td, cellData, rowData, row, col) {

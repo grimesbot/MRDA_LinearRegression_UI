@@ -42,9 +42,11 @@ nav .form-floating>label {
 }
 
 /* Chart heights */
-#rankingsChart,
+#rankingsChart {
+    height: 25em;
+}
 #teamChart {
-    height: 25rem;
+    height: 20em;
 }
 
 /* Vertical line separating ratios and ranking points on team details */
