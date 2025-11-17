@@ -9,6 +9,11 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
+        <!--
+        <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.bootstrap5.min.css" />
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.7/css/responsive.bootstrap5.min.css" />
+        -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.6.0/css/rowGroup.bootstrap5.min.css" />
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
@@ -96,7 +101,7 @@
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Points Against">PA</th>
                         <th width="1em" data-toggle="tooltip" class="noIcon" title="Point Differential">PD</th>
                         -->
-                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Display team's Ranking Point history in line chart above.">Chart</th>
+                        <th width="1em" data-toggle="tooltip" class="noIcon" title="Display team's Ranking Point history in line chart above.">📈</th>
                     </tr>
                 </thead>
             </table>
@@ -182,7 +187,17 @@
                     </div>
                     <div class="modal-body">
                         <div class="table-responsive">
-                            <table id="upcomingGames" class="table table-striped" width="100%"></table>
+                            <table id="upcomingGames" class="table table-striped" width="100%">
+                                <thead>
+                                    <tr>
+                                        <th class="dt-right">Home Team<div class='teamRp'>Ranking Points</div></th>
+                                        <th></th>
+                                        <th class="dt-center">Predicted Ratio</th>
+                                        <th></th>
+                                        <th>Away Team<div class='teamRp'>Ranking Points</div></th>
+                                    </tr>
+                                </thead>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -239,6 +254,12 @@
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/2.3.5/js/dataTables.bootstrap5.min.js"></script>   
+        <!--
+        <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/dataTables.fixedHeader.min.js"></script>
+        <script src="https://cdn.datatables.net/responsive/3.0.7/js/dataTables.responsive.min.js"></script>
+        <script src="https://cdn.datatables.net/responsive/3.0.7/js/responsive.bootstrap5.js"></script>
+        -->
+        <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/dataTables.rowGroup.min.js"></script>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>

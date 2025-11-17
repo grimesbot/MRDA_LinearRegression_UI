@@ -70,11 +70,16 @@ div[class^="postseasonPosition-"] {
     display:none;
 }
 
-.teamName {
-    line-height: 1.1;
+/*
+#mrdaRankingPoints thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
+*/
 
-.teamLocation {
+.teamLocation,
+.teamRp {
     font-size: .8em;
 }
 

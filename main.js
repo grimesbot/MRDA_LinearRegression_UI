@@ -272,7 +272,7 @@ function calculateAndDisplayRankings() {
                     if (rowData.activeStatus && rowData.forfeits > 0)
                         $td.append("<sup class='forfeitPenalty'>▼</sup>");
                     if (rowData.location) {
-                        $td.append("<br><span class='teamLocation'>" + rowData.location + "</span>");
+                        $td.append("<div class='teamLocation'>" + rowData.location + "</div>");
                     }
                 }},
             { data: 'rankingPoints', className: 'dt-teamDetailsClick' },
@@ -295,6 +295,8 @@ function calculateAndDisplayRankings() {
             name: 'rankSort',
             dir: 'asc'
         },
+        //fixedHeader: true,
+        //responsive: true,
         createdRow: function (row, data, dataIndex) {
         if (data.postseasonPosition != null) {
             $(row).addClass('postseasonPosition-' + data.postseasonPosition);
@@ -379,32 +381,41 @@ async function setupUpcomingGames() {
 
         return {
             date: game.event.game_datetime,
-            home_team_id: homeTeamId,
+            day: getStandardDateString(game.event.game_datetime),
+            home_team_name: mrda_teams[homeTeamId].name,
             home_team_rp: homeRp,
             home_team_logo: mrda_teams[homeTeamId].logo && mrda_teams[homeTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[homeTeamId].logo : mrda_teams[homeTeamId].logo,
-            away_team_id: awayTeamId,
+            away_team_name: mrda_teams[awayTeamId].name,
             away_team_rp: awayRp,
             away_team_logo: mrda_teams[awayTeamId].logo && mrda_teams[awayTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[awayTeamId].logo : mrda_teams[awayTeamId].logo,
             expected_ratio: expectedRatio ? expectedRatio.toFixed(2) : null,
-            event_name: game.sanctioning.event_name
+            event_name: "<span class='sanctioning_id' style='display:none;'>" + game.sanctioning.sanctioning_id + "</span>" + game.sanctioning.event_name,
+            sanctioning_id: game.sanctioning.sanctioning_id
         }
     });
 
+    upcomingGames.map(function(game) {game.sanctioning_id})
+        .filter((value, index, array) => array.indexOf(value) === index)
+        .forEach(function(sanctioning_id) {
+            let sanctioning_games = upcomingGames.filter(ug => ug.sanctioning_id == sanctioning_id);
+            let sanctioning_start_dt = sanctioning_games.sort((a, b) => new Date(a) - new Date(b))[0];
+            sanctioning_games.forEach(sg => sg.sanctioning_start_dt = sanctioning_start_dt);
+        });
 
     new DataTable('#upcomingGames', {
             columns: [
-                { title: "Date", name: 'date', data: 'date', render: getStandardDateString},
-                { title: "Home Team", className: 'dt-right', data: 'home_team_id', render: function(data, type, full) {return mrda_teams[data].name + (full.home_team_logo ? "<img height='40' class='ms-2' src='" + full.home_team_logo + "'>" : "") }  },
-                { title: "Predicted Ratio", className: 'dt-center', data: 'expected_ratio', render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
-                { title: "Away Team", data: 'away_team_id', render: function(data, type, full) {return (full.away_team_logo ? "<img height='40' class='me-2' src='" + full.away_team_logo + "'>" : "") + mrda_teams[data].name }  },
-                { title: "Event Name", data: 'event_name'}
+                { data: 'home_team_name', className: 'dt-right', render: function(data, type, full) {return data + "<div class='teamRp'>" + full.home_team_rp + "</div>"; } },
+                { data: "home_team_logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
+                { data: 'expected_ratio', width: '1em', className: 'dt-center',  render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
+                { data: "away_team_logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
+                { data: 'away_team_name', render: function(data, type, full) {return data + "<div class='teamRp'>" + full.away_team_rp + "</div>"; }  },
             ],
-            data: upcomingGames,
+            data: upcomingGames.sort((a, b) => a.sanctioning_start_dt != b.sanctioning_start_dt ? new Date(a.sanctioning_start_dt) - new Date(b.sanctioning_start_dt) : new Date(a.date) - new Date(b.date)),
+            rowGroup: {
+                dataSrc: ['event_name','day']
+            },
             lengthChange: false,
-            order: {
-                name: 'date',
-                dir: 'asc'
-            }
+            ordering: false
         });
 }
 
@@ -442,7 +453,7 @@ function setupPredictedRatioCalc() {
 }
 
 //function setStickyOffset() {
-    //$("thead.sticky-top").css("top", $("nav.sticky-top").outerHeight());
+//    $("#mrdaRankingPoints th").css("top", $("nav.sticky-top").outerHeight());
 //}
 
 async function main() {
@@ -477,11 +488,11 @@ async function main() {
 
     setupApiGames();
 
-    //$('#mrdaRankingPoints').DataTable().columns.adjust().draw();
+//  $('#mrdaRankingPoints').DataTable().columns.adjust().draw();
 
-    //$( window ).on( "resize", function() {
-        //$('#mrdaRankingPoints').DataTable().columns.adjust().draw();
-    //});
+//    $( window ).on( "resize", function() {
+//        setStickyOffset();
+//    });
 }
 
 window.addEventListener('load', main);
