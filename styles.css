@@ -42,10 +42,10 @@ nav .form-floating>label {
 }
 
 /* Chart heights */
-#rankingsChart {
+#rankingsChartContainer {
     height: 25rem;
 }
-#teamChart {
+#teamChartContainer {
     height: 20rem;
 }
 
