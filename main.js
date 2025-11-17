@@ -313,12 +313,12 @@ function setupApiGames() {
                 date: game.date,
                 day: getStandardDateString(game.date),
                 home_team_id: game.home_team_id,
-                home_team_name: mrda_teams[game.home_team_id].name,
+                home_team_name: mrda_teams[game.home_team_id].name + (game.forfeit && game.forfeit_team_id == game.home_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
                 home_team_logo: mrda_teams[game.home_team_id].logo && mrda_teams[game.home_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.home_team_id].logo : mrda_teams[game.home_team_id].logo,
-                game_score: game.home_team_score + "-" + game.away_team_score + (game.forfeit ? "<sup class='forfeitInfo'>↓</sup>" : "") + (game.status < 6 ? "<sup class='unvalidatedInfo'>†</sup>" : ""),
+                game_score: game.home_team_score + "-" + game.away_team_score + (game.status < 6 ? "<sup class='unvalidatedInfo'>†</sup>" : ""),
                 forfeit: game.forfeit,
                 away_team_id: game.away_team_id,
-                away_team_name: mrda_teams[game.away_team_id].name,
+                away_team_name: mrda_teams[game.away_team_id].name + (game.forfeit && game.forfeit_team_id == game.away_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
                 away_team_logo: mrda_teams[game.away_team_id].logo && mrda_teams[game.away_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.away_team_id].logo : mrda_teams[game.away_team_id].logo,
                 event_name: "<span class='sanctioning_id' style='display:none;'>" + game.sanctioning_id + "</span>" + (game.event_name ?? "&nbsp;"),
                 sanctioning_id: game.sanctioning_id,
@@ -384,11 +384,12 @@ function setupApiGames() {
                     dataSrc: ['event_name','day']
                 },
                 lengthChange: false,
-                ordering: false
+                ordering: false,
+                drawCallback: function (settings) {
+                    $(".unvalidatedInfo").tooltip({title: "Score not yet validated"});            
+                    $(".forfeitInfo").tooltip({title: "Forfeit"});
+                }
             });
-
-        $(".unvalidatedInfo").tooltip({title: "Score not yet validated"});            
-        $(".forfeitInfo").tooltip({title: "Forfeit"});
     });
 }
 
@@ -412,6 +413,7 @@ async function setupUpcomingGames() {
         payload = data.payload;
     } catch (error) {
         console.error('Error fetching games data:', error);
+        return;
     }
 
     let upcomingGames = payload.map(game => {
