@@ -8,10 +8,7 @@ class MrdaGame {
         this.scores[this.awayTeamId] = game.away_team_score;
         this.forfeit = game.forfeit;
         this.forfeit_team_id = game.forfeit_team_id;
-        this.event_name = game.event_name;
-        this.sanctioning_id = game.sanctioning_id;
-        this.championship = this.event_name && this.event_name.includes('Mens Roller Derby Association Championships');
-        this.qualifier = this.event_name && this.event_name.includes('Qualifiers');
+        this.event_id = game.event_id;
         this.expectedRatios = {};
         this.rankingPoints = {};
     }

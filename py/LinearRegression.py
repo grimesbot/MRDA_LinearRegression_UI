@@ -10,36 +10,30 @@ from dateutil.relativedelta import relativedelta
 from TeamInfo import team_info
 from GameList_history import games, team_abbrev_id_map
 
+# Constants
 RANKING_SCALE = 100 # add scale since we are not using seeds here
 RATIO_CAP = 4
+POSTSEASON_EVENT_NAMES = ["Western Hemisphere Cup", "Qualifiers", "Mens Roller Derby Association Championships"]
+# Start calculations from first Wednesday after WHC 2023
+START_DATE = date(2023,10,25)
+
+# Most recent Q1 ranking deadline to START_DATE (First Wednesday of March)
+q1_cutoff = date(2023,3,1)
 
 github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true'
 github_actions_scheduled_run = github_actions_run and 'GITHUB_EVENT_NAME' in os.environ and os.environ['GITHUB_EVENT_NAME'] == 'schedule'
 
+# Global variables
 mrda_teams = {}
+mrda_events = {}
 mrda_games = []
+rankings_history = {}
+last_calc_games = []
+last_calc_compliance_games = []
+last_calc_seeding = {}
 
-print("Initializing MRDA games list...")
 
-# Add 2023 games from GameList_history.py to mrda_games
-for game in [game for gameday in games for game in gameday]:
-    forfeit = (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0)
-    mrda_games.append({
-        "date": datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"),
-        "home_team_id": team_abbrev_id_map[game[1]],
-        "home_team_score": game[2],
-        "away_team_id": team_abbrev_id_map[game[3]],
-        "away_team_score": game[4],
-        "forfeit": forfeit,
-        "forfeit_team_id": None if not forfeit else (team_abbrev_id_map[game[1]] if game[2] == 0 and game[4] == 100 else team_abbrev_id_map[game[3]]),
-        "event_name": game[5] if len(game) > 5 else None,
-        "championship": "Western Hemisphere Cup" in game[5] if len(game) > 5 else False,
-        "qualifier": "Qualifiers" in game[5] if len(game) > 5 else False,
-        "status": 7
-    })
-
-print("Added " + str(len(mrda_games)) + " games from 2023 in GameList_history.py")
-
+# Methods
 def get_api_gamedata(startDate, status=None):
     url = "https://api.mrda.org/v1-public/sanctioning/algorithm"
     params = {
@@ -62,19 +56,6 @@ def get_api_gamedata(startDate, status=None):
 
     return payload
 
-# Get 2024+ games from API
-print("Begin MRDA Central API game data retrieval...")
-gamedata = get_api_gamedata(date(2024, 1, 1))
-print("Retrieved " + str(len(gamedata)) + " games from >=2024 in Pending Processing or Complete status")
-
-approved_gamedata = get_api_gamedata(date(2024, 1, 1), 3)
-print("Retrieved " + str(len(approved_gamedata)) + " games in Approved status")
-gamedata.extend(approved_gamedata)
-
-waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=45), 4)
-print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 45 days in Waiting for Documents status")
-gamedata.extend(waiting_for_documents_gamedata)
-
 def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
     # Delete if exists
     if os.path.exists(filename):
@@ -87,93 +68,7 @@ def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
             f.write(var_name + " = ")
         json.dump( data , f) #, indent=4) pretty print
 
-# Compare gamedata to JSON file from last calculation for scheduled runs.
-# Only recalculate rankings if gamedata changes (manual runs always recalculate).
-gamedata_json_filename = "mrda_gamedata.json"
-if github_actions_scheduled_run:
-    if os.path.exists(gamedata_json_filename):
-        with open( gamedata_json_filename , "r" ) as f:
-            file_content = f.read()
-            if file_content == json.dumps(gamedata):
-                # gamedata has not changed, exit without recalculating rankings
-                print("Game data from MRDA Central API has not changed, exiting without recalculating rankings.")
-                exit()
-# Save gamedata to JSON file for future comparison.
-write_json_to_file(gamedata, gamedata_json_filename)
-print("MRDA Central API gamedata saved to mrda_gamedata.json for future comparison.")
-
-# Validate and add games from API to mrda_games
-for data in gamedata:
-    # Required fields
-    if not "sanctioning" in data or data["sanctioning"] is None:
-        continue
-    if not "event" in data or data["event"] is None:
-        continue
-    if not "game_datetime" in data["event"] or data["event"]["game_datetime"] is None:
-        continue
-    if not "home_league" in data["event"] or data["event"]["home_league"] is None:
-        continue
-    if not "home_league_charter" in data["event"] or data["event"]["home_league_charter"] is None:
-        continue
-    if not "home_league_score" in data["event"] or data["event"]["home_league_score"] is None:
-        continue
-    if not "away_league" in data["event"] or data["event"]["away_league"] is None:
-        continue
-    if not "away_league_charter" in data["event"] or data["event"]["away_league_charter"] is None:
-        continue    
-    if not "away_league_score" in data["event"] or data["event"]["away_league_score"] is None:
-        continue
-    if not "forfeit" in data["event"]:
-        continue
-    if data["event"]["forfeit"] == 1 and (not "forfeit_league" in data["event"] or data["event"]["forfeit_league"] is None):
-        continue
-
-    # Map API data
-    gameDate = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
-    homeTeamId = str(data["event"]["home_league"]) + ("a" if data["event"]["home_league_charter"] == "primary" else "b")
-    awayTeamId = str(data["event"]["away_league"]) + ("a" if data["event"]["away_league_charter"] == "primary" else "b")
-
-    forfeit_team_id = None
-    if (data["event"]["forfeit"] == 1):
-        forfeit_team_id = homeTeamId if data["event"]["forfeit_league"] == data["event"]["home_league"] else awayTeamId
-
-    # Build teams dict    
-    if not homeTeamId in mrda_teams:
-        mrda_teams[homeTeamId] = {}
-        mrda_teams[homeTeamId]["name"] = team_info[homeTeamId]["name"] if homeTeamId in team_info and "name" in team_info[homeTeamId] else data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)")
-        mrda_teams[homeTeamId]["region"] = team_info[homeTeamId]["region"] if homeTeamId in team_info and "region" in team_info[homeTeamId] else "AM"
-        mrda_teams[homeTeamId]["logo"] = data["event"]["home_league_logo"] if "home_league_logo" in data["event"] and not data["event"]["home_league_logo"] is None else team_info[homeTeamId]["logo"] if "logo" in team_info[homeTeamId] else None
-        mrda_teams[homeTeamId]["location"] = team_info[homeTeamId]["location"] if homeTeamId in team_info and "location" in team_info[homeTeamId] else None        
-    if not awayTeamId in mrda_teams:
-        mrda_teams[awayTeamId] = {}
-        mrda_teams[awayTeamId]["name"] = team_info[awayTeamId]["name"] if awayTeamId in team_info and "name" in team_info[awayTeamId] else data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)")
-        mrda_teams[awayTeamId]["region"] = team_info[awayTeamId]["region"] if awayTeamId in team_info and "region" in team_info[awayTeamId] else "AM"        
-        mrda_teams[awayTeamId]["logo"] = data["event"]["away_league_logo"] if "away_league_logo" in data["event"] and not data["event"]["away_league_logo"] is None else team_info[awayTeamId]["logo"] if "logo" in team_info[awayTeamId] else None
-        mrda_teams[awayTeamId]["location"] = team_info[awayTeamId]["location"] if awayTeamId in team_info and "location" in team_info[awayTeamId] else None
-        
-    mrda_games.append({
-        "date": gameDate,
-        "home_team_id": homeTeamId,
-        "home_team_score": data["event"]["home_league_score"],
-        "away_team_id": awayTeamId,
-        "away_team_score": data["event"]["away_league_score"],
-        "forfeit": data["event"]["forfeit"] == 1,
-        "forfeit_team_id": forfeit_team_id,
-        "event_name": data["sanctioning"]["event_name"],
-        "sanctioning_id": data["event"]["sanctioning_id"],
-        "championship": not data["sanctioning"]["event_name"] is None and "Mens Roller Derby Association Championships" in data["sanctioning"]["event_name"],
-        "qualifier": not data["sanctioning"]["event_name"] is None and "Qualifiers" in data["sanctioning"]["event_name"],
-        "status": data["event"]["status"],
-    })
-
-# Remove games for excludedTeams
-#excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
-#mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
-
-# Feature to get results for a specific event.
-#mrda_games = [game for game in mrda_games if game["event_name"] == "2025 Mens Roller Derby Association Championships"]
-
-def linear_regression(games, active_status_games, seeding_team_rankings=None):
+def linear_regression(games, compliance_games, seeding_team_rankings=None):
 
     if len(games) == 0:
         return {}
@@ -191,7 +86,7 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
         game_count = 0
         unique_opponents = []
         distance_clause_applies = team in team_info and "distance_clause_applies" in team_info[team] and team_info[team]["distance_clause_applies"]
-        team_games = [game for game in active_status_games if game["home_team_id"] == team or game["away_team_id"] == team]
+        team_games = [game for game in compliance_games if game["home_team_id"] == team or game["away_team_id"] == team]
         for game in team_games:
             if not game["forfeit"] or game["forfeit_team_id"] != team:
                 game_count += 1
@@ -234,14 +129,8 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
                 x_col.append(0)
         X.append(x_col)
 
-        # Calculate weight based on score ratio
-        score_ratio = home_score/away_score if home_score > away_score else away_score/home_score
-        if score_ratio > RATIO_CAP:
-            W.append(max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000))
-        else:
-            W.append(1)
-
-    wls_stderrs = None
+        # Set game weight
+        W.append(game["weight"])
 
     # Add virtual games if we have seeding_team_rankings
     if not seeding_team_rankings is None:
@@ -270,10 +159,8 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
     #print(wls.summary())
     wls_result = wls.params
     #print(wls_result)
-    if (wls_stderrs is None):
-        wls_stderrs = wls.bse
+    wls_stderrs = wls.bse
     #print(wls_stderrs)
-
 
     for i, team in enumerate(teams):
         # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
@@ -286,21 +173,16 @@ def linear_regression(games, active_status_games, seeding_team_rankings=None):
 
     return result
 
-rankings_history = {}
-
 def get_ranking_history(date):
     ranking_history_dt = max([dt for dt in rankings_history.keys() if dt <= date], default=None)
     if ranking_history_dt is None:
         return None
     return rankings_history[ranking_history_dt]
 
-last_calc_games = []
-last_calc_active_status_games = []
-last_calc_seeding = {}
-
 def get_rankings(calcDate):
+    global q1_cutoff
     global last_calc_games
-    global last_calc_active_status_games
+    global last_calc_compliance_games
     global last_calc_seeding
 
     result = None
@@ -327,11 +209,18 @@ def get_rankings(calcDate):
     else:
         games = [game for game in mrda_games if seedDate <= game["date"].date() < calcDate]
 
-    active_status_games = [game for game in games if (not game["championship"] or game["date"].date() >= (calcDate - relativedelta(months=6))) and (not game["qualifier"] or game["date"].date() >= (calcDate - relativedelta(months=9)))]            
+    # Filter compliance games to exclude postseason events prior to Q1 cutoff date
+    compliance_games = games
+    # No need to filter if we're doing the q1 calculation, but increment q1_cutoff to next year for future calculations
+    if seedDate == q1_cutoff:
+        q1_cutoff = calcDate
+    else:
+        for postseasonEventName in POSTSEASON_EVENT_NAMES:
+            compliance_games = [game for game in compliance_games if "name" not in mrda_events[game["event_id"]] or not postseasonEventName in mrda_events[game["event_id"]]["name"] or game["date"].date() >= q1_cutoff]
 
-    # Calculate linear regression results if games, seeding rankings or active status games have changed since last calculation.    
-    if games != last_calc_games or seeding_team_rankings != last_calc_seeding or active_status_games != last_calc_active_status_games:
-        result = linear_regression(games, active_status_games, seeding_team_rankings)
+    # Calculate linear regression results if games, seeding rankings or compliance games have changed since last calculation.    
+    if games != last_calc_games or seeding_team_rankings != last_calc_seeding or compliance_games != last_calc_compliance_games:
+        result = linear_regression(games, compliance_games, seeding_team_rankings)
     
     # Print sorted results for ranking deadline dates when debugging
     if not github_actions_run and calcDate.month in [3,6,9,12] and calcDate.day <= 7:
@@ -343,10 +232,160 @@ def get_rankings(calcDate):
 
     if not result is None:
         last_calc_games = games
-        last_calc_active_status_games = active_status_games
+        last_calc_compliance_games = compliance_games
         last_calc_seeding = seeding_team_rankings
         
     return result
+
+print("Initializing MRDA games list...")
+
+# Add 2023 events and games from GameList_history.py to mrda_events and mrda_games
+for gameday in games:
+    event_id = games.index(gameday) - len(games)
+    event = {
+        "start_day": gameday[0][0],
+        "end_day": gameday[-1][0]
+    }
+    if len(gameday[0]) > 5:
+        event["name"] = gameday[0][5]
+    mrda_events[event_id] = event
+
+    for game in gameday:
+        forfeit = (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0)
+        mrda_games.append({
+            "date": datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"),
+            "home_team_id": team_abbrev_id_map[game[1]],
+            "home_team_score": game[2],
+            "away_team_id": team_abbrev_id_map[game[3]],
+            "away_team_score": game[4],
+            "forfeit": forfeit,
+            "forfeit_team_id": None if not forfeit else (team_abbrev_id_map[game[1]] if game[2] == 0 and game[4] == 100 else team_abbrev_id_map[game[3]]),
+            "event_id": event_id,
+            "status": 7
+        })
+
+print("Added " + str(len(mrda_games)) + " games from 2023 in GameList_history.py")
+
+# Get 2024+ games from API
+print("Begin MRDA Central API game data retrieval...")
+gamedata = get_api_gamedata(date(2024, 1, 1))
+print("Retrieved " + str(len(gamedata)) + " games from >=2024 in Pending Processing or Complete status")
+
+approved_gamedata = get_api_gamedata(date(2024, 1, 1), 3)
+print("Retrieved " + str(len(approved_gamedata)) + " games in Approved status")
+gamedata.extend(approved_gamedata)
+
+waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=45), 4)
+print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 45 days in Waiting for Documents status")
+gamedata.extend(waiting_for_documents_gamedata)
+
+# Compare gamedata to JSON file from last calculation for scheduled runs.
+# Only recalculate rankings if gamedata changes (manual runs always recalculate).
+gamedata_json_filename = "mrda_gamedata.json"
+if github_actions_scheduled_run:
+    if os.path.exists(gamedata_json_filename):
+        with open( gamedata_json_filename , "r" ) as f:
+            file_content = f.read()
+            if file_content == json.dumps(gamedata):
+                # gamedata has not changed, exit without recalculating rankings
+                print("Game data from MRDA Central API has not changed, exiting without recalculating rankings.")
+                exit()
+# Save gamedata to JSON file for future comparison.
+write_json_to_file(gamedata, gamedata_json_filename)
+print("MRDA Central API gamedata saved to mrda_gamedata.json for future comparison.")
+
+# Validate and add data from API to mrda_events, mrda_teams and mrda_games
+for data in sorted(gamedata, key=lambda x: datetime.strptime(x["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")):
+    # Required fields
+    if not "sanctioning" in data or data["sanctioning"] is None:
+        continue
+    if not "event" in data or data["event"] is None:
+        continue
+    if not "game_datetime" in data["event"] or data["event"]["game_datetime"] is None:
+        continue
+    if not "home_league" in data["event"] or data["event"]["home_league"] is None:
+        continue
+    if not "home_league_charter" in data["event"] or data["event"]["home_league_charter"] is None:
+        continue
+    if not "home_league_score" in data["event"] or data["event"]["home_league_score"] is None:
+        continue
+    if not "away_league" in data["event"] or data["event"]["away_league"] is None:
+        continue
+    if not "away_league_charter" in data["event"] or data["event"]["away_league_charter"] is None:
+        continue    
+    if not "away_league_score" in data["event"] or data["event"]["away_league_score"] is None:
+        continue
+    if not "forfeit" in data["event"]:
+        continue
+    if data["event"]["forfeit"] == 1 and (not "forfeit_league" in data["event"] or data["event"]["forfeit_league"] is None):
+        continue
+
+    # Map API data
+    gameDate = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
+    homeTeamId = str(data["event"]["home_league"]) + ("a" if data["event"]["home_league_charter"] == "primary" else "b")
+    awayTeamId = str(data["event"]["away_league"]) + ("a" if data["event"]["away_league_charter"] == "primary" else "b")
+    forfeit = data["event"]["forfeit"] == 1
+
+    # Add event to mrda_events
+    gameDay = '{d.year}-{d.month}-{d.day}'.format(d=gameDate)
+    if not data["event"]["sanctioning_id"] in mrda_events:
+        event = {
+            "start_day": gameDay,
+            "end_day": gameDay
+        }
+        if not data["sanctioning"]["event_name"] is None:
+            event["name"] = data["sanctioning"]["event_name"]
+        mrda_events[data["event"]["sanctioning_id"]] = event
+    elif gameDay != mrda_events[data["event"]["sanctioning_id"]]["end_day"]:
+        mrda_events[data["event"]["sanctioning_id"]]["end_day"] = gameDay
+
+    # Add teams to mrda_teams    
+    if not homeTeamId in mrda_teams:
+        mrda_teams[homeTeamId] = {}
+        mrda_teams[homeTeamId]["name"] = team_info[homeTeamId]["name"] if homeTeamId in team_info and "name" in team_info[homeTeamId] else data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)")
+        mrda_teams[homeTeamId]["region"] = team_info[homeTeamId]["region"] if homeTeamId in team_info and "region" in team_info[homeTeamId] else "AM"
+        mrda_teams[homeTeamId]["logo"] = data["event"]["home_league_logo"] if "home_league_logo" in data["event"] and not data["event"]["home_league_logo"] is None else team_info[homeTeamId]["logo"] if "logo" in team_info[homeTeamId] else None
+        mrda_teams[homeTeamId]["location"] = team_info[homeTeamId]["location"] if homeTeamId in team_info and "location" in team_info[homeTeamId] else None        
+    if not awayTeamId in mrda_teams:
+        mrda_teams[awayTeamId] = {}
+        mrda_teams[awayTeamId]["name"] = team_info[awayTeamId]["name"] if awayTeamId in team_info and "name" in team_info[awayTeamId] else data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)")
+        mrda_teams[awayTeamId]["region"] = team_info[awayTeamId]["region"] if awayTeamId in team_info and "region" in team_info[awayTeamId] else "AM"        
+        mrda_teams[awayTeamId]["logo"] = data["event"]["away_league_logo"] if "away_league_logo" in data["event"] and not data["event"]["away_league_logo"] is None else team_info[awayTeamId]["logo"] if "logo" in team_info[awayTeamId] else None
+        mrda_teams[awayTeamId]["location"] = team_info[awayTeamId]["location"] if awayTeamId in team_info and "location" in team_info[awayTeamId] else None
+
+    game = {
+        "date": gameDate,
+        "home_team_id": homeTeamId,
+        "home_team_score": data["event"]["home_league_score"],
+        "away_team_id": awayTeamId,
+        "away_team_score": data["event"]["away_league_score"],
+        "forfeit": forfeit,
+        "event_id": data["event"]["sanctioning_id"],
+        "status": data["event"]["status"]
+    }
+    if forfeit:
+        game["forfeit_team_id"] = homeTeamId if data["event"]["forfeit_league"] == data["event"]["home_league"] else awayTeamId
+
+    mrda_games.append(game)
+
+# Remove games for excludedTeams
+#excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
+#mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
+
+# Feature to get results for a specific event.
+#mrda_games = [game for game in mrda_games if game["event_name"] == "2025 Mens Roller Derby Association Championships"]
+
+#calculate game weights
+for game in mrda_games:
+    if game["forfeit"]:
+        continue
+    # Because score_ratio is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
+    # A blowout game like this will have a very low weight anyway.
+    home_score = game["home_team_score"] if game["home_team_score"] > 0 else 0.1
+    away_score = game["away_team_score"] if game["away_team_score"] > 0 else 0.1
+    # Calculate weight based on score ratio
+    score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
+    game["weight"] = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
@@ -358,20 +397,18 @@ nextRankingDeadline = nextRankingDeadline.replace(day=1)
 # Set to Wednesday = 2
 nextRankingDeadline = nextRankingDeadline + timedelta(days=(2 - nextRankingDeadline.weekday() + 7) % 7)
 
-# Start first Wednesday after WHC
-searchDate = date(2023,10,25)
-
 print("Beginning ranking calculation...")
 start_time = time.perf_counter()
 calc_count = 0
 
+rankingDate = START_DATE
 # Calculate rankings for each week on Wednesday from starting date until the next ranking deadline
-while (searchDate <= nextRankingDeadline):
-    ranking_result = get_rankings(searchDate)
+while (rankingDate <= nextRankingDeadline):
+    ranking_result = get_rankings(rankingDate)
     if not ranking_result is None:
-        rankings_history[searchDate] = ranking_result
+        rankings_history[rankingDate] = ranking_result
         calc_count += 1
-    searchDate = searchDate + timedelta(weeks=1)
+    rankingDate = rankingDate + timedelta(weeks=1)
 
 print("Completed " + str(calc_count) + " ranking calculations in " + str(round(time.perf_counter() - start_time, 2)) + " seconds.")
 
@@ -397,6 +434,12 @@ write_json_to_file(formatted_rankings_history, "mrda_rankings_history.js", "rank
 # Save rankings JSON file for external use
 write_json_to_file(formatted_rankings_history, "mrda_rankings_history.json")
 print("Rankings updated and saved to mrda_rankings_history.js and mrda_rankings_history.json")
+
+# Save mrda_events JSON to JavaScript file for local web UI
+write_json_to_file(mrda_events, "mrda_events.js", "mrda_events")
+# Save mrda_events JSON file for external use
+write_json_to_file(mrda_events, "mrda_events.json")
+print("MRDA events saved to mrda_events.js and mrda_events.json")
 
 # Save mrda_teams JSON to JavaScript file for local web UI
 write_json_to_file(mrda_teams, "mrda_teams.js", "mrda_teams")
