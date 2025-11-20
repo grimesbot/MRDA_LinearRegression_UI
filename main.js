@@ -208,14 +208,22 @@ function displayRankingChart(teamsArray) {
                         max: rankingPeriodDeadlineDt
                     }
                 },
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest',
+                    axis: 'x'
+                },
                 plugins: {
                     tooltip: {
+                        itemSort: function(a, b) {
+                            return b.raw.y - a.raw.y;
+                        },
                         callbacks: {
                             title: function(context) {
-                                return context[0].raw.teamName;
+                                return context[0].raw.x.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
                             },
                             label: function(context) {
-                                return getStandardDateString(context.raw.x) + ": " + context.raw.y.toFixed(2);
+                                return context.raw.teamName + ": " + context.raw.y.toFixed(2);
                             }
                         }
                     }
