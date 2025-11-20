@@ -10,7 +10,7 @@ class MrdaGame {
         this.forfeit_team_id = game.forfeit_team_id;
         this.event_id = game.event_id;
         this.expectedRatios = {};
-        this.rankingPoints = {};
+        this.gamePoints = {};
     }
 }
 
@@ -64,15 +64,11 @@ class MrdaTeam {
 
 }
 
-function ratioCap(ratio) {
-    let ratioCap = 4;
-    if (!ratioCap)
-        return ratio;
-    if (ratio > ratioCap)
-        return ratioCap;
-    if (ratio < 1/ratioCap)
-        return 1/ratioCap;
-    return ratio;
+const RATIO_CAP = 4;
+function ratioCapped(homeScore,awayScore) {
+    homeScore = Math.max(homeScore, 0.1);
+    awayScore = Math.max(awayScore, 0.1);       
+    return Math.max(Math.min(homeScore/awayScore,RATIO_CAP),1/RATIO_CAP);
 }
 
 function getStandardDateString(date) {
@@ -132,13 +128,23 @@ class MrdaLinearRegressionSystem {
                 let awayTeam = this.mrdaTeams[mrdaGame.awayTeamId];
                 let homeRankingPoints = homeTeam.getRankingPointHistory(mrdaGame.date);
                 let awayRankingPoints = awayTeam.getRankingPointHistory(mrdaGame.date);
-                if (homeRankingPoints && awayRankingPoints && !mrdaGame.forfeit) {
-                    mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
-                    mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
-                    let homeActualRatio = mrdaGame.scores[mrdaGame.homeTeamId]/mrdaGame.scores[mrdaGame.awayTeamId];
-                    let awayActualRatio = mrdaGame.scores[mrdaGame.awayTeamId]/mrdaGame.scores[mrdaGame.homeTeamId];
-                    mrdaGame.rankingPoints[mrdaGame.homeTeamId] = homeRankingPoints * ratioCap(homeActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.homeTeamId]);
-                    mrdaGame.rankingPoints[mrdaGame.awayTeamId] = awayRankingPoints * ratioCap(awayActualRatio)/ratioCap(mrdaGame.expectedRatios[mrdaGame.awayTeamId]);
+                
+                if (!mrdaGame.forfeit) {
+                    let homeScoreRatio = ratioCapped(mrdaGame.scores[mrdaGame.homeTeamId],mrdaGame.scores[mrdaGame.awayTeamId]);
+                    let awayScoreRato = ratioCapped(mrdaGame.scores[mrdaGame.awayTeamId],mrdaGame.scores[mrdaGame.homeTeamId]);
+
+                    if (homeRankingPoints && awayRankingPoints) {
+                        mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
+                        mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
+                        mrdaGame.gamePoints[mrdaGame.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
+                        mrdaGame.gamePoints[mrdaGame.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
+                    } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
+                        // Calculate game points for new team as seeding games for visualization
+                        let newTeamId = homeRankingPoints ? mrdaGame.awayTeamId : mrdaGame.homeTeamId;
+                        let establishedTeamId = homeRankingPoints ? mrdaGame.homeTeamId : mrdaGame.awayTeamId;
+                        let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
+                        mrdaGame.gamePoints[newTeamId] = establishedTeamRp * mrdaGame.scores[newTeamId]/mrdaGame.scores[establishedTeamId];
+                    }
                 }
 
                 if (gameDt >= this.rankingPeriodStartDt) {

@@ -51,8 +51,8 @@ function setRegion() {
 }
 
 function teamDetailsModal() {
-    var teamChart;
-    var teamGameHistoryDt;
+    let teamChart;
+    let teamGameHistoryDt;
     let $teamDetailModal = $('#teamDetailModal');
 
     $('#mrdaRankingPointsContainer').on('click', 'td.dt-teamDetailsClick', function (e) {
@@ -73,18 +73,27 @@ function teamDetailsModal() {
         else
             $('#teamLocation').hide();
 
+        let minDt = new Date(team.rankingPointsHistory.keys().next().value + " 00:00:00");
+        let oldestGame = team.gameHistory.filter(game => game.gamePoints[team.teamId]).sort((a,b) => new Date(a.date) - new Date(b.date))[0];
+        if (oldestGame && new Date(oldestGame.date) < minDt)
+        {
+            minDt = new Date(oldestGame.date);
+            dayOfWeek = minDt.getDay();
+            minDt.setDate(minDt.getDate() - (dayOfWeek >= 3 ? dayOfWeek - 3 : dayOfWeek + 4));
+        }
+
         teamChart = new Chart(document.getElementById("teamChart"), {
             type: 'lineWithErrorBars',
             data: {
                 datasets: [{
-                    label: 'Game Ranking Points (2023 Algorithm)',
+                    label: 'Game Points (2023 Algorithm)',
                     data: Array.from(team.gameHistory, (game) => ({ 
                         x: new Date(game.date), 
-                        y: game.rankingPoints[team.teamId], 
+                        y: game.gamePoints[team.teamId], 
                         title: getStandardDateString(game.date) + (game.homeTeamId == team.teamId ? 
                             (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name 
                             : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + mrda_teams[game.homeTeamId].name),
-                        label: game.rankingPoints[team.teamId] ? 'Game Ranking Points: ' + game.rankingPoints[team.teamId].toFixed(2) : "" })),                        
+                        label: game.gamePoints[team.teamId] ? 'Game Points: ' + game.gamePoints[team.teamId].toFixed(2) : "" })),                        
                     showLine: false
                 }, {
                     label: 'Ranking Points ± Standard Error',
@@ -102,7 +111,7 @@ function teamDetailsModal() {
                 scales: {
                     x: {
                         type: 'time',
-                        min: new Date(team.rankingPointsHistory.keys().next().value + " 00:00:00"),
+                        min: minDt,
                         max: new Date([...team.rankingPointsHistory][team.rankingPointsHistory.size-1][0] + " 00:00:00")
                     }
                 },
