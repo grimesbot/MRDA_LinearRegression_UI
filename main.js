@@ -83,27 +83,45 @@ function teamDetailsModal() {
         }
 
         teamChart = new Chart(document.getElementById("teamChart"), {
-            type: 'lineWithErrorBars',
             data: {
                 datasets: [{
+                    type: 'scatter',
                     label: 'Game Points (2023 Algorithm)',
-                    data: Array.from(team.gameHistory, (game) => ({ 
-                        x: new Date(game.date), 
-                        y: game.gamePoints[team.teamId], 
-                        title: getStandardDateString(game.date) + (game.homeTeamId == team.teamId ? 
-                            (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name 
-                            : (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") +  " @ " + mrda_teams[game.homeTeamId].name),
-                        label: game.gamePoints[team.teamId] ? 'Game Points: ' + game.gamePoints[team.teamId].toFixed(2) : "" })),                        
-                    showLine: false
+                    data: team.gameHistory.filter(game => game.gamePoints[team.teamId]).map(game => {
+                        return { 
+                            x: new Date(game.date), 
+                            y: game.gamePoints[team.teamId],
+                            title: mrda_events[game.event_id].dateTitle,
+                            label: (game.homeTeamId == team.teamId ? 
+                                game.scores[game.homeTeamId] + "-" + game.scores[game.awayTeamId] + " " + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? "W" : "L") + " vs. " + mrda_teams[game.awayTeamId].name 
+                                : game.scores[game.awayTeamId] + "-" + game.scores[game.homeTeamId] + " " + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? "W" : "L") +  " @ " + mrda_teams[game.homeTeamId].name)
+                                + ": " + game.gamePoints[team.teamId].toFixed(2) + " GP"
+                        }}),                        
+                    pointRadius: 5,
                 }, {
+                    type: 'lineWithErrorBars',
                     label: 'Ranking Points ± Standard Error',
-                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ 
-                        x: new Date(date + " 00:00:00"), 
-                        y: rp, 
-                        yMin: team.stdErrMinHistory.get(date), 
-                        yMax: team.stdErrMaxHistory.get(date), 
-                        title: date, 
-                        label: "Ranking Points: " + rp + " ± " + team.relStdErrHistory.get(date) + "% (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"})),
+                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => {
+                        let dt = new Date(date + " 00:00:00");
+                        
+                        // Only chart error bars once a month.
+                        let rpDates = Array.from(team.rankingPointsHistory.keys());
+                        let rpIndex = rpDates.indexOf(date);
+                        let chartErrs = true;
+                        if (rpIndex > 0) {
+                            let lastDt = new Date(rpDates[rpIndex-1]);
+                            if (lastDt.getMonth() == dt.getMonth() && lastDt.getFullYear() == dt.getFullYear())
+                                chartErrs = false;
+                        }
+
+                        return { 
+                            x: dt, 
+                            y: rp, 
+                            yMin: chartErrs ? team.stdErrMinHistory.get(date) : null, 
+                            yMax: chartErrs ? team.stdErrMaxHistory.get(date) : null, 
+                            title: dt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),
+                            label: "RP: " + rp + " ± " + team.relStdErrHistory.get(date) + "% (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"
+                    }}),
                     showLine: true
                 }],
             },
@@ -115,11 +133,16 @@ function teamDetailsModal() {
                         max: new Date([...team.rankingPointsHistory][team.rankingPointsHistory.size-1][0] + " 00:00:00")
                     }
                 },
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest',
+                    axis: 'xy'
+                },
                 plugins: {
                     tooltip: {
                         callbacks: {
                             title: function(context) {
-                                return context[0].raw.title;
+                                return context[0].raw.title;                                
                             },
                             label: function(context) {
                                 return context.raw.label;
@@ -308,18 +331,33 @@ function calculateAndDisplayRankings() {
     }
 }
 
-const date_str_options = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-};
+function deriveEventTitles(event) {
+    let startDt = new Date(event.start_day + " 00:00:00");
+    event.dateTitle = startDt.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
+    
+    if (event.start_day == event.end_day) {
+            if (event.name)
+                event.title = startDt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+            else
+                event.title = startDt.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+    }
+    else {
+        let endDt = new Date(event.end_day + " 00:00:00");
+        if (startDt.getFullYear() != endDt.getFullYear())
+            event.dateTitle += " - " + endDt.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
+        else if (startDt.getMonth() != endDt.getMonth()) {
+            let monthAndDay = startDt.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+            event.dateTitle = event.dateTitle.replace(monthAndDay, monthAndDay + " - " + endDt.toLocaleDateString(undefined,{month:"short",day:"numeric"}));
+        } else {
+            let day = startDt.toLocaleDateString(undefined,{day:"numeric"});
+            event.dateTitle = event.dateTitle.replace(new RegExp(`\\b${day}\\b`, "g"), day + "-" + endDt.toLocaleDateString(undefined,{day:"numeric"}));
+        }
+    }
 
-function deriveEventTitle(event) {
-    if (event.start_day == event.end_day)
-        event.title = new Date(event.start_day + " 00:00:00").toLocaleDateString(undefined,date_str_options) + (event.name ? ": " + event.name : "");
-    else if (event.name)
-        event.title = event.name;
+    if (event.name) {
+        event.title = (event.title ? ": " : "") + event.name;
+        event.dateTitle += ": " + event.name.replace("Mens Roller Derby Association", "MRDA").replace("Men's Roller Derby Association", "MRDA").replace(startDt.getFullYear(),"").trim();
+    }
 }
 
 function setupApiGames() {
@@ -342,7 +380,7 @@ function setupApiGames() {
             let event = mrda_events[game.event_id];
             return {
                 date: game.date,
-                day: event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,date_str_options) : "",
+                day: event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : "",
                 home_team_id: game.home_team_id,
                 home_team_name: mrda_teams[game.home_team_id].name + (game.forfeit && game.forfeit_team_id == game.home_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
                 home_team_logo: mrda_teams[game.home_team_id].logo && mrda_teams[game.home_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.home_team_id].logo : mrda_teams[game.home_team_id].logo,
@@ -486,11 +524,11 @@ async function setupUpcomingGames() {
         }
     });
 
-    Object.values(upcomingEvents).forEach(deriveEventTitle);
+    Object.values(upcomingEvents).forEach(deriveEventTitles);
 
     upcomingGames.forEach(game => {
         let event = upcomingEvents[game.event_id];
-        game.day = event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,date_str_options) : "",
+        game.day = event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : "",
         game.event_title += upcomingEvents[game.event_id].title;
     });
 
@@ -573,7 +611,7 @@ async function main() {
     $('.betaFlag').tooltip({title: "This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly."});
 
     //These are all initially hidden until user input. Setup last.
-    Object.values(mrda_events).forEach(deriveEventTitle);
+    Object.values(mrda_events).forEach(deriveEventTitles);
 
     teamDetailsModal();
 
