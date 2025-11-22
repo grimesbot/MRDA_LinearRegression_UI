@@ -1,43 +1,156 @@
+const REGIONS = ['EUR', 'AA', 'AM'];
+const RATIO_CAP = 4;
+
+function ratioCapped(homeScore,awayScore) {
+    homeScore = Math.max(homeScore, 0.1);
+    awayScore = Math.max(awayScore, 0.1);       
+    return Math.max(Math.min(homeScore/awayScore,RATIO_CAP),1/RATIO_CAP);
+}
+
+function getStandardDateString(dt) {
+    if (!(dt instanceof Date))
+        dt = new Date(dt);
+    return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`;
+}
+
 class MrdaGame {
     constructor(game) {
-        this.date = game.date;
+        this.date = game.date instanceof Date ? game.date : new Date(game.date);
         this.homeTeamId = game.home_team_id;
         this.awayTeamId = game.away_team_id;
         this.scores = {};
         this.scores[this.homeTeamId] = game.home_team_score;
         this.scores[this.awayTeamId] = game.away_team_score;
         this.forfeit = game.forfeit;
-        this.forfeit_team_id = game.forfeit_team_id;
-        this.event_id = game.event_id;
+        this.forfeitTeamId = game.forfeit_team_id;
+        this.eventId = game.event_id;
+        this.status = game.status;
+        this.weight = game.weight;
         this.expectedRatios = {};
         this.gamePoints = {};
+    }
+
+    getGameSummary(teamId, allTeams) {
+        let opponentId = null
+        let vsOrAt = null;
+        
+        if (teamId == this.homeTeamId) {
+            opponentId = this.awayTeamId;
+            vsOrAt = "vs.";
+        } else {
+            opponentId = this.homeTeamId;
+            vsOrAt = "@";
+        }
+
+        let wOrL = this.scores[teamId] > this.scores[opponentId] ? "W" : "L";
+
+        return `${this.scores[teamId]}-${this.scores[opponentId]} ${wOrL} ${vsOrAt} ${allTeams[opponentId].name}`;
+    }
+}
+
+class MrdaEvent {
+    constructor(eventId, event) {
+        this.eventId = eventId;
+        this.startDt = new Date(event.start_day + " 00:00:00");
+        this.endDt = event.startDay != event.endDay ? new Date(event.endDay + " 00:00:00") : this.startDt;
+        this.name = event.name;
+    }
+
+    getDateString() {
+        // Single day events
+        if (this.startDt == this.endDt){
+            // If the single day event has a title, return the date but don't include the weekday for brevity
+            if (this.name)
+                return this.startDt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+            else
+                return this.startDt.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+        } else {
+        // Multi-day events use short month for brevity
+            let dtFmtOpts = {year:"numeric",month:"short",day:"numeric"};
+            let dateStr = this.startDt.toLocaleDateString(undefined,dtFmtOpts);            
+            if (this.startDt.getFullYear() != this.endDt.getFullYear())
+                return `${dateStr} - ${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`;
+            else if (this.startDt.getMonth() != this.endDt.getMonth()) {
+                dtFmtOpts = {month:"short",day:"numeric"};
+                let monthAndDay = this.startDt.toLocaleDateString(undefined,dtFmtOpts);
+                return dateStr.replace(monthAndDay, `${monthAndDay} - ${endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
+            } else {
+                dtFmtOpts = {day:"numeric"};
+                let day = this.startDt.toLocaleDateString(undefined,dtFmtOpts);
+                return dateStr.replace(new RegExp(`\\b${day}\\b`, "g"), `${day}-${endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
+            }
+        }
+    }
+
+    getEventTitle() {
+        // Single day events
+        if (this.startDt == this.endDt) {
+            if (this.name)
+                return `${this.getDateString()}: ${this.name}`;
+            else
+                return this.getDateString();
+        } else {
+        // Multi-day events
+            if (this.name)
+                return this.name;
+            else 
+                return this.getDateString();
+        }
+    }
+
+    getEventTitleWithDate() {
+        if (this.name){
+            let niceName = this.name.replace("Mens Roller Derby Association", "MRDA")
+                                .replace("Men's Roller Derby Association", "MRDA")
+                                .replace(this.startDt.getFullYear(),"").trim();
+            return `${this.getDateString()}: ${niceName}`;
+        } else
+            return this.getDateString();
     }
 }
 
 class MrdaTeam {
     constructor(teamId, team) {
         this.teamId = teamId;
-        this.teamName = team.name;
+        this.name = team.name;
         this.region = team.region;
         this.location = team.location;
         this.logo = team.logo && team.logo.startsWith("/central/") ? "https://assets.mrda.org" + team.logo : team.logo;
+        this.games = []
         this.gameHistory = []
         this.activeStatus = false;
+        this.postseasonEligible = false;
         this.activeStatusGameCount = 0;
         this.wins = 0;
         this.losses = 0;
         this.forfeits = 0;
         this.rankingPoints = 0;
         this.relStdErr = 0;
+        this.rankingHistory = new Map();
         this.rankingPointsHistory = new Map();
         this.stdErrMinHistory = new Map();
         this.stdErrMaxHistory = new Map();
         this.relStdErrHistory = new Map();
         this.rank = null;
         this.regionRank = null;        
-        this.postseasonEligible = false;
         this.postseasonPosition = null;
         this.chart = false;
+    }
+
+    getRankingPoints(date, addWeek=false) {
+        if (!(date instanceof Date))
+            date = new Date(date);
+
+        if (addWeek)
+            date.setDate(date.getDate() + 7);
+
+        let latestRankingDt = [...this.rankingHistory.keys()].filter(dt => dt <= date)
+            .sort((a, b) => b - a)[0];
+
+        if (latestRankingDt)
+            return this.rankingHistory.get(latestRankingDt).rankingPoints;
+        else
+            return null;
     }
 
     getRankingPointHistory(date, addWeek=false) {
@@ -61,116 +174,129 @@ class MrdaTeam {
         }
         return this.rankingPointsHistory.get(getStandardDateString(searchDate))
     }
-
 }
 
-const RATIO_CAP = 4;
-function ratioCapped(homeScore,awayScore) {
-    homeScore = Math.max(homeScore, 0.1);
-    awayScore = Math.max(awayScore, 0.1);       
-    return Math.max(Math.min(homeScore/awayScore,RATIO_CAP),1/RATIO_CAP);
+class MrdaTeamRanking {
+    constructor(date, teamId, teamRanking={}) {
+        this.date = date;
+        this.teamId = teamId;
+        this.rankingPoints = teamRanking.rp ?? null;
+        this.standardError = teamRanking.se ?? null;        
+        this.relativeStandardError = teamRanking.rse ?? null;
+        this.gameCount = teamRanking.gc ?? 0;
+        this.activeStatus = teamRanking.as ?? false;
+        this.postseasonEligible = teamRanking.pe ?? false;
+        this.wins = teamRanking.w ?? 0;
+        this.losses = teamRanking.l ?? 0;
+        this.forfeits = teamRanking.f ?? 0;
+    }
 }
-
-function getStandardDateString(date) {
-    let dt = new Date(date);
-    return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`;
-}
-
-const regions = ['EUR', 'AA', 'AM'];
 
 class MrdaLinearRegressionSystem {
-    constructor(teams, rankingPeriodDeadlineDt, rankingPeriodStartDt, region) {
+    constructor(mrda_rankings_history_json, mrda_teams_json, mrda_events_json, mrda_games_json) {
+        this.mrdaRankingsHistory = new Map();
         this.mrdaTeams = {};
-        Object.keys(teams).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, teams[teamId]));
-        this.rankingPeriodDeadlineDt = rankingPeriodDeadlineDt;
-        this.rankingPeriodStartDt = rankingPeriodStartDt;
-        this.region = region;
+        this.mrdaEvents = {};
+        this.mrdaGames = [];
+
+        //this.rankingPeriodDeadlineDt = null;
+        //this.rankingPeriodStartDt = null;
+        //this.region = region;
+
+        // Build mrdaRankingsHistoryDts map 
+        for (const dt of Object.keys(mrda_rankings_history_json).map(day => new Date(day + " 00:00:00")).sort((a, b) => a - b)) {
+            let jsonRanking = mrda_rankings_history_json[`${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`];
+            let teamRankings = {};
+            for (const teamId of Object.keys(jsonRanking))
+                teamRankings[teamId] = new MrdaTeamRanking(dt, teamId, jsonRanking[teamId]);
+            this.mrdaRankingsHistory.set(dt, teamRankings);
+        };
+        
+        // Map all teams, events and games from raw JSON generated by python
+        Object.keys(mrda_teams_json).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, mrda_teams_json[teamId]));
+        Object.keys(mrda_events_json).forEach(eventId => this.mrdaEvents[eventId] = new MrdaEvent(eventId, mrda_events_json[eventId]));
+        this.mrdaGames = mrda_games_json.map(game => new MrdaGame(game));
+
+        this.setupTeamRankingHistories();
+        this.setupGameHistories();
     }
 
-    updateRankings(rankings_history) {
-        for (const [date, rankings] of Object.entries(rankings_history)) {
-            let rankingDt = new Date(date + " 00:00:00");
-            if (rankingDt <= rankingPeriodDeadlineDt) {
-                Object.values(this.mrdaTeams).forEach(team => {
-                    let rankingPoints = team.teamId in rankings ? rankings[team.teamId].rp : 0;
-                    let stdErr = team.teamId in rankings ? rankings[team.teamId].se : 0;
-                    let relStdErr = team.teamId in rankings ? rankings[team.teamId].rse : 0;
-                    let gameCount = team.teamId in rankings ? rankings[team.teamId].gc : 0;
-                    let activeStatus = team.teamId in rankings ? rankings[team.teamId].as == 1 : false;
-                    let postseasonEligible = team.teamId in rankings ? rankings[team.teamId].pe == 1 : false;
-                    if (team.rankingPoints != rankingPoints
-                        || team.relStdErr != relStdErr
-                        || team.activeStatusGameCount != gameCount
-                        || team.activeStatus != activeStatus
-                        || team.postseasonEligible != postseasonEligible) {
-                        team.rankingPoints = rankingPoints;
-                        team.relStdErr = relStdErr;
-                        team.rankingPointsHistory.set(date, rankingPoints);
-                        team.relStdErrHistory.set(date, relStdErr);
-                        team.stdErrMinHistory.set(date, (rankingPoints - stdErr));
-                        team.stdErrMaxHistory.set(date, (rankingPoints + stdErr));
-                        team.activeStatusGameCount = gameCount;
-                        team.activeStatus = activeStatus;
-                        team.postseasonEligible = postseasonEligible
-                    }
-                });
+    setupTeamRankingHistories() {
+        let lastRankings = {};
+        for (const [date, rankings] of this.mrdaRankingsHistory) {
+            for (const [teamId, team] of Object.entries(this.mrdaTeams)) {
+                if (teamId in rankings) {
+                    // Add teamRanking if they are in current ranking and not in last ranking or something changed.
+                    if (!(teamId in lastRankings)
+                        || rankings[teamId].rankingPoints != lastRankings[teamId].rankingPoints
+                        || rankings[teamId].standardError != lastRankings[teamId].standardError
+                        || rankings[teamId].relativeStandardError != lastRankings[teamId].relativeStandardError)
+                        team.rankingHistory.set(date,rankings[teamId])                  
+                } else if (teamId in lastRankings) {
+                    // Add empty teamRanking if they're not in current ranking but were in the last ranking.
+                    team.rankingHistory.set(date,new MrdaTeamRanking(date, teamId))
+                }
             }
+            lastRankings = rankings;
         }
     }
 
-    addGameHistory(games) {
-        games.forEach(game => {
-            let gameDt = new Date(game.date);
-            if (gameDt < this.rankingPeriodDeadlineDt)
-            {
-                let mrdaGame = new MrdaGame(game);
-                let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
-                let awayTeam = this.mrdaTeams[mrdaGame.awayTeamId];
-                let homeRankingPoints = homeTeam.getRankingPointHistory(mrdaGame.date);
-                let awayRankingPoints = awayTeam.getRankingPointHistory(mrdaGame.date);
-                
-                if (!mrdaGame.forfeit) {
-                    let homeScoreRatio = ratioCapped(mrdaGame.scores[mrdaGame.homeTeamId],mrdaGame.scores[mrdaGame.awayTeamId]);
-                    let awayScoreRato = ratioCapped(mrdaGame.scores[mrdaGame.awayTeamId],mrdaGame.scores[mrdaGame.homeTeamId]);
+    setupGameHistories() {
+        for (const mrdaGame of this.mrdaGames) {
+            let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
+            let awayTeam = this.mrdaTeams[mrdaGame.awayTeamId];
+            let homeRankingPoints = homeTeam.getRankingPoints(mrdaGame.date);
+            let awayRankingPoints = awayTeam.getRankingPoints(mrdaGame.date);
+            
+            if (!mrdaGame.forfeit) {
+                let homeScoreRatio = ratioCapped(mrdaGame.scores[mrdaGame.homeTeamId],mrdaGame.scores[mrdaGame.awayTeamId]);
+                let awayScoreRato = ratioCapped(mrdaGame.scores[mrdaGame.awayTeamId],mrdaGame.scores[mrdaGame.homeTeamId]);
 
-                    if (homeRankingPoints && awayRankingPoints) {
-                        mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
-                        mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
-                        mrdaGame.gamePoints[mrdaGame.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
-                        mrdaGame.gamePoints[mrdaGame.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
-                    } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
-                        // Calculate game points for new team as seeding games for visualization
-                        let newTeamId = homeRankingPoints ? mrdaGame.awayTeamId : mrdaGame.homeTeamId;
-                        let establishedTeamId = homeRankingPoints ? mrdaGame.homeTeamId : mrdaGame.awayTeamId;
-                        let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
-                        mrdaGame.gamePoints[newTeamId] = establishedTeamRp * mrdaGame.scores[newTeamId]/mrdaGame.scores[establishedTeamId];
-                    }
+                if (homeRankingPoints && awayRankingPoints) {
+                    mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
+                    mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
+                    mrdaGame.gamePoints[mrdaGame.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
+                    mrdaGame.gamePoints[mrdaGame.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
+                } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
+                    // Calculate game points for new team as seeding games for visualization
+                    let newTeamId = homeRankingPoints ? mrdaGame.awayTeamId : mrdaGame.homeTeamId;
+                    let establishedTeamId = homeRankingPoints ? mrdaGame.homeTeamId : mrdaGame.awayTeamId;
+                    let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
+                    mrdaGame.gamePoints[newTeamId] = establishedTeamRp * mrdaGame.scores[newTeamId]/mrdaGame.scores[establishedTeamId];
                 }
-
-                if (gameDt >= this.rankingPeriodStartDt) {
-                    if (mrdaGame.forfeit) {
-                        if (mrdaGame.forfeit_team_id == mrdaGame.homeTeamId)
-                            homeTeam.forfeits += 1;
-                        else if (mrdaGame.forfeit_team_id == mrdaGame.awayTeamId)
-                            awayTeam.forfeits += 1;
-                    } else {
-                        if (mrdaGame.scores[mrdaGame.homeTeamId] > mrdaGame.scores[mrdaGame.awayTeamId]) {
-                            homeTeam.wins++;
-                            awayTeam.losses++;
-                        } else {
-                            awayTeam.wins++;
-                            homeTeam.losses++;
-                        }
-                    }
-                }
-
-                homeTeam.gameHistory.push(mrdaGame);
-                awayTeam.gameHistory.push(mrdaGame);
             }
-        });
+            
+            homeTeam.gameHistory.push(mrdaGame);
+            awayTeam.gameHistory.push(mrdaGame);
+        }
     }
 
-    rankTeams() {
+    rankTeams(date, region) {
+        // Get most recent Ranking History and apply to all teams
+        let latestRankingDt = [...this.mrdaRankingsHistory.keys()].filter(dt => dt <= date).sort((a,b) => b - a)[0];
+        let ranking = this.mrdaRankingsHistory.get(latestRankingDt);
+        for (const [teamId, team] of Object.entries(this.mrdaTeams)) {
+            if (teamId in ranking) {
+                let teamRanking = ranking[team.teamId];
+                team.rankingPoints = teamRanking.rankingPoints;
+                team.relStdErr = teamRanking.relativeStandardError;
+                team.activeStatusGameCount = teamRanking.gameCount;                
+                team.activeStatus = teamRanking.activeStatus;
+                team.postseasonEligible = teamRanking.postseasonEligible;
+                team.wins = teamRanking.wins;
+                team.losses = teamRanking.losses;
+                team.forfeits = teamRanking.forfeits;
+            } else {
+                team.rankingPoints = null;
+                team.relStdErr = null;
+                team.activeStatusGameCount = 0;                
+                team.activeStatus = false;
+                team.postseasonEligible = false;
+                team.wins = 0;
+                team.losses = 0;
+                team.forfeits = 0;
+            }
+        }
 
         // Rank the active teams
         let sortedActiveTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus)
@@ -180,7 +306,7 @@ class MrdaLinearRegressionSystem {
             let team = sortedActiveTeams[i];
             team.rank = i + 1;
 
-            if (this.region == "GUR" && team.rank <= 5)
+            if (region == "GUR" && team.rank <= 5)
                 team.chart = true;
         }
 
@@ -196,7 +322,8 @@ class MrdaLinearRegressionSystem {
                     if (swapTeam) {
                         swapTeam.rank -= 1;
                         team.rank += 1;
-                        forfeitAsterisk.show();
+                        if (team.region == region)
+                            forfeitAsterisk.show();
                     }
                 }
             }
@@ -212,8 +339,8 @@ class MrdaLinearRegressionSystem {
         }
 
         // Set regionRank if a region is selected
-        if (this.region != "GUR") {
-            let regionSortedRankedTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.region == this.region)
+        if (region != "GUR") {
+            let regionSortedRankedTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.region == region)
                                                         .sort((a, b) => a.rank - b.rank);
             for (let i = 0; i < regionSortedRankedTeams.length; i++) {
                 let team = regionSortedRankedTeams[i];
@@ -234,7 +361,7 @@ class MrdaLinearRegressionSystem {
         }
 
         // Regional Qualifiers
-        regions.forEach(r => {
+        REGIONS.forEach(r => {
             let qualInfo = $("#postseasonLegend .postseasonPosition-" + r + " .qualifiers");
             let inviteInfo = $("#postseasonLegend .postseasonPosition-" + r + " .invites");
 

@@ -69,42 +69,65 @@ def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
         json.dump( data , f) #, indent=4) pretty print
 
 def linear_regression(games, compliance_games, seeding_team_rankings=None):
-
-    if len(games) == 0:
-        return {}
-
-    teams = []
-    for game in games:
-        if not game["home_team_id"] in teams and (not game["forfeit"] or game["forfeit_team_id"] != game["home_team_id"]):
-            teams.append(game["home_team_id"])
-        if not game["away_team_id"] in teams and (not game["forfeit"] or game["forfeit_team_id"] != game["away_team_id"]):
-            teams.append(game["away_team_id"])
-
-    # Calculate active status and playoff eligibility
     result = {}
-    for team in teams:
+
+    calcGames = [game for game in games if not game["forfeit"]]
+
+    if len(calcGames) == 0:
+        result
+
+    teamIds = []
+    for game in calcGames:
+        if not game["home_team_id"] in teamIds:
+            teamIds.append(game["home_team_id"])
+        if not game["away_team_id"] in teamIds:
+            teamIds.append(game["away_team_id"])
+
+    # Calculate team metrics 
+    for teamId in teamIds:
+        # Wins, losses and forfeits use all games
+        wins = 0
+        losses = 0
+        forfeits = 0
+        for game in [game for game in games if game["home_team_id"] == teamId or game["away_team_id"] == teamId]:
+            if game["forfeit"]:
+                if game["forfeit_team_id"] == teamId:
+                    forfeits += 1
+            else:
+                team_score = game["home_team_score"] if game["home_team_id"] == teamId else game["away_team_score"]
+                opponent_score = game["away_team_score"] if game["home_team_id"] == teamId else game["home_team_score"]
+                if team_score > opponent_score:
+                    wins += 1
+                elif team_score < opponent_score:
+                    losses += 1
+    
+        # Active status and postseason eligibility only use compliance games
         game_count = 0
         unique_opponents = []
-        distance_clause_applies = team in team_info and "distance_clause_applies" in team_info[team] and team_info[team]["distance_clause_applies"]
-        team_games = [game for game in compliance_games if game["home_team_id"] == team or game["away_team_id"] == team]
-        for game in team_games:
-            if not game["forfeit"] or game["forfeit_team_id"] != team:
+        distance_clause_applies = teamId in team_info and "distance_clause_applies" in team_info[teamId] and team_info[teamId]["distance_clause_applies"]
+        for game in [game for game in compliance_games if game["home_team_id"] == teamId or game["away_team_id"] == teamId]:
+            if not game["forfeit"] or game["forfeit_team_id"] != teamId:
                 game_count += 1
-                opponent = game["away_team_id"] if game["home_team_id"] == team else game["home_team_id"]
+                opponent = game["away_team_id"] if game["home_team_id"] == teamId else game["home_team_id"]
                 if not opponent in unique_opponents:
                     unique_opponents.append(opponent)
         active_status = game_count >= 3 and len(unique_opponents) >= 2
-        result[team] = {
+        postseason_eligible = active_status and (game_count >= 5 or distance_clause_applies)
+
+        result[teamId] = {
             "gc": game_count,
             "as": active_status,
-            "pe": active_status and (game_count >= 5 or distance_clause_applies)
+            "pe": postseason_eligible,
+            "w": wins,
+            "l": losses,
+            "f": forfeits
         }
 
     Y = []
     X = []
     W = []
 
-    for game in games:
+    for game in calcGames:
 
         # Skip forfeits
         if game["forfeit"]:
@@ -120,10 +143,10 @@ def linear_regression(games, compliance_games, seeding_team_rankings=None):
         
         # Build x column of regressors (teams) and whether they played in the game
         x_col = []
-        for team in teams:
-            if team == game["home_team_id"]:
+        for teamId in teamIds:
+            if teamId == game["home_team_id"]:
                 x_col.append(1)
-            elif team == game["away_team_id"]:
+            elif teamId == game["away_team_id"]:
                 x_col.append(-1)
             else:
                 x_col.append(0)
@@ -135,18 +158,18 @@ def linear_regression(games, compliance_games, seeding_team_rankings=None):
     # Add virtual games if we have seeding_team_rankings
     if not seeding_team_rankings is None:
         # Add virtual games for existing teams
-        for team in teams:
+        for teamId in teamIds:
             # Existing team if in seeding rankings
-            if team in seeding_team_rankings:
+            if teamId in seeding_team_rankings:
 
                 # Add observation as score log ratio
                 # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team]["rp"]/1.00))
+                Y.append(math.log(seeding_team_rankings[teamId]["rp"]/1.00))
 
                 # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
                 x_col = []
-                for t in teams:
-                    if t == team:
+                for t in teamIds:
+                    if t == teamId:
                         x_col.append(1)
                     else:
                         x_col.append(0)
@@ -162,13 +185,13 @@ def linear_regression(games, compliance_games, seeding_team_rankings=None):
     wls_stderrs = wls.bse
     #print(wls_stderrs)
 
-    for i, team in enumerate(teams):
+    for i, teamId in enumerate(teamIds):
         # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-        result[team]["rp"] = math.exp(wls_result[i])
+        result[teamId]["rp"] = math.exp(wls_result[i])
         # Convert standard error
-        result[team]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[team]["rp"]
+        result[teamId]["se"] = (math.exp(wls_stderrs[i]) - 1) * result[teamId]["rp"]
         # Calculate relative standard error %
-        result[team]["rse"] = result[team]["se"]/result[team]["rp"] * 100
+        result[teamId]["rse"] = result[teamId]["se"]/result[teamId]["rp"] * 100
     #print(result)
 
     return result
@@ -453,7 +476,7 @@ for game in mrda_games:
 write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 # Save mrda_games JSON file for external use
 write_json_to_file(mrda_games, "mrda_games.json")
-print("MRDA games updated and saved to mrda_teams.js and mrda_teams.json")
+print("MRDA games updated and saved to mrda_games.js and mrda_games.json")
 
 #print teams to console for TeamInfo.py
 #for item in sorted(mrda_teams.items(), key=lambda item: item[0], reverse=False):

@@ -1,3 +1,4 @@
+
 let rankingPeriodDeadlineDt = null;
 let rankingPeriodStartDt = null;
 function setRankingDates() {
@@ -16,30 +17,31 @@ function populateRankingDates() {
 
     let $dropdown = $("#date");
     
-    let todayDt = new Date(new Date().toDateString()); // Today without time
+    let current = new Date();
+    current.setHours(0, 0, 0, 0);
+    current.setDate(current.getDate() + ((3 - current.getDay() + 7) % 7)); // Set to next Wednesday = 3
     let searchDt = new Date (2023, 9 - 1, 6);
 
-    while (searchDt < todayDt) {
+    while (searchDt <= current) {
         searchDt.setMonth(searchDt.getMonth() + 3); // Add 3 months (a quarter)
         searchDt.setDate(searchDt.getDate() - searchDt.getDay()); // Set to first of month
         searchDt.setDate(searchDt.getDate() + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
 
-        if (searchDt > todayDt){
-            let thisWedDt = new Date(todayDt);
-            thisWedDt.setDate(thisWedDt.getDate() + ((3 - thisWedDt.getDay() + 7) % 7)); // Set to Wednesday = 3
-            let thisWedStr = getStandardDateString(thisWedDt);
-            $dropdown.prepend($("<option />").val(thisWedStr).text('Today'));
-            $dropdown.val(thisWedStr);
+        if (searchDt > current){
+            let currentStr = `${current.getFullYear()}-${current.getMonth() + 1}-${current.getDate()}`;
+            $dropdown.prepend($("<option />").val(currentStr).text('Today'));
+            $dropdown.val(currentStr);
         }
 
-        let dtStr = getStandardDateString(searchDt);
+        let dtStr = `${searchDt.getFullYear()}-${searchDt.getMonth() + 1}-${searchDt.getDate()}`;
         $dropdown.prepend($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()}`));
         
-        if (searchDt == todayDt)
+        if (searchDt == current)
             $dropdown.val(dtStr);
     }
 
     setRankingDates();
+    $dropdown.on( "change", setRankingDates );
 }
 
 function setRegion() {
@@ -50,9 +52,7 @@ function setRegion() {
         $("#region").val("AM");
 }
 
-function teamDetailsModal() {
-    let teamChart;
-    let teamGameHistoryDt;
+function teamDetailsModal(mrdaLinearRegressionSystem) {
     let $teamDetailModal = $('#teamDetailModal');
 
     $('#mrdaRankingPointsContainer').on('click', 'td.dt-teamDetailsClick', function (e) {
@@ -60,7 +60,22 @@ function teamDetailsModal() {
         let row = $('#mrdaRankingPoints').DataTable().row(tr);
         let team = row.data();
 
-        $('#teamName').text(team.teamName);
+        if ($teamDetailModal.data('teamId') == team.teamId) {
+            $teamDetailModal.modal('show');
+            return; 
+        } else {
+            $teamDetailModal.data('teamId', team.teamId);
+
+            if (DataTable.isDataTable('#teamGameHistory'))
+                $('#teamGameHistory').DataTable().clear().destroy();
+            
+            let teamChart = Chart.getChart("teamChart");
+            if (teamChart != undefined) {
+                teamChart.destroy();
+            }
+        }
+
+        $('#teamName').text(team.name);
         $('#teamAverageRankingPoints').text(team.rankingPoints.toFixed(2));
 
         if (team.logo)
@@ -73,55 +88,68 @@ function teamDetailsModal() {
         else
             $('#teamLocation').hide();
 
-        let minDt = new Date(team.rankingPointsHistory.keys().next().value + " 00:00:00");
-        let oldestGame = team.gameHistory.filter(game => game.gamePoints[team.teamId]).sort((a,b) => new Date(a.date) - new Date(b.date))[0];
-        if (oldestGame && new Date(oldestGame.date) < minDt)
+        let minChartDt = [...team.rankingHistory.keys()].sort((a, b) => a - b)[0];
+        let oldestGame = team.gameHistory.filter(game => game.gamePoints[team.teamId]).sort((a,b) => a.date - b.date)[0];
+        if (oldestGame && oldestGame.date < minChartDt)
         {
-            minDt = new Date(oldestGame.date);
-            dayOfWeek = minDt.getDay();
-            minDt.setDate(minDt.getDate() - (dayOfWeek >= 3 ? dayOfWeek - 3 : dayOfWeek + 4));
+            minChartDt = new Date(oldestGame.date);
+            dayOfWeek = minChartDt.getDay();
+            minChartDt.setDate(minChartDt.getDate() - (dayOfWeek >= 3 ? dayOfWeek - 3 : dayOfWeek + 4));
         }
 
-        teamChart = new Chart(document.getElementById("teamChart"), {
+        let rankingHistory = [];
+        let errorBarMinFrequency = (rankingPeriodDeadlineDt - minChartDt) / 16;
+        let lastDtWithErrorBars = null;
+        let teamRankingHistoryArray = Array.from(team.rankingHistory.entries());
+        for (const [date, ranking] of teamRankingHistoryArray) {
+            let chartErrs = false;
+            let index = teamRankingHistoryArray.findIndex(([key]) => key === date);
+            if (index == 0 || index == teamRankingHistoryArray.length - 1 || date == rankingPeriodDeadlineDt)
+                chartErrs = true;
+            else {
+                let lastRanking = teamRankingHistoryArray[index - 1];
+                let nextRanking = teamRankingHistoryArray[index + 1];
+                if (Math.abs(lastRanking[1].relativeStandardError - ranking.relativeStandardError) > 5
+                    || Math.abs(nextRanking[1].relativeStandardError - ranking.relativeStandardError) > 5)
+                    chartErrs = true;
+            }
+
+            if (!chartErrs && (date - lastDtWithErrorBars) > errorBarMinFrequency)
+                chartErrs = true;
+
+            if (chartErrs)
+                lastDtWithErrorBars = date;
+
+            let errMin = ranking.rankingPoints - ranking.standardError;
+            let errMax = ranking.rankingPoints + ranking.standardError;
+                
+            rankingHistory.push({
+                x: date,
+                y: ranking.rankingPoints,
+                yMin: chartErrs ? errMin : null,
+                yMax: chartErrs ? errMax : null,
+                title: date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),
+                label: `RP: ${ranking.rankingPoints} ± ${ranking.relativeStandardError}% (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
+            });
+        }
+
+        new Chart(document.getElementById("teamChart"), {
             data: {
                 datasets: [{
                     type: 'scatter',
                     label: 'Game Points (2023 Algorithm)',
                     data: team.gameHistory.filter(game => game.gamePoints[team.teamId]).map(game => {
                         return { 
-                            x: new Date(game.date), 
+                            x: game.date, 
                             y: game.gamePoints[team.teamId],
-                            title: mrda_events[game.event_id].dateTitle,
-                            label: (game.homeTeamId == team.teamId ? 
-                                game.scores[game.homeTeamId] + "-" + game.scores[game.awayTeamId] + " " + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? "W" : "L") + " vs. " + mrda_teams[game.awayTeamId].name 
-                                : game.scores[game.awayTeamId] + "-" + game.scores[game.homeTeamId] + " " + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? "W" : "L") +  " @ " + mrda_teams[game.homeTeamId].name)
-                                + ": " + game.gamePoints[team.teamId].toFixed(2) + " GP"
+                            title: mrdaLinearRegressionSystem.mrdaEvents[game.eventId].getEventTitleWithDate(),
+                            label: `${game.getGameSummary(team.teamId, mrdaLinearRegressionSystem.mrdaTeams)}: ${game.gamePoints[team.teamId].toFixed(2)}`
                         }}),                        
                     pointRadius: 5,
                 }, {
                     type: 'lineWithErrorBars',
                     label: 'Ranking Points ± Standard Error',
-                    data: Array.from(team.rankingPointsHistory, ([date, rp]) => {
-                        let dt = new Date(date + " 00:00:00");
-                        
-                        // Only chart error bars once a month.
-                        let rpDates = Array.from(team.rankingPointsHistory.keys());
-                        let rpIndex = rpDates.indexOf(date);
-                        let chartErrs = true;
-                        if (rpIndex > 0) {
-                            let lastDt = new Date(rpDates[rpIndex-1]);
-                            if (lastDt.getMonth() == dt.getMonth() && lastDt.getFullYear() == dt.getFullYear())
-                                chartErrs = false;
-                        }
-
-                        return { 
-                            x: dt, 
-                            y: rp, 
-                            yMin: chartErrs ? team.stdErrMinHistory.get(date) : null, 
-                            yMax: chartErrs ? team.stdErrMaxHistory.get(date) : null, 
-                            title: dt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),
-                            label: "RP: " + rp + " ± " + team.relStdErrHistory.get(date) + "% (" + team.stdErrMinHistory.get(date).toFixed(2) + " .. " + team.stdErrMaxHistory.get(date).toFixed(2) + ")"
-                    }}),
+                    data: rankingHistory,
                     showLine: true
                 }],
             },
@@ -129,8 +157,8 @@ function teamDetailsModal() {
                 scales: {
                     x: {
                         type: 'time',
-                        min: minDt,
-                        max: new Date([...team.rankingPointsHistory][team.rankingPointsHistory.size-1][0] + " 00:00:00")
+                        min: minChartDt,
+                        max: rankingPeriodDeadlineDt
                     }
                 },
                 interaction: {
@@ -155,7 +183,7 @@ function teamDetailsModal() {
             }
         });
 
-        teamGameHistoryDt = new DataTable('#teamGameHistory', {
+        new DataTable('#teamGameHistory', {
             columns: [
                 { name: 'date', data: 'date'},
                 { data: 'score', className: 'text-overflow-ellipsis' },
@@ -166,13 +194,11 @@ function teamDetailsModal() {
             ],
             data: Array.from(team.gameHistory, (game) => ({ 
                 date: getStandardDateString(game.date),
-                score: game.scores[team.teamId] + "-" + (game.homeTeamId == team.teamId ? 
-                    game.scores[game.awayTeamId] + (game.scores[game.homeTeamId] > game.scores[game.awayTeamId] ? " W " : " L ") + " vs. " + mrda_teams[game.awayTeamId].name 
-                    : game.scores[game.homeTeamId] + (game.scores[game.awayTeamId] > game.scores[game.homeTeamId] ? " W " : " L ") + " @ " + mrda_teams[game.homeTeamId].name),
+                score: game.getGameSummary(team.teamId, mrdaLinearRegressionSystem.mrdaTeams),
                 expectedRatio: team.teamId in game.expectedRatios ? game.expectedRatios[team.teamId].toFixed(2) : "",
-                actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.homeTeamId == team.teamId ? game.scores[game.awayTeamId] : game.scores[game.homeTeamId])).toFixed(2) : "",
-                beforeRankingPoints: team.getRankingPointHistory(game.date) ?? "",
-                afterRankingPoints: team.getRankingPointHistory(game.date, true) ?? ""
+                actualRatio: !game.forfeit ? (game.scores[team.teamId]/(game.scores[game.homeTeamId == team.teamId ? game.awayTeamId : game.homeTeamId])).toFixed(2) : "",
+                beforeRankingPoints: team.getRankingPoints(game.date) ?? "",
+                afterRankingPoints: team.getRankingPoints(game.date, true) ?? ""
             })),
             lengthChange: false,
             searching: false,
@@ -188,35 +214,22 @@ function teamDetailsModal() {
 
         $teamDetailModal.modal('show');
     });
-
-    $teamDetailModal.on('hidden.bs.modal', function (event) {
-        $('#teamName').text('');
-        $('#teamAverageRankingPoints').text('');
-        teamChart.destroy();
-        teamGameHistoryDt.clear();
-        teamGameHistoryDt.destroy();
-    });
-
 }
 
-function displayRankingChart(teamsArray) {
-        
+function displayRankingChart(teams) {
+    let rankingChart = Chart.getChart("rankingsChart");
+    if (rankingChart != undefined)
+        rankingChart.destroy();
+
     let datasets = [];
 
-    teamsArray.sort((a, b) => a.rank - b.rank).forEach(team => {
-        if (team.chart) {
-            datasets.push({
-                label: team.teamName,
-                data: Array.from(team.rankingPointsHistory, ([date, rp]) => ({ x: new Date(date + " 00:00:00"), y: rp, teamName: team.teamName })),
-                showLine: true
-            });
-        }
+    teams.filter(team => team.chart).sort((a, b) => a.rank - b.rank).forEach(team => {
+        datasets.push({
+            label: team.name,
+            data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
+            showLine: true
+        });
     });
-
-    let rankingChart = Chart.getChart("rankingsChart");
-    if (rankingChart != undefined) {
-        rankingChart.destroy();
-    }
 
     rankingChart = new Chart(document.getElementById("rankingsChart"), {
             type: 'line',
@@ -246,7 +259,7 @@ function displayRankingChart(teamsArray) {
                                 return context[0].raw.x.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
                             },
                             label: function(context) {
-                                return context.raw.teamName + ": " + context.raw.y.toFixed(2);
+                                return context.dataset.label + ": " + context.raw.y.toFixed(2);
                             }
                         }
                     }
@@ -257,29 +270,28 @@ function displayRankingChart(teamsArray) {
         });
 }
 
-function calculateAndDisplayRankings() {
+function calculateAndDisplayRankings(mrdaLinearRegressionSystem) {
 
-    let mrdaLinearRegressionSystem = new MrdaLinearRegressionSystem(mrda_teams, rankingPeriodDeadlineDt, rankingPeriodStartDt, $("#region").val());
+    let region = $("#region").val();
 
-    mrdaLinearRegressionSystem.updateRankings(rankings_history);
+    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, region);
 
-    mrdaLinearRegressionSystem.addGameHistory(mrda_games);
+    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter(team => (team.wins + team.losses) > 0);
+    if (region != "GUR")
+        teams = teams.filter(team => team.region == teams);
 
-    mrdaLinearRegressionSystem.rankTeams();
-
-    displayRankingChart(Object.values(mrdaLinearRegressionSystem.mrdaTeams));
+    displayRankingChart(teams);
 
     let regenerate = DataTable.isDataTable('#mrdaRankingPoints');
-
     if (regenerate)
         $('#mrdaRankingPoints').DataTable().clear().destroy();        
 
     new DataTable('#mrdaRankingPoints', {
         columns: [
             { name: 'rankSort', data: 'rank', visible: false},
-            { data: 'rank', width: '1em', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (mrdaLinearRegressionSystem.region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
+            { data: 'rank', width: '1em', className: 'dt-teamDetailsClick', render: function (data, type, full) { return full.activeStatus ? (region == "GUR" ? data : full.regionRank) : ""; }, orderData: [0,1] },
             { data: 'logo', orderable: false, className: 'dt-teamDetailsClick teamLogo', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
-            { data: 'teamName', orderable: false, className: 'dt-teamDetailsClick teamName', 
+            { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName', 
                 createdCell: function (td, cellData, rowData, row, col) {
                     let $td = $(td);
                     if (rowData.activeStatus && rowData.forfeits > 0)
@@ -295,7 +307,7 @@ function calculateAndDisplayRankings() {
             { data: 'losses', orderable: false, className: 'dt-teamDetailsClick'},
             { data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
-        data: Object.values(mrdaLinearRegressionSystem.mrdaTeams).filter(team => (team.wins + team.losses) > 0 && (team.region == mrdaLinearRegressionSystem.region || mrdaLinearRegressionSystem.region == "GUR")),
+        data: teams,
         dom: 't',
         paging: false,
         searching: false,
@@ -308,7 +320,6 @@ function calculateAndDisplayRankings() {
             header: true,
             headerOffset: $("nav.sticky-top").outerHeight()
         },
-        //responsive: true,
         createdRow: function (row, data, dataIndex) {
             if (data.postseasonPosition != null) {
                 $(row).addClass('postseasonPosition-' + data.postseasonPosition);
@@ -316,8 +327,8 @@ function calculateAndDisplayRankings() {
         }
     });
 
-    $(".forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
-    $(".postseasonIneligible").tooltip({title: "Not enough games to be Postseason Eligible."});
+    $("#mrdaRankingPoints .forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
+    $("#mrdaRankingPoints .postseasonIneligible").tooltip({title: "Not enough games to be Postseason Eligible."});
 
     if (!regenerate) {
         $("#mrdaRankingPointsContainer").on('change', 'input.chart', function (e) {
@@ -331,71 +342,90 @@ function calculateAndDisplayRankings() {
     }
 }
 
-function deriveEventTitles(event) {
-    let startDt = new Date(event.start_day + " 00:00:00");
-    event.dateTitle = startDt.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
-    
-    if (event.start_day == event.end_day) {
-            if (event.name)
-                event.title = startDt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
-            else
-                event.title = startDt.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-    }
-    else {
-        let endDt = new Date(event.end_day + " 00:00:00");
-        if (startDt.getFullYear() != endDt.getFullYear())
-            event.dateTitle += " - " + endDt.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
-        else if (startDt.getMonth() != endDt.getMonth()) {
-            let monthAndDay = startDt.toLocaleDateString(undefined,{month:"short",day:"numeric"});
-            event.dateTitle = event.dateTitle.replace(monthAndDay, monthAndDay + " - " + endDt.toLocaleDateString(undefined,{month:"short",day:"numeric"}));
-        } else {
-            let day = startDt.toLocaleDateString(undefined,{day:"numeric"});
-            event.dateTitle = event.dateTitle.replace(new RegExp(`\\b${day}\\b`, "g"), day + "-" + endDt.toLocaleDateString(undefined,{day:"numeric"}));
-        }
-    }
-
-    if (event.name) {
-        event.title = (event.title ? ": " : "") + event.name;
-        event.dateTitle += ": " + event.name.replace("Mens Roller Derby Association", "MRDA").replace("Men's Roller Derby Association", "MRDA").replace(startDt.getFullYear(),"").trim();
-    }
-}
-
-function setupApiGames() {
+function setupApiGames(mrdaLinearRegressionSystem) {
     $('#gamesModal').on('show.bs.modal', function (e) {
         $apiGames = $('#apiGames');
 
-        if ($apiGames.data('rankingsDate') == $("#date").val())
+        if ($apiGames.data('rankingsDate') == rankingPeriodDeadlineDt)
             return;
         else {
-            $apiGames.data('rankingsDate'),$("#date").val();
+            $apiGames.data('rankingsDate',rankingPeriodDeadlineDt);
             if (DataTable.isDataTable('#apiGames'))
                 $('#apiGames').DataTable().clear().destroy();
         }
 
         //filter to games within ranking period
-        let gameData = mrda_games.filter(game => {
-            let gameDt = new Date(game.date);
-            return rankingPeriodStartDt <= gameDt && gameDt < rankingPeriodDeadlineDt;
-        }).map(game => {
-            let event = mrda_events[game.event_id];
-            return {
-                date: game.date,
-                day: event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : "",
-                home_team_id: game.home_team_id,
-                home_team_name: mrda_teams[game.home_team_id].name + (game.forfeit && game.forfeit_team_id == game.home_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
-                home_team_logo: mrda_teams[game.home_team_id].logo && mrda_teams[game.home_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.home_team_id].logo : mrda_teams[game.home_team_id].logo,
-                game_score: game.home_team_score + "-" + game.away_team_score + (game.status < 6 ? "<sup class='unvalidatedInfo'>†</sup>" : ""),
-                forfeit: game.forfeit,
-                away_team_id: game.away_team_id,
-                away_team_name: mrda_teams[game.away_team_id].name + (game.forfeit && game.forfeit_team_id == game.away_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
-                away_team_logo: mrda_teams[game.away_team_id].logo && mrda_teams[game.away_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.away_team_id].logo : mrda_teams[game.away_team_id].logo,
-                event_title: "<span class='event_id' style='display:none;'>" + game.event_id + "</span>" + event.title,
-                event_start_dt: new Date(event.start_day + " 00:00:00"),
-                event_id: game.event_id,
-                status: game.status,
-                weight: game.weight,
+        let games = mrdaLinearRegressionSystem.mrdaGames
+            .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt);
+//            .map(game => {
+//                let event = mrda_events[game.eventId];
+//                return {
+//                    date: game.date,
+//                    day: event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : "",
+//                    home_team_id: game.home_team_id,
+//                    home_team_name: mrda_teams[game.home_team_id].name + (game.forfeit && game.forfeitTeamId == game.home_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
+//                    home_team_logo: mrda_teams[game.home_team_id].logo && mrda_teams[game.home_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.home_team_id].logo : mrda_teams[game.home_team_id].logo,
+//                    game_score: game.home_team_score + "-" + game.away_team_score + (game.status < 6 ? "<sup class='unvalidatedInfo'>†</sup>" : ""),
+//                    forfeit: game.forfeit,
+//                    away_team_id: game.away_team_id,
+//                    away_team_name: mrda_teams[game.away_team_id].name + (game.forfeit && game.forfeitTeamId == game.away_team_id ? "<sup class='forfeitInfo'>↓</sup>" : ""),
+//                    away_team_logo: mrda_teams[game.away_team_id].logo && mrda_teams[game.away_team_id].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[game.away_team_id].logo : mrda_teams[game.away_team_id].logo,
+//                    event_title: "<span class='eventId' style='display:none;'>" + game.eventId + "</span>" + event.title,
+//                    event_start_dt: new Date(event.start_day + " 00:00:00"),
+//                    eventId: game.eventId,
+//                    status: game.status,
+//                    weight: game.weight,
+//                }
+//            });
+
+        let seedingRankingDt = [...mrdaLinearRegressionSystem.mrdaRankingsHistory.keys()]
+                                .filter(dt => dt <= rankingPeriodStartDt)
+                                .sort((a, b) => b - a)[0];
+
+        if (seedingRankingDt) {
+            for (const [teamId, ranking] of Object.entries(mrdaLinearRegressionSystem.mrdaRankingsHistory.get(seedingRankingDt))) {
+                if (games.some(game => !game.forfeit && (game.home_team_id == teamId || game.away_team_id == teamId))) {
+                    let seedingGame = {
+                        date: rankingPeriodStartDt,
+                        home_team_id: teamId,
+                        scores = {},
+                        forfeit: false,
+                        eventId: null,
+                        status: null,
+                        weight: .25,
+                    }
+                    seedingGame.scores[teamId] = 
+
+                    games.push(new MrdaGame() {
+
+                    })
+
+                    let dtStr = getStandardDateString(rankingPeriodStartDt);
+
+                    gameData.push({
+                        date: dtStr + " 00:00:00",
+                        day: "",
+                        home_team_id: teamId,
+                        home_team_name: mrda_teams[teamId].name,
+                        home_team_logo: mrda_teams[teamId].logo && mrda_teams[teamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[teamId].logo : mrda_teams[teamId].logo,
+                        game_score: rankings_history[rankingHistoryDate][teamId].rp + " - 1",
+                        forfeit: false,
+                        away_team_id: null,
+                        away_team_name: "Virtual Team",
+                        away_team_logo: "team-logos/MRDA-Logo-Acronym.png",
+                        event_title: "Virtual Games",
+                        event_start_dt: rankingPeriodStartDt,
+                        eventId: null,
+                        status: null,
+                        weight: .25,
+                    });
+                }
             }
-        });
+        }
+
+        
+
+
 
         let sortedRankingHistory = Object.keys(rankings_history)
             .filter(date => new Date(date + " 00:00:00") <= rankingPeriodStartDt)
@@ -421,7 +451,7 @@ function setupApiGames() {
                         away_team_logo: "team-logos/MRDA-Logo-Acronym.png",
                         event_title: "Virtual Games",
                         event_start_dt: rankingPeriodStartDt,
-                        event_id: null,
+                        eventId: null,
                         status: null,
                         weight: .25,
                     });
@@ -432,7 +462,7 @@ function setupApiGames() {
         new DataTable('#apiGames', {
                 columns: [
                     { data: 'event_start_dt', name: 'event_start_dt', visible: false },
-                    { data: 'event_id', name: 'event_id', visible: false },
+                    { data: 'eventId', name: 'eventId', visible: false },
                     { data: 'home_team_name', className: 'dt-right' },
                     { data: "home_team_logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
                     { data: 'game_score', width: '7em', className: 'dt-center' },
@@ -484,21 +514,21 @@ async function setupUpcomingGames() {
     let upcomingEvents = {};
 
     let upcomingGames = payload.sort((a, b) => new Date(a.event.game_datetime) - new Date(b.event.game_datetime)).map(game => {
-        let event_id = game.event.sanctioning_id;
+        let eventId = game.event.sanctioning_id;
         let gameDay = getStandardDateString(game.event.game_datetime);
         let homeTeamId = game.event.home_league + (game.event.home_league_charter == 'primary' ? 'a' : 'b');
         let awayTeamId = game.event.away_league + (game.event.away_league_charter == 'primary' ? 'a' : 'b');
 
-        if (!(event_id in upcomingEvents))
-            upcomingEvents[event_id] = {
+        if (!(eventId in upcomingEvents))
+            upcomingEvents[eventId] = {
                 start_day: gameDay,
                 end_day: gameDay,
                 name: game.sanctioning.event_name
             }
-        else if (gameDay != upcomingEvents[event_id].end_day)
-            upcomingEvents[event_id].end_day = gameDay;
+        else if (gameDay != upcomingEvents[eventId].end_day)
+            upcomingEvents[eventId].end_day = gameDay;
 
-        let event = upcomingEvents[event_id];
+        let event = upcomingEvents[eventId];
 
         let rankingHistoryDate = Object.keys(rankings_history)
             .filter(date => new Date(date + " 00:00:00") <= new Date(game.event.game_datetime))
@@ -518,24 +548,24 @@ async function setupUpcomingGames() {
             away_team_rp: awayRp,
             away_team_logo: mrda_teams[awayTeamId].logo && mrda_teams[awayTeamId].logo.startsWith("/central/") ? "https://assets.mrda.org" + mrda_teams[awayTeamId].logo : mrda_teams[awayTeamId].logo,
             expected_ratio: expectedRatio ? expectedRatio.toFixed(2) : null,
-            event_title: "<span class='event_id' style='display:none;'>" + event_id + "</span>",
+            event_title: "<span class='eventId' style='display:none;'>" + eventId + "</span>",
             event_start_dt: new Date(event.start_day + " 00:00:00"),
-            event_id: event_id
+            eventId: eventId
         }
     });
 
     Object.values(upcomingEvents).forEach(deriveEventTitles);
 
     upcomingGames.forEach(game => {
-        let event = upcomingEvents[game.event_id];
+        let event = upcomingEvents[game.eventId];
         game.day = event.start_day != event.end_day ? new Date(game.date).toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : "",
-        game.event_title += upcomingEvents[game.event_id].title;
+        game.event_title += upcomingEvents[game.eventId].title;
     });
 
     new DataTable('#upcomingGames', {
             columns: [
                 { data: 'event_start_dt', name: 'event_start_dt', visible: false },
-                { data: 'event_id', name: 'event_id', visible: false },
+                { data: 'eventId', name: 'eventId', visible: false },
                 { data: 'home_team_name', className: 'dt-right', render: function(data, type, full) {return data + "<div class='teamRp'>" + full.home_team_rp + "</div>"; } },
                 { data: "home_team_logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
                 { data: 'expected_ratio', width: '1em', className: 'dt-center',  render: function(data, type, full) { return data ? (full.home_team_rp > full.away_team_rp ? data + " : 1" : "1 : " + data) : "" } },
@@ -588,7 +618,7 @@ function setupPredictedRatioCalc() {
     $('#gameDate').change(calculatePredictedRatio);
 }
 
-async function main() {
+$(function() {
 
     //document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
@@ -596,11 +626,13 @@ async function main() {
 
     //setRegion();
 
-    calculateAndDisplayRankings();
+    let mrdaLinearRegressionSystem = new MrdaLinearRegressionSystem(rankings_history, mrda_teams, mrda_events, mrda_games);
+
+    calculateAndDisplayRankings(mrdaLinearRegressionSystem);
 
     $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
     
-    $("#date").on( "change", setRankingDates );
+    
     $("#date").on( "change", calculateAndDisplayRankings );
     $("#region").on( "change", calculateAndDisplayRankings );
 
@@ -611,15 +643,11 @@ async function main() {
     $('.betaFlag').tooltip({title: "This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly."});
 
     //These are all initially hidden until user input. Setup last.
-    Object.values(mrda_events).forEach(deriveEventTitles);
-
-    teamDetailsModal();
+    teamDetailsModal(mrdaLinearRegressionSystem);
 
     setupUpcomingGames();
 
     setupPredictedRatioCalc();
 
-    setupApiGames();
-}
-
-window.addEventListener('load', main);
+    setupApiGames(mrdaLinearRegressionSystem);
+});
