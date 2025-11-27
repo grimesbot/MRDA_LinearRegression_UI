@@ -370,8 +370,10 @@ approved_gamedata = get_api_gamedata(date(2024, 1, 1), 3)
 print("Retrieved " + str(len(approved_gamedata)) + " games in Approved status")
 gamedata.extend(approved_gamedata)
 
-waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=45), 4)
-print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 45 days in Waiting for Documents status")
+#waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=45), 4)
+#print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 45 days in Waiting for Documents status")
+waiting_for_documents_gamedata = get_api_gamedata(date(2024, 1, 1), 4)
+print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games in Waiting for Documents status")
 gamedata.extend(waiting_for_documents_gamedata)
 
 # Compare gamedata to JSON file from last calculation for scheduled runs.
@@ -413,11 +415,11 @@ for data in sorted(gamedata, key=lambda x: datetime.strptime(x["event"]["game_da
     
     # Scores are not required as they're used by the upcoming games predictor, 
     # but filter out Approved games without scores older than 45 days
-#    if "status" in data["event"] and data["event"]["status"] == "3" and game_date < (datetime.today() - timedelta(days=45)):
-#        if "home_league_score" not in data["event"] or data["event"]["home_league_score"] is None:
-#            continue
-#        if "away_league_score" not in data["event"] or data["event"]["away_league_score"] is None:
-#            continue
+    if "status" in data["event"] and data["event"]["status"] == "3" and game_date < (datetime.today() - timedelta(days=45)):
+        if "home_league_score" not in data["event"] or data["event"]["home_league_score"] is None:
+            continue
+        if "away_league_score" not in data["event"] or data["event"]["away_league_score"] is None:
+            continue
 
     # Map API data
     home_team_id = str(data["event"]["home_league"]) + ("a" if data["event"]["home_league_charter"] == "primary" else "b")

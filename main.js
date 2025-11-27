@@ -9,48 +9,92 @@ function setRankingDates() {
     rankingPeriodStartDt = mrdaLinearRegressionSystem.getSeedDate(rankingPeriodDeadlineDt);
 }
 
+function getNextRankingDeadline(date) {
+    let searchDt = new Date(date);
+    searchDt.setHours(0, 0, 0, 0);
+
+    if ((searchDt.getMonth() + 1) % 3 == 0 && searchDt.getDate() <= 7 && searchDt.getDay() <= 3) {
+        if (searchDt.getDay() == 3)
+            return searchDt;
+        else {
+            searchDt.setDate(searchDt.getDate() + ((3 - searchDt.getDay() + 7) % 7));
+            return searchDt;
+        }
+    } else {
+        searchDt.setMonth(searchDt.getMonth() + (3 - ((searchDt.getMonth() + 1) % 3)));
+        searchDt.setDate(1); // Set to first of month
+        searchDt.setDate(1 + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
+        return searchDt;
+    }
+}
+
 function populateRankingDates() {
-    let $dropdown = $("#date");
-    
-    let current = new Date();
-    current.setHours(0, 0, 0, 0);
-    current.setDate(current.getDate() + ((3 - current.getDay() + 7) % 7)); // Set to next Wednesday = 3
-    let searchDt = new Date (2023, 9 - 1, 6);
+    let allRankingDts = [...mrdaLinearRegressionSystem.mrdaRankingsHistory.keys()].sort((a, b) => a - b);
+
+    let searchDt = getNextRankingDeadline(allRankingDts[0]);
+    let newestRankingDt = getNextRankingDeadline(allRankingDts.at(-1));
+
+    let dateOptions = [];
+
+    while (searchDt <= newestRankingDt) {
+        dateOptions.push({
+            date: new Date(searchDt),
+            value: `${searchDt.getFullYear()}-${searchDt.getMonth() + 1}-${searchDt.getDate()}`,
+            text: `Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()}`,
+            selected: false
+        });
+        searchDt.setMonth(searchDt.getMonth() + 3); // Add 3 months (a quarter)
+        searchDt.setDate(1); // Set to first of month
+        searchDt.setDate(1 + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
+    }
 
     let queryDt = null;
     if (urlParams.has("date")) {
         queryDt = new Date(urlParams.get("date"));
         if (isNaN(queryDt))
             queryDt = null;
-        queryDt.setHours(0, 0, 0, 0);
-        queryDt.setDate(queryDt.getDate() + ((3 - queryDt.getDay() + 7) % 7));
-        if (queryDt == current)
-            queryDt = null;
-    }    
-
-    while (searchDt <= current) {
-        searchDt.setMonth(searchDt.getMonth() + 3); // Add 3 months (a quarter)
-        searchDt.setDate(searchDt.getDate() - searchDt.getDay()); // Set to first of month
-        searchDt.setDate(searchDt.getDate() + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
-
-        if (searchDt > current){
-            let currentStr = `${current.getFullYear()}-${current.getMonth() + 1}-${current.getDate()}`;
-            $dropdown.prepend($("<option />").val(currentStr).text('Today'));
-            $dropdown.val(currentStr);
+        else {
+            queryDt.setHours(0, 0, 0, 0);
+            queryDt.setDate(queryDt.getDate() + ((3 - queryDt.getDay() + 7) % 7));
         }
-
-        if (queryDt && searchDt > queryDt) {
-            let queryDtStr = `${queryDt.getFullYear()}-${queryDt.getMonth() + 1}-${queryDt.getDate()}`;
-            $dropdown.prepend($("<option />").val(queryDtStr).text(queryDt.toLocaleDateString(undefined,{year:"numeric",month:"numeric",day:"numeric"})));
-            $dropdown.val(queryDtStr);
-        }
-
-        let dtStr = `${searchDt.getFullYear()}-${searchDt.getMonth() + 1}-${searchDt.getDate()}`;
-        $dropdown.prepend($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()}`));
-        
-        if (searchDt.getTime() == current.getTime() || (queryDt && searchDt.getTime() == queryDt.getTime()))
-            $dropdown.val(dtStr);
     }
+
+    let current = new Date();
+    if (current < newestRankingDt) {
+        current.setHours(0, 0, 0, 0);
+        current.setDate(current.getDate() + ((3 - current.getDay() + 7) % 7)); // Set to next Wednesday = 3
+        let currentDateOptions = dateOptions.filter(o => o.date.getTime() == current.getTime());
+        if (currentDateOptions.length == 0) {
+                dateOptions.push({
+                date: current,
+                value: `${current.getFullYear()}-${current.getMonth() + 1}-${current.getDate()}`,
+                text: `Today`,
+                selected: !queryDt || queryDt.getTime() == current.getTime()
+            });
+        } else if (!queryDt || queryDt.getTime() == current.getTime()) {
+            currentDateOptions[0].selected = true;
+        }
+    }
+
+    if (queryDt) {
+        let queryDtDateOptions = dateOptions.filter(o => o.date.getTime() == queryDt.getTime());
+        if (queryDtDateOptions.length == 0) {
+                dateOptions.push({
+                date: queryDt,
+                value: `${queryDt.getFullYear()}-${queryDt.getMonth() + 1}-${queryDt.getDate()}`,
+                text: queryDt.toLocaleDateString(undefined, {year:"2-digit",month:"numeric",day:"numeric"}),
+                selected: true
+            });
+        } else {
+            queryDtDateOptions[0].selected = true;
+        }
+    }
+
+    let $dropdown = $("#date");
+    
+    dateOptions.sort((a,b) => b.date - a.date).forEach(o => {
+        $dropdown.append(new Option(o.text, o.value, o.selected, o.selected));
+    });
 
     setRankingDates();
     $dropdown.on( "change", setRankingDates );
