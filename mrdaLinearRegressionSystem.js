@@ -7,14 +7,8 @@ function ratioCapped(homeScore,awayScore) {
     return Math.max(Math.min(homeScore/awayScore,RATIO_CAP),1/RATIO_CAP);
 }
 
-function getStandardDateString(dt) {
-    if (!(dt instanceof Date))
-        dt = new Date(dt);
-    return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`;
-}
-
 class MrdaGame {
-    constructor(game) {
+    constructor(game, mrdaTeams, mrdaEvents, virtualGame = false) {
         this.date = game.date instanceof Date ? game.date : new Date(game.date);
         this.homeTeamId = game.home_team_id;
         this.awayTeamId = game.away_team_id;
@@ -28,23 +22,80 @@ class MrdaGame {
         this.weight = game.weight;
         this.expectedRatios = {};
         this.gamePoints = {};
+
+        this.homeTeam = mrdaTeams[this.homeTeamId];
+        this.awayTeam = mrdaTeams[this.awayTeamId];
+
+        this.event = mrdaEvents[this.eventId];
+
+        if (virtualGame) {
+            this.awayTeam = new MrdaTeam(null, { name: "Virtual Team" });
+            let eventDay = `${this.date.getFullYear()}-${this.date.getMonth() + 1}-${this.date.getDate()}`;
+            this.event = new MrdaEvent(null, {start_day: eventDay, end_day: eventDay, name: "Virtual Games"});
+            return;
+        }
+
+        let homeRankingPoints = this.homeTeam.getRankingPoints(this.date);
+        let awayRankingPoints = this.awayTeam.getRankingPoints(this.date);
+
+        if (homeRankingPoints && awayRankingPoints) {
+            this.expectedRatios[this.homeTeamId] = homeRankingPoints/awayRankingPoints;
+            this.expectedRatios[this.awayTeamId] = awayRankingPoints/homeRankingPoints;
+        }
+
+        if (this.scores[this.homeTeamId] && this.scores[this.awayTeamId])
+        {
+            if (!this.forfeit && (homeRankingPoints || awayRankingPoints)) {
+                let homeScoreRatio = ratioCapped(this.scores[this.homeTeamId],this.scores[this.awayTeamId]);
+                let awayScoreRato = ratioCapped(this.scores[this.awayTeamId],this.scores[this.homeTeamId]);            
+                if (homeRankingPoints && awayRankingPoints) {
+                    this.gamePoints[this.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
+                    this.gamePoints[this.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
+                } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
+                    // Calculate game points for new team as seeding games for visualization
+                    let newTeamId = homeRankingPoints ? this.awayTeamId : this.homeTeamId;
+                    let establishedTeamId = homeRankingPoints ? this.homeTeamId : this.awayTeamId;
+                    let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
+                    this.gamePoints[newTeamId] = establishedTeamRp * this.scores[newTeamId]/this.scores[establishedTeamId];
+                }
+            }
+        
+            this.homeTeam.gameHistory.push(this);
+            this.awayTeam.gameHistory.push(this);
+        }
     }
 
-    getGameSummary(teamId, allTeams) {
-        let opponentId = null
+    getGameSummary(teamId) {
+        let opponent = null
         let vsOrAt = null;
         
         if (teamId == this.homeTeamId) {
-            opponentId = this.awayTeamId;
+            opponent = this.awayTeam;
             vsOrAt = "vs.";
         } else {
-            opponentId = this.homeTeamId;
+            opponent = this.homeTeam;
             vsOrAt = "@";
         }
 
-        let wOrL = this.scores[teamId] > this.scores[opponentId] ? "W" : "L";
+        let wOrL = this.scores[teamId] > this.scores[opponent.teamId] ? "W" : "L";
 
-        return `${this.scores[teamId]}-${this.scores[opponentId]} ${wOrL} ${vsOrAt} ${allTeams[opponentId].name}`;
+        return `${this.scores[teamId]}-${this.scores[opponent.teamId]} ${wOrL} ${vsOrAt} ${opponent.name}`;
+    }
+
+    getExpectedRatio(teamId) {
+        return teamId in this.expectedRatios ? this.expectedRatios[teamId].toFixed(2) : "";
+    }
+
+    getActualRatio(teamId) {
+        let opponentId = teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId;
+        if (this.forfeit)
+            return "";
+        return (this.scores[teamId]/this.scores[opponentId]).toFixed(2);
+    }
+
+    getGameDay() {
+        if (this.event.startDt != this.event.endDt)
+            return this.date.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
     }
 }
 
@@ -52,7 +103,7 @@ class MrdaEvent {
     constructor(eventId, event) {
         this.eventId = eventId;
         this.startDt = new Date(event.start_day + " 00:00:00");
-        this.endDt = event.startDay != event.endDay ? new Date(event.endDay + " 00:00:00") : this.startDt;
+        this.endDt = event.start_day != event.end_day ? new Date(event.end_day + " 00:00:00") : this.startDt;
         this.name = event.name;
     }
 
@@ -73,11 +124,11 @@ class MrdaEvent {
             else if (this.startDt.getMonth() != this.endDt.getMonth()) {
                 dtFmtOpts = {month:"short",day:"numeric"};
                 let monthAndDay = this.startDt.toLocaleDateString(undefined,dtFmtOpts);
-                return dateStr.replace(monthAndDay, `${monthAndDay} - ${endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
+                return dateStr.replace(monthAndDay, `${monthAndDay} - ${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
             } else {
                 dtFmtOpts = {day:"numeric"};
                 let day = this.startDt.toLocaleDateString(undefined,dtFmtOpts);
-                return dateStr.replace(new RegExp(`\\b${day}\\b`, "g"), `${day}-${endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
+                return dateStr.replace(new RegExp(`\\b${day}\\b`, "g"), `${day}-${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
             }
         }
     }
@@ -109,13 +160,33 @@ class MrdaEvent {
     }
 }
 
+class MrdaTeamRanking {
+    constructor(date, teamId, teamRanking={}) {
+        this.date = date;
+        this.teamId = teamId;
+        this.rankingPoints = teamRanking.rp ?? null;
+        this.standardError = teamRanking.se ?? null;        
+        this.relativeStandardError = teamRanking.rse ?? null;
+        this.gameCount = teamRanking.gc ?? 0;
+        this.activeStatus = teamRanking.as == 1;
+        this.postseasonEligible = teamRanking.pe == 1;
+        this.rank = teamRanking.r ?? null;
+        this.regionRank = teamRanking.rr ?? null;
+        this.wins = teamRanking.w ?? 0;
+        this.losses = teamRanking.l ?? 0;
+        this.forfeits = teamRanking.f ?? 0;
+    }
+}
+
 class MrdaTeam {
-    constructor(teamId, team) {
+    constructor(teamId, team, mrdaRankingsHistory) {
         this.teamId = teamId;
         this.name = team.name;
         this.region = team.region;
         this.location = team.location;
-        this.logo = team.logo && team.logo.startsWith("/central/") ? "https://assets.mrda.org" + team.logo : team.logo;
+        this.logo = team.logo ?? "team-logos/MRDA-Logo-Acronym.png";
+        if (this.logo.startsWith("/central/"))
+            this.logo = "https://assets.mrda.org" + team.logo;
         this.games = []
         this.gameHistory = []
         this.activeStatus = false;
@@ -126,69 +197,63 @@ class MrdaTeam {
         this.forfeits = 0;
         this.rankingPoints = 0;
         this.relStdErr = 0;
-        this.rankingHistory = new Map();
-        this.rankingPointsHistory = new Map();
-        this.stdErrMinHistory = new Map();
-        this.stdErrMaxHistory = new Map();
-        this.relStdErrHistory = new Map();
         this.rank = null;
         this.regionRank = null;        
+        this.rankSort = null;
         this.postseasonPosition = null;
         this.chart = false;
+
+        this.rankingHistory = new Map();
+
+        if (mrdaRankingsHistory) {
+            let lastRankings = {};
+            for (const [date, rankings] of mrdaRankingsHistory) {
+                if (this.teamId in rankings) {
+                    this.rankingHistory.set(date,rankings[this.teamId])                  
+                } else if (teamId in lastRankings) {
+                    // Add empty teamRanking if they're not in current ranking but were in the last ranking.
+                    this.rankingHistory.set(date,new MrdaTeamRanking(date, this.teamId))
+                }
+                lastRankings = rankings;
+            }
+        }
     }
 
-    getRankingPoints(date, addWeek=false) {
-        if (!(date instanceof Date))
+    getRanking(date, addWeek = false, seedDate = null) {
+        if (!(date instanceof Date) || addWeek)
             date = new Date(date);
 
         if (addWeek)
             date.setDate(date.getDate() + 7);
 
-        let latestRankingDt = [...this.rankingHistory.keys()].filter(dt => dt <= date)
+        if (!seedDate) {
+            seedDate = new Date(date);
+            seedDate.setFullYear(seedDate.getFullYear() - 1);
+        }
+
+        let latestRankingDt = [...this.rankingHistory.keys()].filter(dt => seedDate < dt && dt <= date)
             .sort((a, b) => b - a)[0];
 
         if (latestRankingDt)
-            return this.rankingHistory.get(latestRankingDt).rankingPoints;
+            return this.rankingHistory.get(latestRankingDt);
         else
             return null;
     }
 
-    getRankingPointHistory(date, addWeek=false) {
-        if (this.rankingPointsHistory.size === 0)
-            return;
-
-        // Start search from most recent Wednesday on or before date
-        let searchDate = new Date(date);
-        searchDate.setDate(searchDate.getDate() - ((searchDate.getDay() - 3 + 7) % 7));
-
-        if (addWeek)
-            searchDate.setDate(searchDate.getDate() + 7);
-
-        let oldest = new Date(this.rankingPointsHistory.keys().next().value + " 00:00:00");
-
-        if (isNaN(oldest) || searchDate < oldest)
-            return;
-
-        while(!this.rankingPointsHistory.has(getStandardDateString(searchDate)) ) {
-            searchDate.setDate(searchDate.getDate() - 7);
-        }
-        return this.rankingPointsHistory.get(getStandardDateString(searchDate))
+    getRankingPoints(date, addWeek=false, seedDate = null) {
+        let ranking = this.getRanking(date, addWeek, seedDate);
+        if (ranking)
+            return ranking.rankingPoints;
+        else
+            return null;
     }
-}
 
-class MrdaTeamRanking {
-    constructor(date, teamId, teamRanking={}) {
-        this.date = date;
-        this.teamId = teamId;
-        this.rankingPoints = teamRanking.rp ?? null;
-        this.standardError = teamRanking.se ?? null;        
-        this.relativeStandardError = teamRanking.rse ?? null;
-        this.gameCount = teamRanking.gc ?? 0;
-        this.activeStatus = teamRanking.as ?? false;
-        this.postseasonEligible = teamRanking.pe ?? false;
-        this.wins = teamRanking.w ?? 0;
-        this.losses = teamRanking.l ?? 0;
-        this.forfeits = teamRanking.f ?? 0;
+    getRankingPointsWithStandardError(date, addWeek=false, seedDate = null) {
+        let ranking = this.getRanking(date, addWeek, seedDate);
+        if (ranking)
+            return `${ranking.rankingPoints} ±${ranking.relativeStandardError}%` ;
+        else
+            return null;
     }
 }
 
@@ -213,68 +278,35 @@ class MrdaLinearRegressionSystem {
         };
         
         // Map all teams, events and games from raw JSON generated by python
-        Object.keys(mrda_teams_json).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, mrda_teams_json[teamId]));
+        Object.keys(mrda_teams_json).forEach(teamId => this.mrdaTeams[teamId] = new MrdaTeam(teamId, mrda_teams_json[teamId], this.mrdaRankingsHistory));
         Object.keys(mrda_events_json).forEach(eventId => this.mrdaEvents[eventId] = new MrdaEvent(eventId, mrda_events_json[eventId]));
-        this.mrdaGames = mrda_games_json.map(game => new MrdaGame(game));
-
-        this.setupTeamRankingHistories();
-        this.setupGameHistories();
+        this.mrdaGames = mrda_games_json.map(game => new MrdaGame(game, this.mrdaTeams, this.mrdaEvents));
     }
 
-    setupTeamRankingHistories() {
-        let lastRankings = {};
-        for (const [date, rankings] of this.mrdaRankingsHistory) {
-            for (const [teamId, team] of Object.entries(this.mrdaTeams)) {
-                if (teamId in rankings) {
-                    // Add teamRanking if they are in current ranking and not in last ranking or something changed.
-                    if (!(teamId in lastRankings)
-                        || rankings[teamId].rankingPoints != lastRankings[teamId].rankingPoints
-                        || rankings[teamId].standardError != lastRankings[teamId].standardError
-                        || rankings[teamId].relativeStandardError != lastRankings[teamId].relativeStandardError)
-                        team.rankingHistory.set(date,rankings[teamId])                  
-                } else if (teamId in lastRankings) {
-                    // Add empty teamRanking if they're not in current ranking but were in the last ranking.
-                    team.rankingHistory.set(date,new MrdaTeamRanking(date, teamId))
-                }
-            }
-            lastRankings = rankings;
-        }
+    getSeedDate(date) {
+        let seedDate = new Date(date);
+        seedDate.setDate(date.getDate() - 7 * 52);
+        // If seedDate is a greater # weekday of month than date, set seedDate back an additional week
+        // e.g. if date is 1st Wednesday of June, seedDate should be 1st Wednesday of June last year.
+        // date = Jun 7, 2028, 52 weeks prior would seedDate = Jun 9, 2027 which is 2nd Wednesday of June.
+        // set seedDate back an additional week seedDate = Jun 2, 2027 so games on weekend of Jun 4-6, 2027 count
+        if (Math.floor((seedDate.getDate() - 1) / 7) > Math.floor((date.getDate() - 1) / 7))
+            seedDate.setDate(seedDate.getDate() - 7);
+        return seedDate;
     }
 
-    setupGameHistories() {
-        for (const mrdaGame of this.mrdaGames) {
-            let homeTeam = this.mrdaTeams[mrdaGame.homeTeamId];
-            let awayTeam = this.mrdaTeams[mrdaGame.awayTeamId];
-            let homeRankingPoints = homeTeam.getRankingPoints(mrdaGame.date);
-            let awayRankingPoints = awayTeam.getRankingPoints(mrdaGame.date);
-            
-            if (!mrdaGame.forfeit) {
-                let homeScoreRatio = ratioCapped(mrdaGame.scores[mrdaGame.homeTeamId],mrdaGame.scores[mrdaGame.awayTeamId]);
-                let awayScoreRato = ratioCapped(mrdaGame.scores[mrdaGame.awayTeamId],mrdaGame.scores[mrdaGame.homeTeamId]);
-
-                if (homeRankingPoints && awayRankingPoints) {
-                    mrdaGame.expectedRatios[mrdaGame.homeTeamId] = homeRankingPoints/awayRankingPoints;
-                    mrdaGame.expectedRatios[mrdaGame.awayTeamId] = awayRankingPoints/homeRankingPoints;
-                    mrdaGame.gamePoints[mrdaGame.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
-                    mrdaGame.gamePoints[mrdaGame.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
-                } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
-                    // Calculate game points for new team as seeding games for visualization
-                    let newTeamId = homeRankingPoints ? mrdaGame.awayTeamId : mrdaGame.homeTeamId;
-                    let establishedTeamId = homeRankingPoints ? mrdaGame.homeTeamId : mrdaGame.awayTeamId;
-                    let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
-                    mrdaGame.gamePoints[newTeamId] = establishedTeamRp * mrdaGame.scores[newTeamId]/mrdaGame.scores[establishedTeamId];
-                }
-            }
-            
-            homeTeam.gameHistory.push(mrdaGame);
-            awayTeam.gameHistory.push(mrdaGame);
-        }
+    getRankingHistory(date, seedDt = null) {
+        seedDt = seedDt ?? this.getSeedDate(date);
+        let latestRankingDts = [...this.mrdaRankingsHistory.keys()].filter(dt => seedDt < dt && dt <= date).sort((a,b) => b - a);
+        if (latestRankingDts.length > 0)
+            return this.mrdaRankingsHistory.get(latestRankingDts[0]);
+        return null;
     }
 
-    rankTeams(date, region) {
+    rankTeams(date, seedDt) {
+        let maxRank = 0;
         // Get most recent Ranking History and apply to all teams
-        let latestRankingDt = [...this.mrdaRankingsHistory.keys()].filter(dt => dt <= date).sort((a,b) => b - a)[0];
-        let ranking = this.mrdaRankingsHistory.get(latestRankingDt);
+        let ranking = this.getRankingHistory(date, seedDt);
         for (const [teamId, team] of Object.entries(this.mrdaTeams)) {
             if (teamId in ranking) {
                 let teamRanking = ranking[team.teamId];
@@ -283,6 +315,8 @@ class MrdaLinearRegressionSystem {
                 team.activeStatusGameCount = teamRanking.gameCount;                
                 team.activeStatus = teamRanking.activeStatus;
                 team.postseasonEligible = teamRanking.postseasonEligible;
+                team.rank = teamRanking.rank;
+                team.regionRank = teamRanking.regionRank;
                 team.wins = teamRanking.wins;
                 team.losses = teamRanking.losses;
                 team.forfeits = teamRanking.forfeits;
@@ -292,65 +326,26 @@ class MrdaLinearRegressionSystem {
                 team.activeStatusGameCount = 0;                
                 team.activeStatus = false;
                 team.postseasonEligible = false;
+                team.rank = null;
+                team.regionRank = null;
                 team.wins = 0;
                 team.losses = 0;
                 team.forfeits = 0;
             }
+            team.rankSort = team.rank;
+            if (team.rankSort > maxRank)
+                maxRank = team.rank;
+            team.postseasonPosition = null;
         }
 
-        // Rank the active teams
-        let sortedActiveTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus)
-                                    .sort((a, b) => b.rankingPoints - a.rankingPoints );
-
-        for (let i = 0; i < sortedActiveTeams.length; i++) {
-            let team = sortedActiveTeams[i];
-            team.rank = i + 1;
-
-            if (region == "GUR" && team.rank <= 5)
-                team.chart = true;
-        }
-
-        let forfeitAsterisk = $('#forfeitAsterisk');
-        forfeitAsterisk.hide();
-        // Handle forfeits and 2 ranking spot penalty
-        Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.forfeits > 0).forEach(team => {
-            // Each forfeit gets penalty
-            for (let i = 0; i < team.forfeits; i++) {
-                // Try to swap with next team twice
-                for (let j = 0; j < 2; j++) {
-                    let swapTeam = Object.values(this.mrdaTeams).find(t => t.rank == (team.rank + 1));
-                    if (swapTeam) {
-                        swapTeam.rank -= 1;
-                        team.rank += 1;
-                        if (team.region == region)
-                            forfeitAsterisk.show();
-                    }
-                }
-            }
-        });
-
-        // Rank inactive teams for sorting, rank is hidden
-        let sortedInactiveTeams = Object.values(this.mrdaTeams).filter(team => !team.activeStatus)
-                                                        .sort((a, b) => b.rankingPoints - a.rankingPoints );
-
-        for (let i = 0; i < sortedInactiveTeams.length; i++) {
-            let team = sortedInactiveTeams[i];
-            team.rank = sortedActiveTeams.length + i + 1;
-        }
-
-        // Set regionRank if a region is selected
-        if (region != "GUR") {
-            let regionSortedRankedTeams = Object.values(this.mrdaTeams).filter(team => team.activeStatus && team.region == region)
-                                                        .sort((a, b) => a.rank - b.rank);
-            for (let i = 0; i < regionSortedRankedTeams.length; i++) {
-                let team = regionSortedRankedTeams[i];
-                team.regionRank = i + 1;
-
-                if (team.regionRank <= 5)
-                    team.chart = true;
-            }
-        }
-
+        // Set rankSort for unranked teams.
+        Object.values(this.mrdaTeams).filter(team => !team.rankSort)
+            .sort((a, b) => b.rankingPoints - a.rankingPoints )
+            .forEach(team => {
+                maxRank += 1;
+                team.rankSort = maxRank;
+            });
+        
         // Assign potential postseason invite positions
         // Champs go to top 7 globally
         let sortedPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible)
