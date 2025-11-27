@@ -6,8 +6,7 @@ Summary
 ---------------
 This repository calculates rankings for the [MRDA](https://mrda.org/) using a statistical method called [Linear Regression](https://en.wikipedia.org/wiki/Linear_regression) to calculate rankings points representing the relative strength of each team. This is a variation of a method described by [Massey (1997)](https://masseyratings.com/theory/massey97.pdf) which was designed for American college football and was included in the NCAA's Bowl Championship Series (BCS) ranking formula. It was previously implemented for roller derby by [Sam Skipsey](https://aoanla.pythonanywhere.com/SRDRank.html) and later refined and adopted by the [WFTDA in 2025](https://static.wftda.com/files/competition/wftda-rankings-policy-and-algorithm.pdf).
 
-This implementation for the MRDA is very similar to WFTDA's and is based on the
-[2025 WFTDA Rankings Algorithm update proposal](https://drive.google.com/file/d/1WnOy_XUK8WmXbpAjqJCy_mJN0WdKCNG8/view) which is further explained in the very informative [2025 WFTDA Rankings Algorithm Explained](https://docs.google.com/document/d/e/2PACX-1vS2Va64tTxNligHExRfUGgzEkn4wO8RM5-3Q5J6I3aeuuvCwP-SzfTEnqifJrWWZSXPplKEqeFrEYNs/pub) document.
+This implementation for the MRDA is similar to WFTDA's and was originally developed referring to the [2025 WFTDA Rankings Algorithm update proposal](https://drive.google.com/file/d/1WnOy_XUK8WmXbpAjqJCy_mJN0WdKCNG8/view) which is further explained in the very informative [2025 WFTDA Rankings Algorithm Explained](https://docs.google.com/document/d/e/2PACX-1vS2Va64tTxNligHExRfUGgzEkn4wO8RM5-3Q5J6I3aeuuvCwP-SzfTEnqifJrWWZSXPplKEqeFrEYNs/pub) document. This implementation is different in a few key ways to fit the specific needs of the MRDA, mostly regarding seasonality and regions, but WFTDA's documentation is incredibly useful in explaining and understanding the underlying mathematics.
 
 Disclaimer
 ---------------
