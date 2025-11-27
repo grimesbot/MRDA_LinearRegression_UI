@@ -1,5 +1,7 @@
 const mrdaLinearRegressionSystem = new MrdaLinearRegressionSystem(rankings_history, mrda_teams, mrda_events, mrda_games);
 
+const urlParams = new URLSearchParams(window.location.search);
+
 let rankingPeriodDeadlineDt = null;
 let rankingPeriodStartDt = null;
 function setRankingDates() {
@@ -8,13 +10,23 @@ function setRankingDates() {
 }
 
 function populateRankingDates() {
-
     let $dropdown = $("#date");
     
     let current = new Date();
     current.setHours(0, 0, 0, 0);
     current.setDate(current.getDate() + ((3 - current.getDay() + 7) % 7)); // Set to next Wednesday = 3
     let searchDt = new Date (2023, 9 - 1, 6);
+
+    let queryDt = null;
+    if (urlParams.has("date")) {
+        queryDt = new Date(urlParams.get("date"));
+        if (isNaN(queryDt))
+            queryDt = null;
+        queryDt.setHours(0, 0, 0, 0);
+        queryDt.setDate(queryDt.getDate() + ((3 - queryDt.getDay() + 7) % 7));
+        if (queryDt == current)
+            queryDt = null;
+    }    
 
     while (searchDt <= current) {
         searchDt.setMonth(searchDt.getMonth() + 3); // Add 3 months (a quarter)
@@ -27,10 +39,16 @@ function populateRankingDates() {
             $dropdown.val(currentStr);
         }
 
+        if (queryDt && searchDt > queryDt) {
+            let queryDtStr = `${queryDt.getFullYear()}-${queryDt.getMonth() + 1}-${queryDt.getDate()}`;
+            $dropdown.prepend($("<option />").val(queryDtStr).text(queryDt.toLocaleDateString(undefined,{year:"numeric",month:"numeric",day:"numeric"})));
+            $dropdown.val(queryDtStr);
+        }
+
         let dtStr = `${searchDt.getFullYear()}-${searchDt.getMonth() + 1}-${searchDt.getDate()}`;
         $dropdown.prepend($("<option />").val(dtStr).text(`Q${(searchDt.getMonth() + 1) / 3} ${searchDt.getFullYear()}`));
         
-        if (searchDt == current)
+        if (searchDt.getTime() == current.getTime() || (queryDt && searchDt.getTime() == queryDt.getTime()))
             $dropdown.val(dtStr);
     }
 
@@ -39,6 +57,11 @@ function populateRankingDates() {
 }
 
 function setRegion() {
+    $region = $("#region");
+    if (urlParams.has("region") && $region.find(`option[value='${urlParams.get("region")}']`).length > 0)
+        $region.val(urlParams.get("region"));
+    return;
+
     var offset = new Date().getTimezoneOffset();
     if ((-6*60) < offset && offset < (3*60))
         $("#region").val("EUR");
@@ -534,7 +557,7 @@ $(function() {
 
     $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
 
-    //setRegion();
+    setRegion();
 
     calculateAndDisplayRankings();
     $("#date").on( "change", calculateAndDisplayRankings);
@@ -556,5 +579,5 @@ $(function() {
 
     setupApiGames();
     $("#date").on( "change", setupApiGames);
-    
-});
+
+})
