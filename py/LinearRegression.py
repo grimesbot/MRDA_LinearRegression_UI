@@ -67,12 +67,12 @@ print("Begin MRDA Central API game data retrieval...")
 gamedata = get_api_gamedata(date(2024, 1, 1))
 print("Retrieved " + str(len(gamedata)) + " games from >=2024 in Pending Processing or Complete status")
 
-approved_gamedata = get_api_gamedata(datetime.today() - timedelta(days=90), 3)
-print("Retrieved " + str(len(approved_gamedata)) + " games from last 90 days in Approved status")
+approved_gamedata = get_api_gamedata(date(2024, 1, 1), 3)
+print("Retrieved " + str(len(approved_gamedata)) + " games in Approved status")
 gamedata.extend(approved_gamedata)
 
-waiting_for_documents_gamedata = get_api_gamedata(datetime.today() - timedelta(days=90), 4)
-print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games from last 90 days in Waiting for Documents status")
+waiting_for_documents_gamedata = get_api_gamedata(date(2024, 1, 1), 4)
+print("Retrieved " + str(len(waiting_for_documents_gamedata)) + " games in Waiting for Documents status")
 gamedata.extend(waiting_for_documents_gamedata)
 
 def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
