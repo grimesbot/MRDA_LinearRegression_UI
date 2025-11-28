@@ -57,7 +57,7 @@ nav .form-floating>label {
 /* Postseason Position Background Colors */
 div.postseasonPosition-GUR,
 .postseasonPosition-GUR td {
-    background-color: rgba(99,212,113, 0.18) !important;    
+    background-color: rgba(99,212,113, 0.2) !important;    
 }
 div.postseasonPosition-AA,
 .postseasonPosition-AA td {
@@ -65,12 +65,18 @@ div.postseasonPosition-AA,
 }
 div.postseasonPosition-AM,
 .postseasonPosition-AM td {
-    background-color: rgba(241,80,37, 0.18) !important;    
+    background-color: rgba(151,13,0, 0.16) !important;    
 }
 div.postseasonPosition-EUR,
 .postseasonPosition-EUR td {
-    background-color: rgba(75,136,162, 0.18) !important;    
+    background-color: rgba(184,217,238, 0.7) !important;    
 }
+
+/* override table striping, lighter */
+table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
+    box-shadow: inset 0 0 0 9999px rgba(var(--dt-row-stripe), 0.025) !important;
+}
+
 /* Postseason Position legend */
 div[class^="postseasonPosition-"] {
     margin-top:.25rem;
