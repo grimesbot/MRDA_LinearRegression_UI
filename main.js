@@ -184,6 +184,13 @@ function teamDetailsModal() {
         ordering: {
             handler: false
         },
+        createdRow: function (row, data, dataIndex) {
+            if (data.date <= rankingPeriodStartDt)
+                $(row).addClass('outsideRankingPeriod');
+        },
+        layout: {
+            bottomStart: $('<div class="outsideRankingPeriod">Not in currently selected Ranking Period.</div>')
+        }
     });
 
     $('#mrdaRankingPointsContainer').on('click', 'td.dt-teamDetailsClick', function (e) {
@@ -192,17 +199,6 @@ function teamDetailsModal() {
         let clickedTeam = row.data();
 
         if (team && clickedTeam.teamId == team.teamId && rankingPeriodDeadlineDt == date) {
-            $teamDetailModal.modal('show');
-            return; 
-        } else if (team && clickedTeam.teamId == team.teamId) {
-            date = rankingPeriodDeadlineDt;
-
-            $('#teamAverageRankingPoints').text(team.rankingPoints.toFixed(2));
-            
-            teamChart.options.scales.x.max = rankingPeriodDeadlineDt;
-            teamChart.update();
-
-            teamGameHistoryDT.clear().rows.add(team.gameHistory.filter(game => game.date < rankingPeriodDeadlineDt)).draw();
             $teamDetailModal.modal('show');
             return; 
         }
@@ -232,10 +228,10 @@ function teamDetailsModal() {
         let errorBarMinFrequency = (rankingPeriodDeadlineDt - minChartDt) / 16;
         let lastDtWithErrorBars = null;
         let teamRankingHistoryArray = Array.from(team.rankingHistory.entries());
-        for (const [date, ranking] of teamRankingHistoryArray) {
+        for (const [dt, ranking] of teamRankingHistoryArray) {
             let chartErrs = false;
-            let index = teamRankingHistoryArray.findIndex(([key]) => key === date);
-            if (index == 0 || index == teamRankingHistoryArray.length - 1 || date == rankingPeriodDeadlineDt)
+            let index = teamRankingHistoryArray.findIndex(([key]) => key === dt);
+            if (index == 0 || index == teamRankingHistoryArray.length - 1 || dt == rankingPeriodDeadlineDt)
                 chartErrs = true;
             else {
                 let lastRanking = teamRankingHistoryArray[index - 1];
@@ -245,21 +241,21 @@ function teamDetailsModal() {
                     chartErrs = true;
             }
 
-            if (!chartErrs && (date - lastDtWithErrorBars) > errorBarMinFrequency)
+            if (!chartErrs && (dt - lastDtWithErrorBars) > errorBarMinFrequency)
                 chartErrs = true;
 
             if (chartErrs)
-                lastDtWithErrorBars = date;
+                lastDtWithErrorBars = dt;
 
             let errMin = ranking.rankingPoints - ranking.standardError;
             let errMax = ranking.rankingPoints + ranking.standardError;
                 
             rankingHistory.push({
-                x: date,
+                x: dt,
                 y: ranking.rankingPoints,
                 yMin: chartErrs ? errMin : null,
                 yMax: chartErrs ? errMax : null,
-                title: date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),
+                title: dt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),
                 label: `RP: ${ranking.rankingPoints} ± ${ranking.relativeStandardError}% (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
             });
         }

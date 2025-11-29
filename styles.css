@@ -71,6 +71,10 @@ div.postseasonPosition-EUR,
 .postseasonPosition-EUR td {
     background-color: rgba(184,217,238, 0.7) !important;    
 }
+div.outsideRankingPeriod,
+.outsideRankingPeriod td {
+    background-color: rgba(0, 0, 0, 0.16) !important;
+}
 
 /* override table striping, lighter */
 table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
@@ -78,10 +82,12 @@ table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
 }
 
 /* Postseason Position legend */
-div[class^="postseasonPosition-"] {
+div[class^="postseasonPosition-"],
+div.outsideRankingPeriod {
     margin-top:.25rem;
     padding:.25rem;
     border-radius: 5px;
+    font-size:.8rem;
 }
 .invites {
     display: none;
