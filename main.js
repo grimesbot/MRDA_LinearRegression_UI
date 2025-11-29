@@ -166,7 +166,7 @@ function teamDetailsModal() {
     // Initialize the team game history DataTable. Data will be set on team row click.
     let teamGameHistoryDT = new DataTable('#teamGameHistory', {
         columns: [
-            { name: 'date', data: 'date', render: DataTable.render.date()},
+            { name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? data.toLocaleDateString(undefined,{year:"2-digit",month:"numeric",day:"numeric"}) : data }},
             { name: 'score', render: function (data, type, row) { return row.getGameSummary(team.teamId) }, className: 'text-overflow-ellipsis' },
             { name: 'expectedRatio', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
             { name: 'actualRatio', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },
@@ -189,7 +189,7 @@ function teamDetailsModal() {
                 $(row).addClass('outsideRankingPeriod');
         },
         layout: {
-            bottomStart: $('<div class="outsideRankingPeriod">Not in currently selected Ranking Period.</div>')
+            bottomStart: $('<div class="outsideRankingPeriod">Not in current Ranking Period.</div>')
         }
     });
 
