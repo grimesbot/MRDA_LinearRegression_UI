@@ -166,23 +166,77 @@ function teamDetailsModal() {
     // Initialize the team game history DataTable. Data will be set on team row click.
     let teamGameHistoryDT = new DataTable('#teamGameHistory', {
         columns: [
-            { name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? data.toLocaleDateString(undefined,{year:"2-digit",month:"numeric",day:"numeric"}) : data }},
-            { name: 'score', render: function (data, type, row) { return row.getGameSummary(team.teamId) }, className: 'text-overflow-ellipsis' },
-            { name: 'expectedRatio', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
-            { name: 'actualRatio', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },
-            { name: 'beforeRankingPoints', render: function (data, type, row) { return team.getRankingPoints(row.date) }, className: 'border-left' },
-            { name: 'afterRankingPoints', render: function (data, type, row) { return team.getRankingPoints(row.date, true) }}                
+            { width: '3em', className: 'dt-center', name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? data.toLocaleDateString(undefined,{weekday: "short"}) : data }},
+            { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getWL(team.teamId) }},
+            { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getAtVs(team.teamId) }},
+            //{ width: '5em', className: 'dt-right', render: function (data, type, row) { return row.getWlAtVs(team.teamId) }},
+            { width: '1em', render: function(data, type, game) {return "<img height='30' src='" + game.getOpponentTeam(team.teamId).logo + "'>"; } },
+            { render: function (data, type, game) { return game.getOpponentTeam(team.teamId).name }, className: 'text-overflow-ellipsis' },
+            { title: 'Score', width: '7em', className: 'dt-center', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
+            { title: 'Ratio', width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
+            { title: 'Exp', width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
+            //{ name: 'beforeRankingPoints', render: function (data, type, row) { return team.getRankingPoints(row.date) }, className: 'border-left' },
+            //{ name: 'afterRankingPoints', render: function (data, type, row) { return team.getRankingPoints(row.date, true) }}
+            { title: 'Wt', width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
         lengthChange: false,
         searching: false,
         info: false,
+        rowGroup: {
+            dataSrc: ['event'],
+            startRender: function (rows, group) {
+
+                //return `${groupTitle}<div>${rpBefore} <i class='bi bi-arrow-right'></i> ${rpAfter}</div>`;
+
+                //return `<tr><th colspan="5">${group.getEventTitleWithDate()}</th><th>${team.getRankingPoints(group.startDt)}</th><th></th><th>${team.getRankingPoints(group.endDt, true)}</th></tr>`;
+                let tr = document.createElement('tr');
+                let th = document.createElement('th');
+
+                th.colSpan = 6;
+                th.textContent = group.getEventTitleWithDate();
+                tr.appendChild(th);
+
+                th = document.createElement('th');
+                th.colSpan = 3;
+                th.style.textAlign = "right";
+
+                let rpBefore = team.getRankingPoints(group.startDt);
+                let rpAfter = team.getRankingPoints(group.endDt, true);
+
+                if (rpBefore && rpAfter) {
+                    let icon = "bi-arrow-right";
+                    if (rpAfter > rpBefore)
+                        icon = "bi-arrow-up-right";
+                    else if (rpBefore > rpAfter)
+                        icon = "bi-arrow-down-right";
+                    th.innerHTML = `${rpBefore.toFixed(2)} <i class='bi ${icon}'></i> ${rpAfter.toFixed(2)}`;                    
+                } else if (rpAfter) {
+                    th.innerHTML = rpAfter.toFixed(2);
+                }
+
+                tr.appendChild(th);
+                return tr;
+
+                td = document.createElement('th');
+                td.textContent = team.getRankingPoints(group.startDt);
+                tr.appendChild(td);
+                td = document.createElement('th');
+                td.innerHTML = "<i class='bi bi-arrow-right'></i>";
+                tr.appendChild(td);
+                td = document.createElement('th');
+                td.textContent = team.getRankingPoints(group.endDt, true);
+                tr.appendChild(td);
+                return tr;
+            },
+        },
         order: {
             name: 'date',
             dir: 'desc'
         },
         ordering: {
-            handler: false
+            handler: false,
+            indicators: false
         },
         createdRow: function (row, data, dataIndex) {
             if (data.date <= rankingPeriodStartDt)
@@ -492,7 +546,7 @@ function setupApiGames() {
                 { name: 'score', width: '7em', className: 'dt-center', render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}`} },
                 { data: "awayTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
                 { data: 'awayTeam.name' },
-                { data: 'weight', width: '1em', render: function(data, type, game) {return data ? (data * 100).toFixed(0) + "%" : ""; } }
+                { data: 'weight', width: '1em', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
             ],
             data: games,
             rowGroup: {

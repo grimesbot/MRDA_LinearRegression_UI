@@ -121,3 +121,8 @@ td.dt-teamDetailsClick {
     white-space: nowrap;
     text-overflow: ellipsis;
 }
+
+td.narrow {
+    padding-left: .1em !important;
+    padding-right: .1em !important;
+}
