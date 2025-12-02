@@ -49,11 +49,6 @@ nav .form-floating>label {
     height: 25rem;
 }
 
-/* Vertical line separating ratios and ranking points on team details */
-.border-left {
-    border-left: 1px solid rgba(0, 0, 0, 0.3);
-}
-
 /* Postseason Position Background Colors */
 div.postseasonPosition-GUR,
 .postseasonPosition-GUR td {
@@ -71,10 +66,6 @@ div.postseasonPosition-EUR,
 .postseasonPosition-EUR td {
     background-color: rgba(184,217,238, 0.7) !important;    
 }
-div.outsideRankingPeriod,
-.outsideRankingPeriod td {
-    background-color: rgba(0, 0, 0, 0.16) !important;
-}
 
 /* override table striping, lighter */
 table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
@@ -82,8 +73,7 @@ table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
 }
 
 /* Postseason Position legend */
-div[class^="postseasonPosition-"],
-div.outsideRankingPeriod {
+div[class^="postseasonPosition-"] {
     margin-top:.25rem;
     padding:.25rem;
     border-radius: 5px;
@@ -125,4 +115,28 @@ td.dt-teamDetailsClick {
 td.narrow {
     padding-left: .1em !important;
     padding-right: .1em !important;
+}
+
+td.nowrap {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+#teamGameHistory .dtrg-level-0 th {
+    vertical-align: middle;    
+}
+
+#teamGameHistory .rpBeforeAfter {
+    text-align: right;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+#teamGameHistory tbody .rpBeforeAfter {
+    font-weight: var(--bs-body-font-weight);
+    font-size: var(--bs-body-font-size);
+}
+
+#teamGameHistory thead .dtrg-level-0 th:first-child {
+    background-color: var(--bs-table-bg); 
 }

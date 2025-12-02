@@ -115,8 +115,10 @@ function setRegion() {
 
 function teamDetailsModal() {
     let $teamDetailModal = $('#teamDetailModal');
+    let $olderGamesBtn = $("#loadOlderGames");
     let team = null;
     let date = rankingPeriodDeadlineDt;
+    let minGameDt = rankingPeriodStartDt;
     
     // Initialize the Team Ranking Point History chart. Data will be set on team row click.
     let teamChart = new Chart(document.getElementById("teamChart"), {
@@ -166,40 +168,36 @@ function teamDetailsModal() {
     // Initialize the team game history DataTable. Data will be set on team row click.
     let teamGameHistoryDT = new DataTable('#teamGameHistory', {
         columns: [
-            { width: '3em', className: 'dt-center', name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? data.toLocaleDateString(undefined,{weekday: "short"}) : data }},
+            { width: '1em', className: 'dt-center timeTooltip', name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? `<div data-toggle="tooltip" title="${data.toLocaleTimeString(undefined,{timeStyle: "short"})}">${data.toLocaleDateString(undefined,{weekday: "short"})}</div>` : data }},
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getWL(team.teamId) }},
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getAtVs(team.teamId) }},
             //{ width: '5em', className: 'dt-right', render: function (data, type, row) { return row.getWlAtVs(team.teamId) }},
             { width: '1em', render: function(data, type, game) {return "<img height='30' src='" + game.getOpponentTeam(team.teamId).logo + "'>"; } },
             { render: function (data, type, game) { return game.getOpponentTeam(team.teamId).name }, className: 'text-overflow-ellipsis' },
-            { title: 'Score', width: '7em', className: 'dt-center', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
-            { title: 'Ratio', width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
-            { title: 'Exp', width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
-            //{ name: 'beforeRankingPoints', render: function (data, type, row) { return team.getRankingPoints(row.date) }, className: 'border-left' },
-            //{ name: 'afterRankingPoints', render: function (data, type, row) { return team.getRankingPoints(row.date, true) }}
-            { title: 'Wt', width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
+            { width: '1em', className: 'dt-center nowrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
+            { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
-        lengthChange: false,
+        dom: 't',
+        paging: false,
         searching: false,
         info: false,
         rowGroup: {
             dataSrc: ['event'],
             startRender: function (rows, group) {
-
-                //return `${groupTitle}<div>${rpBefore} <i class='bi bi-arrow-right'></i> ${rpAfter}</div>`;
-
-                //return `<tr><th colspan="5">${group.getEventTitleWithDate()}</th><th>${team.getRankingPoints(group.startDt)}</th><th></th><th>${team.getRankingPoints(group.endDt, true)}</th></tr>`;
                 let tr = document.createElement('tr');
                 let th = document.createElement('th');
 
                 th.colSpan = 6;
                 th.textContent = group.getEventTitleWithDate();
+                th.className = "text-overflow-ellipsis";
                 tr.appendChild(th);
 
                 th = document.createElement('th');
                 th.colSpan = 3;
-                th.style.textAlign = "right";
+                th.className = "rpBeforeAfter";
 
                 let rpBefore = team.getRankingPoints(group.startDt);
                 let rpAfter = team.getRankingPoints(group.endDt, true);
@@ -217,17 +215,6 @@ function teamDetailsModal() {
 
                 tr.appendChild(th);
                 return tr;
-
-                td = document.createElement('th');
-                td.textContent = team.getRankingPoints(group.startDt);
-                tr.appendChild(td);
-                td = document.createElement('th');
-                td.innerHTML = "<i class='bi bi-arrow-right'></i>";
-                tr.appendChild(td);
-                td = document.createElement('th');
-                td.textContent = team.getRankingPoints(group.endDt, true);
-                tr.appendChild(td);
-                return tr;
             },
         },
         order: {
@@ -238,12 +225,11 @@ function teamDetailsModal() {
             handler: false,
             indicators: false
         },
-        createdRow: function (row, data, dataIndex) {
-            if (data.date <= rankingPeriodStartDt)
-                $(row).addClass('outsideRankingPeriod');
-        },
         layout: {
             bottomStart: $('<div class="outsideRankingPeriod">Not in current Ranking Period.</div>')
+        },
+        drawCallback: function (settings) {
+            $('.timeTooltip [data-toggle="tooltip"]').tooltip();
         }
     });
 
@@ -259,6 +245,7 @@ function teamDetailsModal() {
 
         team = clickedTeam;
         date = rankingPeriodDeadlineDt;
+        minGameDt = rankingPeriodStartDt;
         
         $('#teamName').text(team.name);
         $('#teamAverageRankingPoints').text(team.rankingPoints.toFixed(2));
@@ -279,13 +266,13 @@ function teamDetailsModal() {
             minChartDt = new Date(minChartDt).setDate(minChartDt.getDate() - 7);
 
         let rankingHistory = [];
-        let errorBarMinFrequency = (rankingPeriodDeadlineDt - minChartDt) / 16;
+        let errorBarMinFrequency = (date - minChartDt) / 16;
         let lastDtWithErrorBars = null;
-        let teamRankingHistoryArray = Array.from(team.rankingHistory.entries());
+        let teamRankingHistoryArray = Array.from(team.rankingHistory.entries()).filter(rh => rh[0] <= date);
         for (const [dt, ranking] of teamRankingHistoryArray) {
             let chartErrs = false;
             let index = teamRankingHistoryArray.findIndex(([key]) => key === dt);
-            if (index == 0 || index == teamRankingHistoryArray.length - 1 || dt == rankingPeriodDeadlineDt)
+            if (index == 0 || index == teamRankingHistoryArray.length - 1 || dt == date)
                 chartErrs = true;
             else {
                 let lastRanking = teamRankingHistoryArray[index - 1];
@@ -326,9 +313,24 @@ function teamDetailsModal() {
         teamChart.options.scales.x.max = rankingPeriodDeadlineDt;
         teamChart.update();
 
-        teamGameHistoryDT.clear().rows.add(team.gameHistory.filter(game => game.date < rankingPeriodDeadlineDt)).draw();
+        teamGameHistoryDT.clear().rows.add(team.gameHistory.filter(game => minGameDt <= game.date && game.date < rankingPeriodDeadlineDt)).draw();
+
+        if (team.gameHistory.some(game => game.date < minGameDt))
+            $olderGamesBtn.show();
+        else
+            $olderGamesBtn.hide();
         
         $teamDetailModal.modal('show');
+    });
+
+    $olderGamesBtn.on('click', function (e) {
+        let newMinDt = mrdaLinearRegressionSystem.getSeedDate(minGameDt);
+        teamGameHistoryDT.rows.add(team.gameHistory.filter(game => newMinDt <= game.date && game.date < minGameDt)).draw();
+        minGameDt = newMinDt;
+        if (team.gameHistory.some(game => game.date < minGameDt))
+            $olderGamesBtn.show();
+        else
+            $olderGamesBtn.hide();
     });
 }
 
