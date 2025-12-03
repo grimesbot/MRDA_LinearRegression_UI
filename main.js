@@ -181,7 +181,13 @@ function teamDetailsModal() {
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getAtVs(team.teamId) }},
             //{ width: '5em', className: 'dt-right', render: function (data, type, row) { return row.getWlAtVs(team.teamId) }},
             { width: '1em', className: 'px-1', render: function(data, type, game) {return "<img height='30' src='" + game.getOpponentTeam(team.teamId).logo + "'>"; } },
-            { className: 'ps-1 text-overflow-ellipsis', render: function (data, type, game) { return game.getOpponentTeam(team.teamId).name }},
+            { className: 'ps-1 text-overflow-ellipsis', render: function (data, type, game) { 
+                let opponent = game.getOpponentTeam(team.teamId);
+                let teamRanking = opponent.getRanking(game.date);
+                if (teamRanking && teamRanking.rank)
+                    return `<span class="teamRank" data-toggle="tooltip" title="Global rank as of ${teamRanking.date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"})}">${teamRanking.rank}</span> ${opponent.name}`
+                return opponent.name; 
+            }},
             { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
@@ -237,7 +243,7 @@ function teamDetailsModal() {
             bottomStart: $('<div class="outsideRankingPeriod">Not in current Ranking Period.</div>')
         },
         drawCallback: function (settings) {
-            $('.timeTooltip [data-toggle="tooltip"]').tooltip();
+            $('.timeTooltip [data-toggle="tooltip"], .teamRank[data-toggle="tooltip"]').tooltip();
         }
     });
 
@@ -256,7 +262,7 @@ function teamDetailsModal() {
         minGameDt = rankingPeriodStartDt;
         
         $('#teamName').text(team.name);
-        $('#teamAverageRankingPoints').text(team.rankingPoints.toFixed(2));
+        $('#teamAverageRankingPoints').text(team.rankingPoints);
 
         if (team.logo)
             $('#teamLogo').attr('src', team.logo).show();
@@ -468,7 +474,7 @@ function calculateAndDisplayRankings() {
 
     new DataTable('#mrdaRankingPoints', {
         columns: [
-            { name: 'rank', data: 'rank', width: '1em', className: 'dt-teamDetailsClick dt-center', 
+            { name: 'rank', data: 'rank', width: '1em', className: 'dt-teamDetailsClick dt-center pe-1', 
                 render: function (data, type, full) { 
                     if (type === 'sort')
                         return full.rankSort;
@@ -478,25 +484,26 @@ function calculateAndDisplayRankings() {
                         return data;
                 }
             },
-            { data: 'delta', width: '1em', className: 'dt-teamDetailsClick delta dt-center px-1',
+            { data: 'delta', width: '1em', className: 'dt-teamDetailsClick noWrap delta dt-center px-1',
                 render: function (data, type, full) {
+                    let delta = $("#region").val() == "GUR" ? full.delta : full.regionDelta;
                     if (type === 'display') {
                         if (!full.rank)
                             return "";
-                        if (data > 0) 
-                            return `<i class="bi bi-triangle-fill up text-success"></i> <span class="up text-success">${data}</span>`;
-                        else if (data < 0)
-                            return `<i class="bi bi-triangle-fill down text-danger"></i> <span class="down text-danger">${-data}</span>`;
-                        else if (data == null)
+                        else if (delta > 0) 
+                            return `<i class="bi bi-triangle-fill up text-success"></i> <span class="up text-success">${delta}</span>`;
+                        else if (delta < 0)
+                            return `<i class="bi bi-triangle-fill down text-danger"></i> <span class="down text-danger">${-delta}</span>`;
+                        else if (delta == null)
                             return '<i class="bi bi-star-fill text-body-secondary"></i>'
                         else
                             return '<i class="bi bi-circle-fill text-body-tertiary"></i>';
                     } else
-                        return data;
+                        return delta;
                 }
              },
-            { data: 'logo', width: '1em', orderable: false, className: 'dt-teamDetailsClick teamLogo pe-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
-            { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName ps-1 text-overflow-ellipsis', 
+            { data: 'logo', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
+            { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName px-1 text-overflow-ellipsis', 
                 createdCell: function (td, cellData, rowData, row, col) {
                     let $td = $(td);
                     if (rowData.activeStatus && rowData.forfeits > 0)
@@ -506,12 +513,12 @@ function calculateAndDisplayRankings() {
                     }
                 }
             },
-            { data: 'rankingPoints', width: '1em', className: 'dt-teamDetailsClick' },
-            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
-            { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
+            { data: 'rankingPoints', width: '1em', className: 'dt-teamDetailsClick px-1' },
+            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr px-1 dt-left', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
+            { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick px-1', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
             { data: 'wins', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-center'},
-            { data: 'losses', width: '1.75em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-left'},
-            { data: 'chart', width: '1em', className: 'px-1 dt-center', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
+            { data: 'losses', width: '1.6em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-left'},
+            { data: 'chart', width: '1em', className: 'ps-1 dt-center', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: teams,
         dom: 't',

@@ -228,6 +228,7 @@ class MrdaTeam {
         this.regionRank = null;        
         this.rankSort = null;
         this.delta = null;
+        this.regionDelta = null;        
         this.postseasonPosition = null;
         this.chart = false;
 
@@ -337,14 +338,15 @@ class MrdaLinearRegressionSystem {
         for (const [teamId, team] of Object.entries(this.mrdaTeams)) {
             if (teamId in ranking) {
                 let teamRanking = ranking[team.teamId];
-                team.rankingPoints = teamRanking.rankingPoints;
-                team.relStdErr = teamRanking.relativeStandardError;
+                team.rankingPoints = teamRanking.rankingPoints ? teamRanking.rankingPoints.toFixed(2) : null;
+                team.relStdErr = teamRanking.relativeStandardError ? teamRanking.relativeStandardError.toFixed(2) : null;
                 team.activeStatusGameCount = teamRanking.gameCount;                
                 team.activeStatus = teamRanking.activeStatus;
                 team.postseasonEligible = teamRanking.postseasonEligible;
                 team.rank = teamRanking.rank;
                 team.regionRank = teamRanking.regionRank;
                 team.delta = teamRanking.rank && lastQtrRanking && teamId in lastQtrRanking && lastQtrRanking[teamId].rank ? lastQtrRanking[teamId].rank - teamRanking.rank : null;
+                team.regionDelta = teamRanking.regionRank && lastQtrRanking && teamId in lastQtrRanking && lastQtrRanking[teamId].regionRank ? lastQtrRanking[teamId].regionRank - teamRanking.regionRank : null;
                 team.wins = teamRanking.wins;
                 team.losses = teamRanking.losses;
                 team.forfeits = teamRanking.forfeits;
@@ -357,6 +359,7 @@ class MrdaLinearRegressionSystem {
                 team.rank = null;
                 team.regionRank = null;
                 team.delta = null;
+                team.regionDelta = null;
                 team.wins = 0;
                 team.losses = 0;
                 team.forfeits = 0;

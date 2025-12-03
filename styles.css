@@ -1,7 +1,5 @@
 /* Minimum width, it's responsive but only to a point.*/
-body,
-.container-xl,
-.modal-xl {
+body {
   min-width: 667px;
 }
 
@@ -87,13 +85,12 @@ div[class^="postseasonPosition-"] {
 td {
     vertical-align: middle;
 }
-td.teamLogo {
-    width: 60px;
-}
 .teamLocation,
-.teamRp {
+.teamRp,
+.teamRank {
     font-size: .8em;
 }
+
 /* Tooltip icon in column title */
 .dt-column-title i.bi-question-circle {
     font-size:.75rem;
@@ -106,7 +103,7 @@ td.dt-teamDetailsClick {
 
 /* Team detail styling */
 .text-overflow-ellipsis {
-    max-width: 12em;
+    max-width: 14em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
