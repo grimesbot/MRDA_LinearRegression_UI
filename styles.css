@@ -106,18 +106,19 @@ td.dt-teamDetailsClick {
 
 /* Team detail styling */
 .text-overflow-ellipsis {
-    max-width: 14em;
+    max-width: 12em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-td.narrow {
+td.narrow,
+th.narrow {
     padding-left: .1em !important;
     padding-right: .1em !important;
 }
 
-td.nowrap {
+.noWrap {
     overflow: hidden;
     white-space: nowrap;
 }
@@ -139,4 +140,22 @@ td.nowrap {
 
 #teamGameHistory thead .dtrg-level-0 th:first-child {
     background-color: var(--bs-table-bg); 
+}
+
+.delta i.bi-triangle-fill {
+    font-size: .4em;
+}
+
+td.delta i.bi-circle-fill {
+    font-size: .3em;
+}
+
+td.delta i.bi-star-fill, 
+td.delta span {
+    font-size: .75em;
+}
+
+td.delta i.down {
+    display: inline-block;
+    transform: rotate(180deg);    
 }

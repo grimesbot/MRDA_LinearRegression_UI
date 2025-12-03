@@ -227,6 +227,7 @@ class MrdaTeam {
         this.rank = null;
         this.regionRank = null;        
         this.rankSort = null;
+        this.delta = null;
         this.postseasonPosition = null;
         this.chart = false;
 
@@ -291,10 +292,6 @@ class MrdaLinearRegressionSystem {
         this.mrdaEvents = {};
         this.mrdaGames = [];
 
-        //this.rankingPeriodDeadlineDt = null;
-        //this.rankingPeriodStartDt = null;
-        //this.region = region;
-
         // Build mrdaRankingsHistoryDts map 
         for (const dt of Object.keys(mrda_rankings_history_json).map(day => new Date(day + " 00:00:00")).sort((a, b) => a - b)) {
             let jsonRanking = mrda_rankings_history_json[`${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`];
@@ -323,6 +320,8 @@ class MrdaLinearRegressionSystem {
     }
 
     getRankingHistory(date, seedDt = null) {
+        if (!date)
+            return null;
         seedDt = seedDt ?? this.getSeedDate(date);
         let latestRankingDts = [...this.mrdaRankingsHistory.keys()].filter(dt => seedDt < dt && dt <= date).sort((a,b) => b - a);
         if (latestRankingDts.length > 0)
@@ -330,10 +329,11 @@ class MrdaLinearRegressionSystem {
         return null;
     }
 
-    rankTeams(date, seedDt) {
+    rankTeams(date, seedDt, lastQtrDt) {
         let maxRank = 0;
         // Get most recent Ranking History and apply to all teams
         let ranking = this.getRankingHistory(date, seedDt);
+        let lastQtrRanking = this.getRankingHistory(lastQtrDt);
         for (const [teamId, team] of Object.entries(this.mrdaTeams)) {
             if (teamId in ranking) {
                 let teamRanking = ranking[team.teamId];
@@ -344,6 +344,7 @@ class MrdaLinearRegressionSystem {
                 team.postseasonEligible = teamRanking.postseasonEligible;
                 team.rank = teamRanking.rank;
                 team.regionRank = teamRanking.regionRank;
+                team.delta = teamRanking.rank && lastQtrRanking && teamId in lastQtrRanking && lastQtrRanking[teamId].rank ? lastQtrRanking[teamId].rank - teamRanking.rank : null;
                 team.wins = teamRanking.wins;
                 team.losses = teamRanking.losses;
                 team.forfeits = teamRanking.forfeits;
@@ -355,6 +356,7 @@ class MrdaLinearRegressionSystem {
                 team.postseasonEligible = false;
                 team.rank = null;
                 team.regionRank = null;
+                team.delta = null;
                 team.wins = 0;
                 team.losses = 0;
                 team.forfeits = 0;

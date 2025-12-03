@@ -4,9 +4,17 @@ const urlParams = new URLSearchParams(window.location.search);
 
 let rankingPeriodDeadlineDt = null;
 let rankingPeriodStartDt = null;
+let lastQtrDate = null;
+
 function setRankingDates() {
     rankingPeriodDeadlineDt = new Date($("#date").val() + " 00:00:00");
     rankingPeriodStartDt = mrdaLinearRegressionSystem.getSeedDate(rankingPeriodDeadlineDt);
+
+    let lastQtrDateStr = $("#date option:selected").nextAll().filter(function() {
+        return $(this).text().trim().startsWith("Q");
+    }).first().val();
+    
+    lastQtrDate = lastQtrDateStr ? new Date(lastQtrDateStr + " 00:00:00") : null;
 }
 
 function getNextRankingDeadline(date) {
@@ -172,9 +180,9 @@ function teamDetailsModal() {
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getWL(team.teamId) }},
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getAtVs(team.teamId) }},
             //{ width: '5em', className: 'dt-right', render: function (data, type, row) { return row.getWlAtVs(team.teamId) }},
-            { width: '1em', render: function(data, type, game) {return "<img height='30' src='" + game.getOpponentTeam(team.teamId).logo + "'>"; } },
-            { render: function (data, type, game) { return game.getOpponentTeam(team.teamId).name }, className: 'text-overflow-ellipsis' },
-            { width: '1em', className: 'dt-center nowrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
+            { width: '1em', className: 'px-1', render: function(data, type, game) {return "<img height='30' src='" + game.getOpponentTeam(team.teamId).logo + "'>"; } },
+            { className: 'ps-1 text-overflow-ellipsis', render: function (data, type, game) { return game.getOpponentTeam(team.teamId).name }},
+            { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
@@ -445,7 +453,7 @@ function calculateAndDisplayRankings() {
 
     let region = $("#region").val();
 
-    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt);
+    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, lastQtrDate);
 
     let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
         .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR"))
@@ -460,7 +468,7 @@ function calculateAndDisplayRankings() {
 
     new DataTable('#mrdaRankingPoints', {
         columns: [
-            { name: 'rank', data: 'rank', width: '1em', className: 'dt-teamDetailsClick', 
+            { name: 'rank', data: 'rank', width: '1em', className: 'dt-teamDetailsClick dt-center', 
                 render: function (data, type, full) { 
                     if (type === 'sort')
                         return full.rankSort;
@@ -470,8 +478,25 @@ function calculateAndDisplayRankings() {
                         return data;
                 }
             },
-            { data: 'logo', orderable: false, className: 'dt-teamDetailsClick teamLogo', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
-            { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName', 
+            { data: 'delta', width: '1em', className: 'dt-teamDetailsClick delta dt-center px-1',
+                render: function (data, type, full) {
+                    if (type === 'display') {
+                        if (!full.rank)
+                            return "";
+                        if (data > 0) 
+                            return `<i class="bi bi-triangle-fill up text-success"></i> <span class="up text-success">${data}</span>`;
+                        else if (data < 0)
+                            return `<i class="bi bi-triangle-fill down text-danger"></i> <span class="down text-danger">${-data}</span>`;
+                        else if (data == null)
+                            return '<i class="bi bi-star-fill text-body-secondary"></i>'
+                        else
+                            return '<i class="bi bi-circle-fill text-body-tertiary"></i>';
+                    } else
+                        return data;
+                }
+             },
+            { data: 'logo', width: '1em', orderable: false, className: 'dt-teamDetailsClick teamLogo pe-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
+            { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName ps-1 text-overflow-ellipsis', 
                 createdCell: function (td, cellData, rowData, row, col) {
                     let $td = $(td);
                     if (rowData.activeStatus && rowData.forfeits > 0)
@@ -481,12 +506,12 @@ function calculateAndDisplayRankings() {
                     }
                 }
             },
-            { data: 'rankingPoints', className: 'dt-teamDetailsClick' },
-            { data: 'relStdErr', className: 'dt-teamDetailsClick relStdErr', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
-            { data: 'activeStatusGameCount', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
-            { data: 'wins', orderable: false, className: 'dt-teamDetailsClick'},
-            { data: 'losses', orderable: false, className: 'dt-teamDetailsClick'},
-            { data: 'chart', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
+            { data: 'rankingPoints', width: '1em', className: 'dt-teamDetailsClick' },
+            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
+            { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
+            { data: 'wins', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-center'},
+            { data: 'losses', width: '1.75em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-left'},
+            { data: 'chart', width: '1em', className: 'px-1 dt-center', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: teams,
         dom: 't',
