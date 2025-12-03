@@ -97,6 +97,13 @@ class MrdaGame {
         if (this.event.startDt != this.event.endDt)
             return this.date.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
     }
+
+    getGameAndEventTitle() {
+        if (this.event.name){
+            return `${this.date.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})}: ${this.event.getShortName()}`;
+        } else
+            return this.date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric",weekday:"long"});
+    }
 }
 
 class MrdaEvent {
@@ -149,11 +156,15 @@ class MrdaEvent {
         }
     }
 
+    getShortName() {
+        return this.name ? this.name.replace("Mens Roller Derby Association", "MRDA")
+                                .replace("Men's Roller Derby Association", "MRDA")
+                                .replace(this.startDt.getFullYear(),"").trim() : null;
+    }
+
     getEventTitleWithDate() {
         if (this.name){
-            let niceName = this.name.replace("Mens Roller Derby Association", "MRDA")
-                                .replace("Men's Roller Derby Association", "MRDA")
-                                .replace(this.startDt.getFullYear(),"").trim();
+            let niceName = this.getShortName();
             return `${this.getDateString()}: ${niceName}`;
         } else
             return this.getDateString();

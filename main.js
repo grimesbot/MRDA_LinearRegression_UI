@@ -264,7 +264,7 @@ function teamDetailsModal() {
             return { 
                 x: game.date, 
                 y: game.gamePoints[team.teamId],
-                title: mrdaLinearRegressionSystem.mrdaEvents[game.eventId].getEventTitleWithDate(),
+                title: game.getGameAndEventTitle(),
                 label: `${game.getGameSummary(team.teamId)}: ${game.gamePoints[team.teamId].toFixed(2)}`
             }});
         teamChart.data.datasets[1].data = rankingHistory;
