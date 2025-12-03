@@ -65,6 +65,22 @@ class MrdaGame {
         }
     }
 
+    getOpponentTeam(teamId) {
+        return teamId == this.homeTeamId ? this.awayTeam : this.homeTeam;
+    }
+
+    getWL(teamId) {
+        return this.scores[teamId] > this.scores[teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId] ? "W" : "L";
+    }
+
+    getAtVs(teamId) {
+        return this.homeTeamId == teamId ? "vs" : "@"
+    }
+
+    getTeamsScore(teamId) {
+        return `${this.scores[teamId]}-${this.scores[teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId]}`;
+    }
+
     getGameSummary(teamId) {
         let opponent = null
         let vsOrAt = null;
