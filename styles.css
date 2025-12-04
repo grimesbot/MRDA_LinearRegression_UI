@@ -1,5 +1,7 @@
 /* Minimum width, it's responsive but only to a point.*/
-body {
+body,
+.container-xl,
+.modal-xl {
   min-width: 667px;
 }
 
