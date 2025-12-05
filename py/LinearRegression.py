@@ -488,11 +488,11 @@ for data in sorted(gamedata, key=lambda x: datetime.strptime(x["event"]["game_da
 for game in [game for game in mrda_games if ("forfeit" not in game or not game["forfeit"]) and "home_team_score" in game and "away_team_score" in game]:
     # Because score_ratio is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
     # A blowout game like this will have a very low weight anyway.
-    home_score = max(game["home_team_score"], 0.1)
-    away_score = max(game["away_team_score"], 0.1)
-    # Calculate weight based on score ratio
-    score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
-    game["weight"] = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
+    #home_score = max(game["home_team_score"], 0.1)
+    #away_score = max(game["away_team_score"], 0.1)
+    ## Calculate weight based on score ratio
+    #score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
+    game["weight"] = 1 #max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
