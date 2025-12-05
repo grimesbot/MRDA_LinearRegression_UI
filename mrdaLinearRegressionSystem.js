@@ -22,6 +22,7 @@ class MrdaGame {
         this.weight = game.weight;
         this.expectedRatios = {};
         this.gamePoints = {};
+        this.absLogError = null;
 
         this.homeTeam = mrdaTeams[this.homeTeamId];
         this.awayTeam = mrdaTeams[this.awayTeamId];
@@ -51,6 +52,7 @@ class MrdaGame {
                 if (homeRankingPoints && awayRankingPoints) {
                     this.gamePoints[this.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
                     this.gamePoints[this.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
+                    this.absLogError = Math.abs(Math.log(this.expectedRatios[this.homeTeamId]/(this.scores[this.homeTeamId]/this.scores[this.homeTeamId])));
                 } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
                     // Calculate game points for new team as seeding games for visualization
                     let newTeamId = homeRankingPoints ? this.awayTeamId : this.homeTeamId;
@@ -59,7 +61,7 @@ class MrdaGame {
                     this.gamePoints[newTeamId] = establishedTeamRp * this.scores[newTeamId]/this.scores[establishedTeamId];
                 }
             }
-        
+
             this.homeTeam.gameHistory.push(this);
             this.awayTeam.gameHistory.push(this);
         }

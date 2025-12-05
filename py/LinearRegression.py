@@ -481,6 +481,9 @@ for data in sorted(gamedata, key=lambda x: datetime.strptime(x["event"]["game_da
 # Feature to get results for a specific event.
 #mrda_games = [game for game in mrda_games if game["event_name"] == "2025 Mens Roller Derby Association Championships"]
 
+# Feature to exclude new games to look at changes from game decay only.
+# mrda_games = [game for game in mrda_games if game["date"] <= datetime(2025,10,8)]
+
 #calculate game weights
 for game in [game for game in mrda_games if ("forfeit" not in game or not game["forfeit"]) and "home_team_score" in game and "away_team_score" in game]:
     # Because score_ratio is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
@@ -552,6 +555,7 @@ write_json_to_file(mrda_teams, "mrda_teams.json")
 print("MRDA teams saved to mrda_teams.js and mrda_teams.json")
 
 # Save mrda_games JSON to JavaScript file for local web UI, format date first
+mrda_games = sorted(mrda_games, key=lambda game: game["date"])
 for game in mrda_games:
     game["date"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=game["date"])
 write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
