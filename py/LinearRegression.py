@@ -109,6 +109,23 @@ def linear_regression(games, seeding_team_rankings=None):
         # Set game weight
         W.append(game["weight"])
 
+        # Add game at ratio cap for games with less than 100% weight
+        if game["weight"] < 1:
+            winning_team_id = game["home_team_id"] if home_score > away_score else game["away_team_id"]
+            losing_team_id = game["home_team_id"] if home_score < away_score else game["away_team_id"]
+            Y.append(math.log(RATIO_CAP))
+            x_col = []
+            for team_id in team_ids:
+                if team_id == winning_team_id:
+                    x_col.append(1)
+                elif team_id == losing_team_id:
+                    x_col.append(-1)
+                else:
+                    x_col.append(0)
+            X.append(x_col)
+            # Weight is whatever game was less than 100%
+            W.append(1 - game["weight"])
+
     # Add virtual games if we have seeding_team_rankings
     if seeding_team_rankings is not None:
         # Add virtual games for existing teams
