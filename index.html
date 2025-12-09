@@ -19,7 +19,7 @@
             <div class="container-xl d-flex flex-row align-items-center justify-content-center">
                 <a class="navbar-brand" href="#">
                     <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" height="40" class="d-inline-block">
-                    Rankings Algorithm
+                    Differentials Algorithm
                     <span class="betaFlag">BETA</span>
                 </a>
                 <div class="me-2 form-floating">
@@ -43,7 +43,7 @@
                             <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#upcomingGamesModal">Upcoming Games</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#expectedRatioCalcModal">Predictor</a>
+                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#predictorModal">Predictor</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#gamesModal">All Scores</a>
@@ -93,8 +93,8 @@
                         <th></th>
                         <th data-toggle="tooltip" class="noIcon" title="Change in rank from last quarter."><i class="bi bi-triangle" style="font-size: .75em;"></i></th>                        
                         <th colspan="2">Team</th>
-                        <th data-toggle="tooltip" class="noWrap" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP</th>
-                        <th data-toggle="tooltip" class="noWrap" title="Relative Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">RSE</th>
+                        <th data-toggle="tooltip" class="noWrap" title="Ranking Points. The difference between the Ranking Points of two teams indicates the predicted score differential of a game played by those two teams.">RP</th>
+                        <th data-toggle="tooltip" class="noWrap" title="Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">SE</th>
                         <th data-toggle="tooltip" class="noIcon" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
                         <th data-toggle="tooltip" class="noIcon" title="Wins">W</th>
                         <th data-toggle="tooltip" class="noIcon" title="Losses">L</th>
@@ -140,9 +140,9 @@
                                     <th></th>
                                     <th></th>
                                     <th>Score</th>
-                                    <th>Ratio</th>
-                                    <th data-toggle="tooltip" title="Expected score ratio as of game date">Exp</th>
-                                    <th data-toggle="tooltip" title="Game weight for least weighted squares linear regression algorithm. Weights diminish for games with score ratio beyond 4:1">Wt</th>
+                                    <th data-toggle="tooltip" title="Actual score differential">Diff</th>
+                                    <th data-toggle="tooltip" title="Expected score differential as of game date">Exp</th>
+                                    <th data-toggle="tooltip" title="Game weight for least weighted squares linear regression algorithm. Weights diminish for games with score differential beyond 200">Wt</th>
                                 </tr>
                             </thead>
                         </table>
@@ -206,7 +206,7 @@
                                         <th></th>
                                         <th class="dt-right">Home Team<div class='teamRp'>Ranking Points</div></th>
                                         <th></th>
-                                        <th class="dt-center">Predicted Ratio</th>
+                                        <th class="dt-center">Predicted Differential</th>
                                         <th></th>
                                         <th>Away Team<div class='teamRp'>Ranking Points</div></th>
                                     </tr>
@@ -218,11 +218,11 @@
             </div>
         </div>  
 
-        <div class="modal fade" id="expectedRatioCalcModal" tabindex="-1" aria-labelledby="expectedRatioCalcModalLabel" aria-hidden="true">
+        <div class="modal fade" id="predictorModal" tabindex="-1" aria-labelledby="predictorModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="expectedRatioCalcModalLabel">Expected Score Ratio Calculator</h1>
+                        <h1 class="modal-title fs-5" id="predictorModalLabel">Expected Score Differential Calculator</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -249,8 +249,8 @@
                                 <img id="predictorHomeTeamLogo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2 text-center">
-                                <label for="expectedScoreRatio" style="font-weight: bold;">Expected Score Ratio</label>
-                                <div id="expectedScoreRatio">&nbsp;</div>
+                                <label for="expectedScoreDiff" style="font-weight: bold;">Expected Score Differential</label>
+                                <div id="expectedScoreDiff">&nbsp;</div>
                             </div>
                             <div class="p-2">
                                 <img id="predictorAwayTeamLogo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
@@ -274,7 +274,7 @@
                     </div>
                     <div class="modal-body">
                         <div class="table-responsive">
-                            <table id="meanAbsoluteLogError" class="table table-striped" width="100%">
+                            <table id="errorSummary" class="table table-striped" width="100%">
                             </table>
                         </div>
                     </div>

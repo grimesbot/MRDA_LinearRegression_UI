@@ -187,8 +187,8 @@ function teamDetailsModal() {
                 return opponent.name; 
             }},
             { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualDifferential(team.teamId) } },            
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedDifferential(team.teamId) } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
@@ -289,8 +289,10 @@ function teamDetailsModal() {
             else {
                 let lastRanking = teamRankingHistoryArray[index - 1];
                 let nextRanking = teamRankingHistoryArray[index + 1];
-                if (Math.abs(lastRanking[1].relativeStandardError - ranking.relativeStandardError) > 5
-                    || Math.abs(nextRanking[1].relativeStandardError - ranking.relativeStandardError) > 5)
+                if (lastRanking[1].standardError/ranking.standardError > 1.1
+                    || lastRanking[1].standardError/ranking.standardError < .9
+                    || nextRanking[1].standardError/ranking.standardError > 1.1
+                    || nextRanking[1].standardError/ranking.standardError < .9)
                     chartErrs = true;
             }
 
@@ -309,7 +311,7 @@ function teamDetailsModal() {
                 yMin: chartErrs ? errMin : null,
                 yMax: chartErrs ? errMax : null,
                 title: dt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),
-                label: `RP: ${ranking.rankingPoints} ± ${ranking.relativeStandardError}% (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
+                label: `RP: ${ranking.rankingPoints} ± ${ranking.standardError} (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
             });
         }
             
@@ -533,7 +535,7 @@ function calculateAndDisplayRankings() {
                 }
             },
             { data: 'rankingPoints', width: '1em', className: 'dt-teamDetailsClick px-1' },
-            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
+            { data: 'standardError', width: '1em', className: 'dt-teamDetailsClick px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}` : data; }},
             { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class='postseasonIneligible'>*</span>` : data; } },
             { data: 'wins', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-center'},
             { data: 'losses', width: '1.6em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-left'},
@@ -647,7 +649,7 @@ async function setupUpcomingGames() {
             { data: 'date', visible: false },
             { data: 'homeTeam.name', className: 'dt-right', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.homeTeam.getRankingPoints(game.date) + "</div>"; } },
             { data: "homeTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
-            { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedRatios[game.homeTeamId] > 1 ? `${game.expectedRatios[game.homeTeamId].toFixed(2)} : 1` : `1 : ${game.expectedRatios[game.awayTeamId].toFixed(2)}` } },
+            { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedDifferentials[game.homeTeamId].toFixed(2) } },
             { data: "awayTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
             { data: 'awayTeam.name', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.awayTeam.getRankingPoints(game.date) + "</div>"; }  },
         ],
@@ -664,7 +666,7 @@ async function setupUpcomingGames() {
     });
 }
 
-function calculatePredictedRatio() {
+function calculatePredictedDiff() {
     let gameDate = $('#gameDate')[0].valueAsDate;
     let seedDate = mrdaLinearRegressionSystem.getSeedDate(gameDate);
 
@@ -679,7 +681,7 @@ function calculatePredictedRatio() {
         let homeRanking = homeTeam.getRanking(gameDate,false,seedDate);
         if (homeRanking && homeRanking.rankingPoints) {
             homeRp = homeRanking.rankingPoints;
-            $('#homeRankingPoints').text(`${homeRp} ±${homeRanking.relativeStandardError}%`);
+            $('#homeRankingPoints').text(`${homeRp} ±${homeRanking.standardError}`);
         } else
             $('#homeRankingPoints').html("&nbsp;");
     }
@@ -689,18 +691,15 @@ function calculatePredictedRatio() {
         let awayRanking = awayTeam.getRanking(gameDate,false,seedDate);
         if (awayRanking && awayRanking.rankingPoints) {
             awayRp = awayRanking.rankingPoints;
-            $('#awayRankingPoints').text(`${awayRp} ±${awayRanking.relativeStandardError}%`);
+            $('#awayRankingPoints').text(`${awayRp} ±${awayRanking.standardError}`);
         } else
             $('#awayRankingPoints').html("&nbsp;");
     }
 
     if (homeRp && awayRp) {
-        if (homeRp > awayRp)
-            $('#expectedScoreRatio').text(`${(homeRp/awayRp).toFixed(2)} : 1`);
-        else
-            $('#expectedScoreRatio').text(`1 : ${(awayRp/homeRp).toFixed(2)}`);
+        $('#expectedScoreDiff').html((homeRp - awayRp).toFixed(2));
     } else
-        $('#expectedScoreRatio').html("&nbsp;");
+        $('#expectedScoreDiff').html("&nbsp;");
 }
 
 function getMeanAbsoluteLogError(games) {
@@ -824,7 +823,7 @@ function setupMeanAbsoluteLogError() {
     });
 }
 
-function setupPredictedRatioCalc() {
+function setupPredictor() {
     $('#gameDate')[0].valueAsDate = new Date();
 
     Object.values(mrdaLinearRegressionSystem.mrdaTeams).sort((a, b) => a.name.localeCompare(b.name)).forEach(team => {
@@ -832,9 +831,9 @@ function setupPredictedRatioCalc() {
         $('#awayTeam').append($("<option />").val(team.teamId).text(team.name));
     });
 
-    $('#homeTeam').change(calculatePredictedRatio);
-    $('#awayTeam').change(calculatePredictedRatio);
-    $('#gameDate').change(calculatePredictedRatio);
+    $('#homeTeam').change(calculatePredictedDiff);
+    $('#awayTeam').change(calculatePredictedDiff);
+    $('#gameDate').change(calculatePredictedDiff);
 }
 
 $(function() {
@@ -863,11 +862,11 @@ $(function() {
 
     setupUpcomingGames();
 
-    setupPredictedRatioCalc();
+    setupPredictor();
 
     setupApiGames();
     $("#date").on( "change", setupApiGames);
 
-    setupMeanAbsoluteLogError();
+    //setupMeanAbsoluteLogError();
 
 })

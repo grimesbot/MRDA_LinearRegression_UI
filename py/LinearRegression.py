@@ -11,8 +11,8 @@ from TeamInfo import team_info
 from GameList_history import games, team_abbrev_id_map
 
 # Constants
-RANKING_SCALE = 100 # add scale since we are not using seeds here
-RATIO_CAP = 4
+RANKING_POINT_FLOOR = 1
+DIFFERENTIAL_CAP = 200
 POSTSEASON_EVENT_NAMES = ["Western Hemisphere Cup", "Qualifiers", "Mens Roller Derby Association Championships"]
 # Start calculations from first Wednesday after WHC 2023
 START_DATE = date(2023,10,25)
@@ -69,7 +69,9 @@ def write_json_to_file(data, filename, var_name=None, utc_timestamp_var=None):
             f.write(var_name + " = ")
         json.dump( data , f) #, indent=4) pretty print
 
+rp_min = 0
 def linear_regression(games, seeding_team_rankings=None):
+    global rp_min    
     result = {}
 
     if len(games) == 0:
@@ -87,13 +89,8 @@ def linear_regression(games, seeding_team_rankings=None):
     W = []
 
     for game in games:
-        # Because ln(score_ratio) is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
-        # A blowout game like this will have a very low weight anyway.
-        home_score = max(game["home_team_score"],0.1)
-        away_score = max(game["away_team_score"],0.1)
-
-        # Add log of score ratio as observation 
-        Y.append(math.log(home_score/away_score))
+        # Add score differential as observation 
+        Y.append(game["home_team_score"] - game["away_team_score"])
         
         # Build x column of regressors (teams) and whether they played in the game
         x_col = []
@@ -116,9 +113,9 @@ def linear_regression(games, seeding_team_rankings=None):
             # Existing team if in seeding rankings
             if team_id in seeding_team_rankings:
 
-                # Add observation as score log ratio
-                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team_id]["rp"]/1.00))
+                # Add team's seeding RP as virtual game score differential.
+                # All existing teams play a virtual team whose RP is 0
+                Y.append(seeding_team_rankings[team_id]["rp"])
 
                 # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
                 x_col = []
@@ -140,17 +137,12 @@ def linear_regression(games, seeding_team_rankings=None):
     #print(wls_stderrs)
 
     for i, team_id in enumerate(team_ids):
-        # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-        ranking_points = math.exp(wls_result[i])
-        # Convert standard error
-        standard_error = (math.exp(wls_stderrs[i]) - 1) * ranking_points
-        # Calculate relative standard error %
-        relative_standard_error = standard_error/ranking_points * 100
         result[team_id] = {
-            "rp": ranking_points,
-            "se": standard_error,
-            "rse": relative_standard_error
+            "rp": wls_result[i],
+            "se": wls_stderrs[i]
         }
+        if wls_result[i] < rp_min:
+            rp_min = wls_result[i]
 
     #print(result)
 
@@ -218,8 +210,6 @@ def rank_teams(team_ratings, games, compliance_games):
             result[team_id]["rp"] = team_ratings[team_id]["rp"]
         if "se" in team_ratings[team_id]:
             result[team_id]["se"] = team_ratings[team_id]["se"]
-        if "rse" in team_ratings[team_id]:
-            result[team_id]["rse"] = team_ratings[team_id]["rse"]
 
     # Rank teams
     rank = 1
@@ -324,7 +314,7 @@ def get_rankings(date):
         print_result = result if result is not None else get_ranking_history(date)
         print("Rankings for " + date.strftime("%Y-%m-%d"))
         for item in sorted(print_result.items(), key=lambda item: (item[1]["r"] if "r" in item[1] else len(print_result), - item[1]["rp"] if "rp" in item[1] else 0)):
-            print(f"{item[1]["r"] if "r" in item[1] else "NR"}\t{str(round(item[1]["rp"] * RANKING_SCALE, 2)) if "rp" in item[1] else "No RP"}\t{mrda_teams[item[0]]["name"]}")
+            print(f"{item[1]["r"] if "r" in item[1] else "NR"}\t{str(round(item[1]["rp"] - rp_min + RANKING_POINT_FLOOR, 2)) if "rp" in item[1] else "No RP"}\t{mrda_teams[item[0]]["name"]}")
         print("")
         
     return result
@@ -486,13 +476,9 @@ for data in sorted(gamedata, key=lambda x: datetime.strptime(x["event"]["game_da
 
 #calculate game weights
 for game in [game for game in mrda_games if ("forfeit" not in game or not game["forfeit"]) and "home_team_score" in game and "away_team_score" in game]:
-    # Because score_ratio is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
-    # A blowout game like this will have a very low weight anyway.
-    home_score = max(game["home_team_score"], 0.1)
-    away_score = max(game["away_team_score"], 0.1)
-    # Calculate weight based on score ratio
-    score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
-    game["weight"] = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
+    # Calculate weight based on score differential
+    score_differential = abs(game["home_team_score"] - game["away_team_score"])
+    game["weight"] = max(3 ** ((DIFFERENTIAL_CAP - score_differential)/75), 1/1000000) if score_differential > DIFFERENTIAL_CAP else 1
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
@@ -527,9 +513,9 @@ for dt in rankings_history.keys():
     for team in rankings_history[dt].keys():
         formatted_rankings_history[dt_key][team] = {}
         for key in rankings_history[dt][team]:
-            if key in ["rp","se"]:
-                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] * RANKING_SCALE, 2)
-            elif key == "rse":
+            if key == "rp":
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] - rp_min + RANKING_POINT_FLOOR, 2)
+            elif key == "se":
                 formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
             elif key in ["as","pe"]:
                 formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
