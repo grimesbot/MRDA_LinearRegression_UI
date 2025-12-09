@@ -22,7 +22,7 @@ body,
     background: #970D00;
     border-radius: 5px;
     color: #fff;
-    font-size: .5rem;
+    font-size: .4em;
     font-weight: 500;
     padding: 2px 5px;
     vertical-align: text-top;
@@ -30,15 +30,15 @@ body,
 /* Make Floating selects in navbar more compact */ 
 nav .form-floating>.form-select {
     font-size: .95em !important;
-    height: 2.5rem !important;
-    min-height: 2.5rem !important;
-    padding-left: .5rem !important;
-    padding-top: 0.75rem !important;
+    height: 2.5em !important;
+    min-height: 2.5em !important;
+    padding-left: .5em !important;
+    padding-top: 0.75em !important;
     padding-bottom: 0 !important;
 }
 nav .form-floating>label {
     font-size: .9em !important;
-    padding: 0.5rem 0.5rem !important;
+    padding: 0.5em 0.5em !important;
 }
 
 /* Chart heights */
@@ -72,12 +72,16 @@ table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
     box-shadow: inset 0 0 0 9999px rgba(var(--dt-row-stripe), 0.025) !important;
 }
 
+#postseasonLegend {
+    font-size:.8em;
+    margin-top: .25em;
+}
+
 /* Postseason Position legend */
 div[class^="postseasonPosition-"] {
-    margin-top:.25rem;
-    padding:.25rem;
+    margin-top:.25em;
+    padding:.25em;
     border-radius: 5px;
-    font-size:.8rem;
 }
 .invites {
     display: none;
@@ -95,12 +99,16 @@ td {
 
 /* Tooltip icon in column title */
 .dt-column-title i.bi-question-circle {
-    font-size:.75rem;
+    font-size:.75em;
     vertical-align: text-top;
 }
 /* Click entire row to see team details */
 td.dt-teamDetailsClick {
     cursor: pointer;
+}
+
+.annotations {
+    font-size: .85em;
 }
 
 /* Team detail styling */

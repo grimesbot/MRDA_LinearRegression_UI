@@ -470,6 +470,18 @@ function calculateAndDisplayRankings() {
         return;
     }
 
+    let annotations = document.createElement('div');
+    annotations.className = "annotations";
+    annotations.innerHTML = "*Not enough games to be Postseason Eligible.";
+    annotations.innerHTML += "<br><sup>↓</sup>Two rank penalty applied for each forfeit.";    
+
+    let exportOptions = { 
+        columns: [0,3,4,5,6], 
+        format: { 
+            header: function (data, columnIdx) { return ['Rank','Team','Ranking Points','Relative Standard Error','Game Count'][columnIdx]; } 
+        },        
+    };
+
     new DataTable('#mrdaRankingPoints', {
         columns: [
             { name: 'rank', data: 'rank', width: '1em', className: 'dt-teamDetailsClick dt-center pe-1', 
@@ -502,24 +514,53 @@ function calculateAndDisplayRankings() {
              },
             { data: 'logo', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
             { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName px-1 text-overflow-ellipsis', 
-                createdCell: function (td, cellData, rowData, row, col) {
-                    let $td = $(td);
-                    if (rowData.activeStatus && rowData.forfeits > 0)
-                        $td.append("<sup class='forfeitPenalty'>↓</sup>");
-                    if (rowData.location) {
-                        $td.append("<div class='teamLocation'>" + rowData.location + "</div>");
+                render: function (data, type, full) {
+                    if (['display','export'].includes(type) && full.activeStatus) {
+                        let result = data;
+                        for (let i = 0; i < full.forfeits; i++) {
+                            if (type === 'display')
+                                result += "<sup class='forfeitPenalty'>↓</sup>";
+                            else if (type === 'export')
+                                result += " ↓";
+                        }
+                        return result;
                     }
+                    return data;
+                },
+                createdCell: function (td, cellData, rowData, row, col) {
+                    if (rowData.location) 
+                        $(td).append("<div class='teamLocation'>" + rowData.location + "</div>");
                 }
             },
             { data: 'rankingPoints', width: '1em', className: 'dt-teamDetailsClick px-1' },
-            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr px-1 dt-left', createdCell: function (td, cellData, rowData, row, col) { $(td).prepend("±").append("%"); }},
-            { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick px-1', createdCell: function (td, data, rowData) { if (!rowData.postseasonEligible) $(td).append("<span class='postseasonIneligible'>*</span>"); } },
+            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
+            { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class='postseasonIneligible'>*</span>` : data; } },
             { data: 'wins', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-center'},
             { data: 'losses', width: '1.6em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-left'},
             { data: 'chart', width: '1em', className: 'ps-1 dt-center', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: teams,
-        dom: 't',
+        layout: {
+            topStart: null,
+            topEnd: null,
+            bottomStart: annotations,
+            bottomEnd: { 
+                buttons: [
+                    {
+                        extend: 'copy',
+                        text: '<i class="bi bi-copy"></i>',
+                        exportOptions: exportOptions,
+                        messageBottom: '*Not enough games to be Postseason Eligible.\n↓ Two rank penalty applied for each forfeit.',
+                        title: null,
+                    }, 
+                    {
+                        extend: 'csv',
+                        text: '<i class="bi bi-filetype-csv"></i>',
+                        exportOptions: exportOptions
+                    } 
+                ] 
+            }
+        },
         paging: false,
         searching: false,
         info: false,
