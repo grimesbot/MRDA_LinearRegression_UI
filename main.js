@@ -189,7 +189,7 @@ function teamDetailsModal() {
             { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualDifferential(team.teamId) } },            
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedDifferential(team.teamId) } },
-            { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
+            { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) { return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
         dom: 't',
@@ -702,20 +702,8 @@ function calculatePredictedDiff() {
         $('#expectedScoreDiff').html("&nbsp;");
 }
 
-function getMeanAbsoluteLogError(games) {
-    if (games.length === 0)
-        return null;
-    let sum = 0;
-    games.filter(game => game.absLogError).forEach(game => sum += game.absLogError);
-    let avg = sum/games.length;
-    let errorPct = (Math.exp(avg) - 1) * 100;
-    return errorPct.toFixed(2) + '%';
-}
-
-function setupMeanAbsoluteLogError() {
+function setupErrorSummary() {
     let tableData = [];
-
-    let gamesWithAbsLogErr = mrdaLinearRegressionSystem.mrdaGames.filter(game => game.absLogError);
 
     let quarterOpts = $("#date option").filter((i,e) => $(e).text().trim().startsWith("Q"));
 
@@ -724,95 +712,71 @@ function setupMeanAbsoluteLogError() {
         let maxDt = new Date(`${$quarterOpt.val()} 00:00:00`);
         let minDt = new Date(`${$(quarterOpts[i+1]).val()} 00:00:00`);
 
-        let games = gamesWithAbsLogErr.filter(game => minDt <= game.date && game.date < maxDt);
-        let meal = getMeanAbsoluteLogError(games);
+        tableData.push({
+            title: $quarterOpt.text(),
+            minDt: minDt,
+            maxDt: maxDt
+        });
+    }
 
-        if (meal != null) {
-            tableData.push({
-                title: $quarterOpt.text(),
-                minDt: minDt,
-                maxDt: maxDt,
-                gameCount: games.length,
-                meal: meal
-            });
+    tableData.push({
+        title: "2024 Season (Without Seed Data)",
+        minDt: new Date (2023, 10 - 1, 25),
+        maxDt: new Date (2024, 10 - 1, 23)
+    });
+
+    tableData.push({
+        title: "2025 Season",
+        minDt: new Date (2024, 10 - 1, 23),
+        maxDt: new Date (2025, 10 - 1, 22)
+    });
+
+    tableData.push({
+        title: "2026 Season",
+        minDt: new Date (2025, 10 - 1, 22),
+        maxDt: new Date (2026, 10 - 1, 28)
+    });
+
+    tableData.push({
+        title: "2025+ (All games with Seed Data)",
+        minDt: new Date (2024, 10 - 1, 23),
+        maxDt: null
+    });
+
+    tableData.push({
+        title: "All Games",
+        minDt: null,
+        maxDt: null
+    });
+
+    let predictedGames = mrdaLinearRegressionSystem.mrdaGames.filter(game => !game.forfeit && game.scores[game.homeTeamId] && game.expectedDifferentials[game.homeTeamId]);
+    for (const data of tableData) {
+        let games = predictedGames.filter(game => (data.minDt == null || data.minDt <= game.date) && (data.maxDt == null || game.date < data.maxDt));
+        data.gameCount = games.length;
+        if (games.length > 0) {
+            let errSum = 0;
+            let pctErrSum = 0;
+            for (const game of games) {
+                let error = Math.abs(game.scores[game.homeTeamId] - game.scores[game.awayTeamId]);
+                errSum += error;
+                pctErrSum += error / (game.scores[game.homeTeamId] + game.scores[game.awayTeamId]) * 100;
+            }
+            data.averageError = (errSum / games.length).toFixed(2);
+            data.averagePctError = (pctErrSum / games.length).toFixed(2);
+        } else {
+            data.averageError = null;
+            data.averagePctError = null;
         }
     }
 
-    let minDt = new Date (2023, 10 - 1, 25);
-    let maxDt = new Date (2024, 10 - 1, 23);
-    let games = gamesWithAbsLogErr.filter(game => minDt <= game.date && game.date < maxDt);
-    let meal = getMeanAbsoluteLogError(games);
-    if (meal != null) {
-        tableData.push({
-            title: "2024 Season (Without Seed Data)",
-            minDt: minDt,
-            maxDt: maxDt,
-            gameCount: games.length,
-            meal: meal
-        });
-    }
-
-    minDt = maxDt;
-    maxDt = new Date (2025, 10 - 1, 22);
-    games = gamesWithAbsLogErr.filter(game => minDt <= game.date && game.date < maxDt);
-    meal = getMeanAbsoluteLogError(games);
-    if (meal != null) {
-        tableData.push({
-            title: "2025 Season",
-            minDt: minDt,
-            maxDt: maxDt,
-            gameCount: games.length,
-            meal: meal
-        });
-    }
-
-    minDt = maxDt;
-    maxDt = new Date (2026, 10 - 1, 28);
-    games = gamesWithAbsLogErr.filter(game => minDt <= game.date && game.date < maxDt);
-    meal = getMeanAbsoluteLogError(games);
-    if (meal != null) {
-        tableData.push({
-            title: "2026 Season",
-            minDt: minDt,
-            maxDt: maxDt,
-            gameCount: games.length,
-            meal: meal
-        });
-    }
-
-    minDt = new Date (2024, 10 - 1, 23);
-    games = gamesWithAbsLogErr.filter(game => minDt <= game.date);
-    meal = getMeanAbsoluteLogError(games);
-    if (meal != null) {
-        tableData.push({
-            title: "2025+ (All games with Seed Data)",
-            minDt: minDt,
-            maxDt: null,
-            gameCount: games.length,
-            meal: meal
-        });
-    }
-
-    minDt = new Date (2023, 10 - 1, 25);
-    games = gamesWithAbsLogErr.filter(game => minDt <= game.date);
-    meal = getMeanAbsoluteLogError(games);
-    if (meal != null) {
-        tableData.push({
-            title: "All games",
-            minDt: minDt,
-            maxDt: null,
-            gameCount: games.length,
-            meal: meal
-        });
-    }
-
-    new DataTable('#meanAbsoluteLogError', {
+    new DataTable('#errorSummary', {
         columns: [
-            { data: 'title'},
-            { title: 'Start Date', data: 'minDt', render: DataTable.render.date()},
-            { title: 'End Date', data: 'maxDt', render: DataTable.render.date()},            
-            { title: 'Game Count', data: 'gameCount'},
-            { title: 'Error %', data: 'meal'}
+            { data: 'title' },
+            { title: 'Start Date', data: 'minDt', render: DataTable.render.date() },
+            { title: 'End Date', data: 'maxDt', render: DataTable.render.date() },            
+            { title: 'Game Count', data: 'gameCount' },
+            { title: 'Average Error', data: 'averageError' },
+            { title: 'Average Error %', data: 'averagePctError', render: function(data, type, game) { return data ? `${data}%` : ""; } }
         ],
         data: tableData,
         dom: 't',
@@ -867,6 +831,6 @@ $(function() {
     setupApiGames();
     $("#date").on( "change", setupApiGames);
 
-    //setupMeanAbsoluteLogError();
+    setupErrorSummary();
 
 })
