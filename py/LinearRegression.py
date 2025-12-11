@@ -1,8 +1,5 @@
-import requests
 import statsmodels.api as sm
 import math
-import os
-import json
 import time
 from datetime import datetime, date, timedelta, timezone
 from dateutil.relativedelta import relativedelta
@@ -290,6 +287,70 @@ def get_rankings(date):
         
     return result
 
+def summary_to_clipboard():    
+    from tkinter import Tk
+
+    ## All gamedata to clipboard for graphing fun
+    #table_str = "Diff\tRatio\n"
+    #for game in [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game and ("forfeit" not in game or not game["forfeit"])]:
+    #    winning_score = game["home_team_score"] if game["home_team_score"] > game["away_team_score"] else game["away_team_score"]
+    #    losing_score = game["home_team_score"] if game["home_team_score"] < game["away_team_score"] else game["away_team_score"]
+    #    winning_diff = winning_score - losing_score
+    #    winning_ratio = winning_score / losing_score
+    #    table_str += f"{winning_diff}\t{winning_ratio}\n"
+    ## Copy to clipboard using tkinter
+    #r = Tk()
+    #r.withdraw()
+    #r.clipboard_clear()
+    #r.clipboard_append(table_str)
+    #r.update()
+    #r.destroy()
+
+    game_count = 0
+    error_sum = 0
+    for game in [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game and ("forfeit" not in game or not game["forfeit"])]:
+        ranking = get_ranking_history(game["date"].date())
+        if ranking is not None and game["home_team_id"] in ranking and game["away_team_id"] in ranking: 
+            predicted_ratio = ranking[game["home_team_id"]]["rp"]/ranking[game["away_team_id"]]["rp"]
+            actual_ratio = game["home_team_score"]/game["away_team_score"]
+            error_sum += abs(math.log(predicted_ratio/actual_ratio))
+            game_count += 1
+
+    table_str = f"Mean Absolute Log Error: {str(round((math.exp(error_sum/game_count) - 1) * 100,2))}%\n\n"
+
+    # Hypothetical game on Saturday December 6th, 2025 to analyze the results on Wednesday, December 10th, 2025.
+    # No games in this week in history otherwise, so results are in isolation.
+
+    dhr_id = "17404a"
+    kent_id = "13122a"
+    hypothetical_game_dt = datetime(2025, 12, 6)
+    current_ranking = get_ranking_history(hypothetical_game_dt.date())
+    dhr_rp = current_ranking[dhr_id]["rp"] * RANKING_SCALE
+    kent_rp = current_ranking[kent_id]["rp"] * RANKING_SCALE
+    table_str += f"DHR vs. Kent hypothetical game on Saturday December 6th, 2025. Expected score ratio: {str(round(dhr_rp/kent_rp,2))}\n\n"
+    table_str += "Ratio\tDHR RP Δ\tKent RP Δ\tWeight\n"
+
+    for score_ratio in range(2, 31):
+        hypothetical_game = {
+                "date": hypothetical_game_dt,
+                "home_team_id": dhr_id, 
+                "home_team_score": score_ratio,
+                "away_team_id": kent_id,
+                "away_team_score": 1
+            }
+        mrda_games.append(hypothetical_game)
+        new_ranking = get_rankings(date(2025,12,10))
+        table_str += f"{score_ratio}\t{str(round(new_ranking[dhr_id]["rp"] * RANKING_SCALE - dhr_rp,2))}\t{str(round(new_ranking[kent_id]["rp"] * RANKING_SCALE - kent_rp,2))}\t{hypothetical_game["weight"]}\n"
+        mrda_games.remove(hypothetical_game)
+
+    # Copy to clipboard using tkinter
+    r = Tk()
+    r.withdraw()
+    r.clipboard_clear()
+    r.clipboard_append(table_str)
+    r.update()
+    r.destroy()
+
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
 if not (nextRankingDeadline.month % 3 == 0 and nextRankingDeadline.day <= 7 and nextRankingDeadline.weekday() <= 2):
@@ -314,6 +375,9 @@ while (rankingDate <= nextRankingDeadline):
     rankingDate = rankingDate + timedelta(weeks=1)
 
 print("Completed " + str(calc_count) + " ranking calculations in " + str(round(time.perf_counter() - start_time, 2)) + " seconds.")
+
+if not github_actions_run:
+    summary_to_clipboard()
 
 # Format dates to Y-m-d and ranking points and error to 2 decimal points
 formatted_rankings_history = {}
