@@ -131,7 +131,7 @@ function teamDetailsModal() {
                 data: {
                     datasets: [{
                         type: 'scatter',
-                        label: 'Game Points (2023 Algorithm)',
+                        label: 'Games',
                         data: [],
                         pointRadius: 5,
                     }, {
