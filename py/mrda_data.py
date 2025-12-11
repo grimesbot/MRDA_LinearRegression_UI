@@ -4,7 +4,7 @@ import json
 from datetime import datetime, date, timedelta, timezone
 
 from team_info import team_info
-from GameList_history import games, team_abbrev_id_map
+from game_history import games, team_abbrev_id_map
 
 # Constants
 DATA_DIR = "data"
