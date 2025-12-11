@@ -4,7 +4,7 @@ import time
 from datetime import datetime, date, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
-from TeamInfo import team_info
+from team_info import team_info
 from mrda_data import mrda_teams, mrda_events, mrda_games, github_actions_run, write_json_to_file
 
 # Constants
@@ -423,6 +423,6 @@ write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 write_json_to_file(mrda_games, "mrda_games.json")
 print("MRDA games updated and saved to mrda_games.js and mrda_games.json")
 
-#print teams to console for TeamInfo.py
+#print teams to console for team_info.py
 #for item in sorted(mrda_teams.items(), key=lambda item: item[0], reverse=False):
 #    print("\"" + item[0] + "\": { \"region\": \"A\", \"name\": \"" + item[1]["name"] + "\" }, # " + item[1]["name"])
