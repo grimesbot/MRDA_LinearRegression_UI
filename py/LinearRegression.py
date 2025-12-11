@@ -416,6 +416,6 @@ write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 write_json_to_file(mrda_games, "mrda_games.json")
 print("MRDA games updated and saved to mrda_games.js and mrda_games.json")
 
-#print teams to console for TeamInfo.py
+#print teams to console for team_info.py
 #for item in sorted(mrda_teams.items(), key=lambda item: item[0], reverse=False):
 #    print("\"" + item[0] + "\": { \"region\": \"A\", \"name\": \"" + item[1]["name"] + "\" }, # " + item[1]["name"])

@@ -4,8 +4,8 @@ import json
 
 from datetime import datetime, date, timedelta, timezone
 
-from py.team_info import team_info
-from GameList_history import games, team_abbrev_id_map
+from team_info import team_info
+from game_history import games, team_abbrev_id_map
 
 # Constants
 DATA_DIR = "data"
@@ -86,7 +86,7 @@ print("Initializing MRDA games list...")
 write_json_to_file(game_data, game_data_json_filename)
 print(f"MRDA Central API game_data saved to {game_data_json_filename} for future comparison.")
 
-# Add 2023 events and games from GameList_history.py to mrda_events and mrda_games
+# Add 2023 events and games from game_history.py to mrda_events and mrda_games
 for game_day in games:
     event_id = games.index(game_day) - len(games)
     event = {
@@ -114,7 +114,7 @@ for game_day in games:
 
         mrda_games.append(mrda_game)
 
-print("Added " + str(len(mrda_games)) + " games from 2023 in GameList_history.py")
+print("Added " + str(len(mrda_games)) + " games from 2023 in game_history.py")
 
 # Validate and add data from API to mrda_events, mrda_teams and mrda_games
 for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")):
