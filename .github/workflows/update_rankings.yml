@@ -23,8 +23,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests statsmodels python-dateutil
 
-      - name: Run LinearRegression.py update script
-        run: python ./py/LinearRegression.py
+      - name: Run linear_regression.py update script
+        run: python ./py/linear_regression.py
 
       - name: Commit and push changes
         run: |
