@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 
 from mrda_data import mrda_teams, mrda_events, mrda_games, github_actions_run, write_json_to_file
 
-from TeamInfo import team_info
+from team_info import team_info
 
 # Constants
 DIFFERENTIAL_CAP = 200
