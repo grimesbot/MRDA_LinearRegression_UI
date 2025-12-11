@@ -198,6 +198,18 @@ for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_d
 
     mrda_games.append(game)
 
+# Save mrda_events JSON to JavaScript file for local web UI
+write_json_to_file(mrda_events, "mrda_events.js", "mrda_events")
+# Save mrda_events JSON file for external use
+write_json_to_file(mrda_events, "mrda_events.json")
+print("MRDA events saved to mrda_events.js and mrda_events.json")
+
+# Save mrda_teams JSON to JavaScript file for local web UI
+write_json_to_file(mrda_teams, "mrda_teams.js", "mrda_teams")
+# Save mrda_teams JSON file for external use
+write_json_to_file(mrda_teams, "mrda_teams.json")
+print("MRDA teams saved to mrda_teams.js and mrda_teams.json")    
+
 # Feature to remove games for excludedTeams
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
 #mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]

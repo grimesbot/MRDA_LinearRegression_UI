@@ -280,22 +280,6 @@ def get_rankings(date):
 def summary_to_clipboard():    
     from tkinter import Tk
 
-    ## All gamedata to clipboard for graphing fun
-    #table_str = "Diff\tRatio\n"
-    #for game in [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game and ("forfeit" not in game or not game["forfeit"])]:
-    #    winning_score = game["home_team_score"] if game["home_team_score"] > game["away_team_score"] else game["away_team_score"]
-    #    losing_score = game["home_team_score"] if game["home_team_score"] < game["away_team_score"] else game["away_team_score"]
-    #    winning_diff = winning_score - losing_score
-    #    winning_ratio = winning_score / losing_score
-    #    table_str += f"{winning_diff}\t{winning_ratio}\n"
-    ## Copy to clipboard using tkinter
-    #r = Tk()
-    #r.withdraw()
-    #r.clipboard_clear()
-    #r.clipboard_append(table_str)
-    #r.update()
-    #r.destroy()
-
     game_count = 0
     error_sum = 0
     for game in [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game and ("forfeit" not in game or not game["forfeit"])]:
@@ -394,18 +378,6 @@ write_json_to_file(formatted_rankings_history, "mrda_rankings_history.js", "rank
 write_json_to_file(formatted_rankings_history, "mrda_rankings_history.json")
 print("Rankings updated and saved to mrda_rankings_history.js and mrda_rankings_history.json")
 
-# Save mrda_events JSON to JavaScript file for local web UI
-write_json_to_file(mrda_events, "mrda_events.js", "mrda_events")
-# Save mrda_events JSON file for external use
-write_json_to_file(mrda_events, "mrda_events.json")
-print("MRDA events saved to mrda_events.js and mrda_events.json")
-
-# Save mrda_teams JSON to JavaScript file for local web UI
-write_json_to_file(mrda_teams, "mrda_teams.js", "mrda_teams")
-# Save mrda_teams JSON file for external use
-write_json_to_file(mrda_teams, "mrda_teams.json")
-print("MRDA teams saved to mrda_teams.js and mrda_teams.json")
-
 # Save mrda_games JSON to JavaScript file for local web UI, format date first
 mrda_games = sorted(mrda_games, key=lambda game: game["date"])
 for game in mrda_games:
@@ -414,7 +386,3 @@ write_json_to_file(mrda_games, "mrda_games.js", "mrda_games")
 # Save mrda_games JSON file for external use
 write_json_to_file(mrda_games, "mrda_games.json")
 print("MRDA games updated and saved to mrda_games.js and mrda_games.json")
-
-#print teams to console for team_info.py
-#for item in sorted(mrda_teams.items(), key=lambda item: item[0], reverse=False):
-#    print("\"" + item[0] + "\": { \"region\": \"A\", \"name\": \"" + item[1]["name"] + "\" }, # " + item[1]["name"])
