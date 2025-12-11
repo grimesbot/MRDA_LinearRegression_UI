@@ -1,7 +1,6 @@
 import requests
 import os
 import json
-
 from datetime import datetime, date, timedelta, timezone
 
 from team_info import team_info

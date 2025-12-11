@@ -4,12 +4,11 @@ import time
 from datetime import datetime, date, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
+from team_info import team_info
 from mrda_data import mrda_teams, mrda_events, mrda_games, github_actions_run, write_json_to_file
 
-from team_info import team_info
-
 # Constants
-DIFFERENTIAL_CAP = 200
+DIFFERENTIAL_CAP = 150
 RANKING_POINT_FLOOR = 1
 POSTSEASON_EVENT_NAMES = ["Western Hemisphere Cup", "Qualifiers", "Mens Roller Derby Association Championships"]
 START_DATE = date(2023,10,25) # Start calculations from first Wednesday after WHC 2023
@@ -60,7 +59,7 @@ def linear_regression(games, seeding_team_rankings=None):
         # Calculate weight based on score differential if hasn't already been set
         if "weight" not in game:
             score_differential = abs(game["home_team_score"] - game["away_team_score"])
-            game["weight"] = 0.025 + math.exp((195-score_differential)/150) if score_differential > DIFFERENTIAL_CAP else 1
+            game["weight"] = 0.05 + math.exp((140-score_differential)/175) if score_differential > DIFFERENTIAL_CAP else 1
 
         # Set weight        
         W.append(game["weight"])
