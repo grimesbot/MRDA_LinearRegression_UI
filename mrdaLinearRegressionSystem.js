@@ -22,7 +22,6 @@ class MrdaGame {
         this.weight = game.weight;
         this.expectedRatios = {};
         this.gamePoints = {};
-        this.absLogError = null;
 
         this.homeTeam = mrdaTeams[this.homeTeamId];
         this.awayTeam = mrdaTeams[this.awayTeamId];
@@ -46,14 +45,11 @@ class MrdaGame {
 
         if (this.scores[this.homeTeamId] && this.scores[this.awayTeamId])
         {
-            if (!this.forfeit && (homeRankingPoints || awayRankingPoints)) {
-                let homeScoreRatio = ratioCapped(this.scores[this.homeTeamId],this.scores[this.awayTeamId]);
-                let awayScoreRato = ratioCapped(this.scores[this.awayTeamId],this.scores[this.homeTeamId]);            
+            if (!this.forfeit) {
                 if (homeRankingPoints && awayRankingPoints) {
-                    this.gamePoints[this.homeTeamId] = homeRankingPoints * homeScoreRatio/ratioCapped(homeRankingPoints,awayRankingPoints);
-                    this.gamePoints[this.awayTeamId] = awayRankingPoints * awayScoreRato/ratioCapped(awayRankingPoints,homeRankingPoints);
-                    this.absLogError = Math.abs(Math.log(this.expectedRatios[this.homeTeamId]/(this.scores[this.homeTeamId]/this.scores[this.homeTeamId])));
-                } else if (homeScoreRatio < RATIO_CAP && awayScoreRato < RATIO_CAP) {
+                    this.gamePoints[this.homeTeamId] = homeRankingPoints * ratioCapped(this.scores[this.homeTeamId],this.scores[this.awayTeamId])/ratioCapped(homeRankingPoints,awayRankingPoints);
+                    this.gamePoints[this.awayTeamId] = awayRankingPoints * ratioCapped(this.scores[this.awayTeamId],this.scores[this.homeTeamId])/ratioCapped(awayRankingPoints,homeRankingPoints);
+                } else if ((homeRankingPoints || awayRankingPoints) && this.scores[this.homeTeamId]/this.scores[this.awayTeamId] < RATIO_CAP && this.scores[this.awayTeamId]/this.scores[this.homeTeamId] < RATIO_CAP) {
                     // Calculate game points for new team as seeding games for visualization
                     let newTeamId = homeRankingPoints ? this.awayTeamId : this.homeTeamId;
                     let establishedTeamId = homeRankingPoints ? this.homeTeamId : this.awayTeamId;
