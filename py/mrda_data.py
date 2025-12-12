@@ -71,9 +71,10 @@ game_data.extend(waiting_for_documents_game_data)
 # Compare game_data to JSON file from last calculation for scheduled runs.
 # Only recalculate rankings if game_data changes (manual runs always recalculate).
 game_data_json_filename = "mrda_api_data.json"
+game_data_json_file_path = os.path.join(DATA_DIR, game_data_json_filename)
 if github_actions_scheduled_run:
-    if os.path.exists(game_data_json_filename):
-        with open( game_data_json_filename , "r" ) as f:
+    if os.path.exists(game_data_json_file_path):
+        with open( game_data_json_file_path , "r" ) as f:
             file_content = f.read()
             if file_content == json.dumps(game_data):
                 # game_data has not changed, exit without recalculating rankings
@@ -83,7 +84,7 @@ if github_actions_scheduled_run:
 print("Initializing MRDA games list...")                
 # Save game_data to JSON file for future comparison.
 write_json_to_file(game_data, game_data_json_filename)
-print(f"MRDA Central API game_data saved to {game_data_json_filename} for future comparison.")
+print(f"MRDA Central API game_data saved to {game_data_json_file_path} for future comparison.")
 
 # Add 2023 events and games from game_history.py to mrda_events and mrda_games
 for game_day in games:
@@ -213,9 +214,9 @@ print("MRDA events saved to mrda_events.js and mrda_events.json")
 write_json_to_file(mrda_teams, "mrda_teams.js", "mrda_teams")
 # Save mrda_teams JSON file for external use
 write_json_to_file(mrda_teams, "mrda_teams.json")
-print("MRDA teams saved to mrda_teams.js and mrda_teams.json")    
+print("MRDA teams saved to mrda_teams.js and mrda_teams.json")
 
-# Feature to remove games for excludedTeams
+# Feature to remove games for excluded teams
 #excludedTeams = ["2714a", "17916a", "17915a","17910a","17911a"] #PAN, ORD, RDNA, NDT, RDT
 #mrda_games = [game for game in mrda_games if not game["home_team_id"] in excludedTeams and not game["away_team_id"] in excludedTeams]
 
