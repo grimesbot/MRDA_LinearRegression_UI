@@ -187,8 +187,8 @@ function teamDetailsModal() {
                 return opponent.name; 
             }},
             { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualDifferential(team.teamId) } },            
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedDifferential(team.teamId) } },
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return !row.forfeit ? row.scores[team.teamId] - row.scores[row.getOpponentTeamId(team.teamId)] : ""; } },            
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedDifferentials ? row.expectedDifferentials[team.teamId].toFixed(2) : ""; } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) { return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
@@ -615,13 +615,14 @@ function setupApiGames() {
     new DataTable('#apiGames', {
             columns: [
                 { data: 'event.startDt', visible: false },
+                { data: 'eventId', visible: false },     
                 { data: 'date', visible: false },
-                { data: 'homeTeam.name', className: 'dt-right' },
-                { data: "homeTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
-                { name: 'score', width: '7em', className: 'dt-center', render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}`} },
-                { data: "awayTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
-                { data: 'awayTeam.name' },
-                { data: 'weight', width: '1em', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
+                { data: 'homeTeam.name', title: 'Home Team', className: 'dt-right' },
+                { data: 'homeTeam.logo', width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
+                { name: 'score', title: 'Score', width: '7em', className: 'dt-center', render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}`} },
+                { data: 'awayTeam.logo', width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
+                { data: 'awayTeam.name', title: 'Away Team' },
+                { data: 'weight', title: 'Weight', width: '1em', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
             ],
             data: games,
             rowGroup: {
@@ -629,7 +630,7 @@ function setupApiGames() {
                 emptyDataGroup: null
             },
             lengthChange: false,
-            order: [[0, 'desc'], [1, 'desc']],
+            order: [[0, 'desc'], [1, 'desc'], [2, 'desc']],
             ordering: {
                 handler: false
             },
@@ -641,17 +642,17 @@ function setupApiGames() {
 }
 
 async function setupUpcomingGames() {
-    let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !game.forfeit && !game.scores[game.homeTeamId] && !game.scores[game.awayTeamId]);
+    let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !(game.homeTeamId in game.scores) || !(game.awayTeamId in game.scores));
 
     new DataTable('#upcomingGames', {
         columns: [
             { data: 'event.startDt', visible: false },
             { data: 'date', visible: false },
-            { data: 'homeTeam.name', className: 'dt-right', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.homeTeam.getRankingPoints(game.date) + "</div>"; } },
+            { data: 'homeTeam.name', width: '30em', className: 'dt-right', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.homeTeam.getRankingPoints(game.date) + "</div>"; } },
             { data: "homeTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
             { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedDifferentials[game.homeTeamId].toFixed(2) } },
             { data: "awayTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
-            { data: 'awayTeam.name', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.awayTeam.getRankingPoints(game.date) + "</div>"; }  },
+            { data: 'awayTeam.name', width: '30em', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.awayTeam.getRankingPoints(game.date) + "</div>"; }  },
         ],
         data: games,
         rowGroup: {
@@ -749,7 +750,7 @@ function setupErrorSummary() {
         maxDt: null
     });
 
-    let predictedGames = mrdaLinearRegressionSystem.mrdaGames.filter(game => !game.forfeit && game.scores[game.homeTeamId] && game.expectedDifferentials[game.homeTeamId]);
+    let predictedGames = mrdaLinearRegressionSystem.mrdaGames.filter(game => !game.forfeit && game.homeTeamId in game.scores && game.awayTeamId in game.scores && game.homeTeamId in game.expectedDifferentials && game.awayTeamId in game.expectedDifferentials);
     for (const data of tableData) {
         let games = predictedGames.filter(game => (data.minDt == null || data.minDt <= game.date) && (data.maxDt == null || game.date < data.maxDt));
         data.gameCount = games.length;
@@ -757,7 +758,7 @@ function setupErrorSummary() {
             let errSum = 0;
             let pctErrSum = 0;
             for (const game of games) {
-                let error = Math.abs(game.scores[game.homeTeamId] - game.scores[game.awayTeamId]);
+                let error = Math.abs(game.scores[game.homeTeamId] - game.scores[game.awayTeamId] - game.expectedDifferentials[game.homeTeamId]);
                 errSum += error;
                 pctErrSum += error / (game.scores[game.homeTeamId] + game.scores[game.awayTeamId]) * 100;
             }
