@@ -187,8 +187,8 @@ function teamDetailsModal() {
                 return opponent.name; 
             }},
             { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getActualRatio(team.teamId) } },            
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return row.getExpectedRatio(team.teamId) } },
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.actualRatios ? row.actualRatios[team.teamId].toFixed(2) : "" } },            
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedRatios ? row.expectedRatios[team.teamId].toFixed(2) : "" } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
@@ -613,13 +613,14 @@ function setupApiGames() {
     new DataTable('#apiGames', {
             columns: [
                 { data: 'event.startDt', visible: false },
+                { data: 'eventId', visible: false },                
                 { data: 'date', visible: false },
-                { data: 'homeTeam.name', className: 'dt-right' },
+                { data: 'homeTeam.name', title: "Home Team", className: 'dt-right' },
                 { data: "homeTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
-                { name: 'score', width: '7em', className: 'dt-center', render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}`} },
+                { name: 'score', width: '7em', className: 'dt-center', title: "Score", render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}`} },
                 { data: "awayTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
-                { data: 'awayTeam.name' },
-                { data: 'weight', width: '1em', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
+                { data: 'awayTeam.name', title: "Away Team" },
+                { data: 'weight', title: "Weight", width: '1em', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
             ],
             data: games,
             rowGroup: {
@@ -627,7 +628,7 @@ function setupApiGames() {
                 emptyDataGroup: null
             },
             lengthChange: false,
-            order: [[0, 'desc'], [1, 'desc']],
+            order: [[0, 'desc'], [1, 'desc'], [2, 'desc']],
             ordering: {
                 handler: false
             },
@@ -748,16 +749,14 @@ function setupMeanAbsoluteLogError() {
         maxDt: null
     });
 
-    let predictedGames = mrdaLinearRegressionSystem.mrdaGames.filter(game => !game.forfeit && game.scores[game.homeTeamId] && game.expectedRatios[game.homeTeamId]);
+    let predictedGames = mrdaLinearRegressionSystem.mrdaGames.filter(game => game.absLogError);
     for (const data of tableData) {
         let games = predictedGames.filter(game => (data.minDt == null || data.minDt <= game.date) && (data.maxDt == null || game.date < data.maxDt));
         data.gameCount = games.length;
         if (data.gameCount > 0) {
             let absLogErrSum = 0;
-            games.forEach(game => absLogErrSum += Math.abs(Math.log(game.expectedRatios[game.homeTeamId]/(game.scores[game.homeTeamId]/game.scores[game.awayTeamId]))));
-            let avg = absLogErrSum/data.gameCount;
-            let errorPct = (Math.exp(avg) - 1) * 100;
-            data.meal = errorPct.toFixed(2) + '%';
+            games.forEach(game => absLogErrSum += game.absLogError);
+            data.meal = Math.exp(absLogErrSum/data.gameCount) - 1;
         } else {
             data.meal = null;
         }
@@ -769,7 +768,7 @@ function setupMeanAbsoluteLogError() {
             { title: 'Start Date', data: 'minDt', render: DataTable.render.date()},
             { title: 'End Date', data: 'maxDt', render: DataTable.render.date()},            
             { title: 'Game Count', data: 'gameCount'},
-            { title: 'Error %', data: 'meal'}
+            { title: 'Error %', data: 'meal', render: function(data, type) {return data ? `${(data * 100).toFixed(2)}%` : ""; }}
         ],
         data: tableData,
         dom: 't',

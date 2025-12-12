@@ -90,8 +90,7 @@ print(f"MRDA Central API game_data saved to {game_data_json_file_path} for futur
 for game_day in games:
     event_id = games.index(game_day) - len(games)
     event = {
-        "start_day": game_day[0][0],
-        "end_day": game_day[-1][0]
+        "start_dt": datetime.strptime(game_day[0][0], "%Y-%m-%d"),
     }
     if len(game_day[0]) > 5:
         event["name"] = game_day[0][5]
@@ -99,7 +98,7 @@ for game_day in games:
 
     for game in game_day:
         mrda_game = {
-            "date": datetime.strptime(game[0] + " 12:00:00", "%Y-%m-%d %H:%M:%S"),
+            "date": datetime.strptime(game[0], "%Y-%m-%d"),
             "home_team_id": team_abbrev_id_map[game[1]],
             "home_team_score": game[2],
             "away_team_id": team_abbrev_id_map[game[3]],
@@ -107,6 +106,10 @@ for game_day in games:
             "event_id": event_id,
             "status": 7
         }
+
+        # Add end_dt if multi-day event
+        if mrda_game["date"].date() > event["start_dt"].date() and ("end_dt" not in event or mrda_game["date"] > event["end_dt"]):
+            event["end_dt"] = mrda_game["date"]
 
         if (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0):
             mrda_game["forfeit"] = True
@@ -136,11 +139,11 @@ for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_d
     if "forfeit" in data["event"] and data["event"]["forfeit"] == 1 and ("forfeit_league" not in data["event"] or data["event"]["forfeit_league"] is None):
         continue
 
-    game_date = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
+    game_dt = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
     
     # Scores are not required as they're used by the upcoming games predictor, 
     # but filter out Approved games without scores older than 45 days
-    if "status" in data["event"] and data["event"]["status"] == "3" and game_date < (datetime.today() - timedelta(days=45)):
+    if "status" in data["event"] and data["event"]["status"] == "3" and game_dt < (datetime.today() - timedelta(days=45)):
         if "home_league_score" not in data["event"] or data["event"]["home_league_score"] is None:
             continue
         if "away_league_score" not in data["event"] or data["event"]["away_league_score"] is None:
@@ -167,7 +170,7 @@ for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_d
         }
         
     game = {
-        "date": game_date,
+        "date": game_dt,
         "home_team_id": home_team_id,
         "away_team_id": away_team_id,
         "status": data["event"]["status"]
@@ -185,21 +188,23 @@ for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_d
         game["event_id"] = data["event"]["sanctioning_id"]
 
         # Add event to mrda_events
-        game_day = '{d.year}-{d.month}-{d.day}'.format(d=game_date)
-        if data["event"]["sanctioning_id"] not in mrda_events:
+        if game["event_id"] not in mrda_events:
             event = {
-                "start_day": game_day,
-                "end_day": game_day
+                "start_dt": game_dt
             }
             if "event_name" in data["sanctioning"] and data["sanctioning"]["event_name"] is not None:
                 event["name"] = data["sanctioning"]["event_name"]
-            mrda_events[data["event"]["sanctioning_id"]] = event
-        elif game_day != mrda_events[data["event"]["sanctioning_id"]]["end_day"]:
-            mrda_events[data["event"]["sanctioning_id"]]["end_day"] = game_day
+            mrda_events[game["event_id"]] = event
+        elif game_dt.date() > mrda_events[game["event_id"]]["start_dt"].date() and ("end_dt" not in mrda_events[game["event_id"]] or game_dt > mrda_events[game["event_id"]]["end_dt"]):
+            mrda_events[data["event"]["sanctioning_id"]]["end_dt"] = game_dt
 
     mrda_games.append(game)
 
-# Save mrda_events JSON to JavaScript file for local web UI
+# Save mrda_events JSON to JavaScript file for local web UI, format dates first
+for event_id in mrda_events.keys():
+    mrda_events[event_id]["start_dt"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=mrda_events[event_id]["start_dt"])
+    if "end_dt" in mrda_events[event_id]:
+        mrda_events[event_id]["end_dt"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=mrda_events[event_id]["end_dt"])    
 write_json_to_file(mrda_events, "mrda_events.js", "mrda_events")
 # Save mrda_events JSON file for external use
 write_json_to_file(mrda_events, "mrda_events.json")

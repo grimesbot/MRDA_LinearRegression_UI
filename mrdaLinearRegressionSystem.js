@@ -20,8 +20,10 @@ class MrdaGame {
         this.eventId = game.event_id;
         this.status = game.status;
         this.weight = game.weight;
+        this.actualRatios = {};
         this.expectedRatios = {};
         this.gamePoints = {};
+        this.absLogError = null;
 
         this.homeTeam = mrdaTeams[this.homeTeamId];
         this.awayTeam = mrdaTeams[this.awayTeamId];
@@ -30,45 +32,53 @@ class MrdaGame {
 
         if (virtualGame) {
             this.awayTeam = new MrdaTeam(null, { name: "Virtual Team" });
-            let eventDay = `${this.date.getFullYear()}-${this.date.getMonth() + 1}-${this.date.getDate()}`;
-            this.event = new MrdaEvent(null, {start_day: eventDay, end_day: eventDay, name: "Virtual Games"});
+            this.eventId = null;
+            this.event = new MrdaEvent(null, {start_dt: this.date, name: "Virtual Games"});
             return;
         }
 
+        // Calculate expected ratios for all games (including forfeits and upcoming games without scores)
         let homeRankingPoints = this.homeTeam.getRankingPoints(this.date);
         let awayRankingPoints = this.awayTeam.getRankingPoints(this.date);
-
         if (homeRankingPoints && awayRankingPoints) {
             this.expectedRatios[this.homeTeamId] = homeRankingPoints/awayRankingPoints;
             this.expectedRatios[this.awayTeamId] = awayRankingPoints/homeRankingPoints;
         }
+        
+        // Done here if we don't have scores (upcoming games)
+        if (!this.scores[this.homeTeamId] || !this.scores[this.awayTeamId])
+            return;
 
-        if (this.scores[this.homeTeamId] && this.scores[this.awayTeamId])
-        {
-            if (!this.forfeit) {
-                if (homeRankingPoints && awayRankingPoints) {
-                    this.gamePoints[this.homeTeamId] = homeRankingPoints * ratioCapped(this.scores[this.homeTeamId],this.scores[this.awayTeamId])/ratioCapped(homeRankingPoints,awayRankingPoints);
-                    this.gamePoints[this.awayTeamId] = awayRankingPoints * ratioCapped(this.scores[this.awayTeamId],this.scores[this.homeTeamId])/ratioCapped(awayRankingPoints,homeRankingPoints);
-                } else if ((homeRankingPoints || awayRankingPoints) && this.scores[this.homeTeamId]/this.scores[this.awayTeamId] < RATIO_CAP && this.scores[this.awayTeamId]/this.scores[this.homeTeamId] < RATIO_CAP) {
-                    // Calculate game points for new team as seeding games for visualization
-                    let newTeamId = homeRankingPoints ? this.awayTeamId : this.homeTeamId;
-                    let establishedTeamId = homeRankingPoints ? this.homeTeamId : this.awayTeamId;
-                    let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
-                    this.gamePoints[newTeamId] = establishedTeamRp * this.scores[newTeamId]/this.scores[establishedTeamId];
-                }
+        if (!this.forfeit) {
+            this.actualRatios[this.homeTeamId] = this.scores[this.homeTeamId]/this.scores[this.awayTeamId];
+            this.actualRatios[this.awayTeamId] = this.scores[this.awayTeamId]/this.scores[this.homeTeamId];
+            if (homeRankingPoints && awayRankingPoints) {
+                this.gamePoints[this.homeTeamId] = homeRankingPoints * ratioCapped(this.scores[this.homeTeamId],this.scores[this.awayTeamId])/ratioCapped(homeRankingPoints,awayRankingPoints);
+                this.gamePoints[this.awayTeamId] = awayRankingPoints * ratioCapped(this.scores[this.awayTeamId],this.scores[this.homeTeamId])/ratioCapped(awayRankingPoints,homeRankingPoints);
+                this.absLogError = Math.abs(Math.log(this.expectedRatios[this.homeTeamId]/this.actualRatios[this.homeTeamId]));
+            } else if ((homeRankingPoints || awayRankingPoints) && this.actualRatios[this.homeTeamId] < RATIO_CAP && this.actualRatios[this.awayTeamId] < RATIO_CAP) {
+                // Calculate game points for new team as seeding games for visualization
+                let newTeamId = homeRankingPoints ? this.awayTeamId : this.homeTeamId;
+                let establishedTeamId = homeRankingPoints ? this.homeTeamId : this.awayTeamId;
+                let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
+                this.gamePoints[newTeamId] = establishedTeamRp * ratioCapped(this.scores[newTeamId],this.scores[establishedTeamId]);
             }
-
-            this.homeTeam.gameHistory.push(this);
-            this.awayTeam.gameHistory.push(this);
         }
+
+        this.homeTeam.gameHistory.push(this);
+        this.awayTeam.gameHistory.push(this);
     }
+
+    getOpponentTeamId(teamId) {
+        return teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId;
+    }    
 
     getOpponentTeam(teamId) {
         return teamId == this.homeTeamId ? this.awayTeam : this.homeTeam;
     }
 
     getWL(teamId) {
-        return this.scores[teamId] > this.scores[teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId] ? "W" : "L";
+        return this.scores[teamId] > this.scores[this.getOpponentTeamId(teamId)] ? "W" : "L";
     }
 
     getAtVs(teamId) {
@@ -76,35 +86,11 @@ class MrdaGame {
     }
 
     getTeamsScore(teamId) {
-        return `${this.scores[teamId]}-${this.scores[teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId]}`;
+        return `${this.scores[teamId]}-${this.scores[this.getOpponentTeamId(teamId)]}`;
     }
 
     getGameSummary(teamId) {
-        let opponent = null
-        let vsOrAt = null;
-        
-        if (teamId == this.homeTeamId) {
-            opponent = this.awayTeam;
-            vsOrAt = "vs.";
-        } else {
-            opponent = this.homeTeam;
-            vsOrAt = "@";
-        }
-
-        let wOrL = this.scores[teamId] > this.scores[opponent.teamId] ? "W" : "L";
-
-        return `${this.scores[teamId]}-${this.scores[opponent.teamId]} ${wOrL} ${vsOrAt} ${opponent.name}`;
-    }
-
-    getExpectedRatio(teamId) {
-        return teamId in this.expectedRatios ? this.expectedRatios[teamId].toFixed(2) : "";
-    }
-
-    getActualRatio(teamId) {
-        let opponentId = teamId == this.homeTeamId ? this.awayTeamId : this.homeTeamId;
-        if (this.forfeit)
-            return "";
-        return (this.scores[teamId]/this.scores[opponentId]).toFixed(2);
+        return `${this.getTeamsScore(teamId)} ${this.getWL(teamId)} ${this.getAtVs(teamId)} ${this.getOpponentTeam(teamId).name}`;
     }
 
     getGameDay() {
@@ -123,8 +109,8 @@ class MrdaGame {
 class MrdaEvent {
     constructor(eventId, event) {
         this.eventId = eventId;
-        this.startDt = new Date(event.start_day + " 00:00:00");
-        this.endDt = event.start_day != event.end_day ? new Date(event.end_day + " 00:00:00") : this.startDt;
+        this.startDt = event.start_dt instanceof Date ? event.start_dt : new Date(event.start_dt);
+        this.endDt = event.end_dt ? new Date(event.end_dt) : this.startDt;
         this.name = event.name;
     }
 
