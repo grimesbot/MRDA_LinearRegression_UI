@@ -13,8 +13,10 @@ class MrdaGame {
         this.homeTeamId = game.home_team_id;
         this.awayTeamId = game.away_team_id;
         this.scores = {};
-        this.scores[this.homeTeamId] = game.home_team_score;
-        this.scores[this.awayTeamId] = game.away_team_score;
+        if("home_team_score" in game)
+            this.scores[this.homeTeamId] = game.home_team_score;
+        if("away_team_score" in game)
+            this.scores[this.awayTeamId] = game.away_team_score;
         this.forfeit = game.forfeit;
         this.forfeitTeamId = game.forfeit_team_id;
         this.eventId = game.event_id;
@@ -46,7 +48,7 @@ class MrdaGame {
         }
         
         // Done here if we don't have scores (upcoming games)
-        if (!this.scores[this.homeTeamId] || !this.scores[this.awayTeamId])
+        if (!(this.homeTeamId in this.scores) || !(this.awayTeamId in this.scores))
             return;
 
         if (!this.forfeit) {

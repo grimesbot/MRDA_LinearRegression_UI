@@ -587,7 +587,8 @@ function calculateAndDisplayRankings() {
 function setupApiGames() {
     // Filter to games within ranking period
     let games = mrdaLinearRegressionSystem.mrdaGames
-        .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt);
+        .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt
+            && game.homeTeamId in game.scores && game.awayTeamId in game.scores);
 
     // Add virtual games
     let seedingRankings = mrdaLinearRegressionSystem.getRankingHistory(rankingPeriodStartDt);
@@ -640,17 +641,17 @@ function setupApiGames() {
 }
 
 async function setupUpcomingGames() {
-    let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !game.forfeit && !game.scores[game.homeTeamId] && !game.scores[game.awayTeamId]);
+    let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !(game.homeTeamId in game.scores) || !(game.awayTeamId in game.scores));
 
     new DataTable('#upcomingGames', {
         columns: [
             { data: 'event.startDt', visible: false },
             { data: 'date', visible: false },
-            { data: 'homeTeam.name', className: 'dt-right', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.homeTeam.getRankingPoints(game.date) + "</div>"; } },
+            { data: 'homeTeam.name', width: '30em', className: 'dt-right', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.homeTeam.getRankingPoints(game.date) + "</div>"; } },
             { data: "homeTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
             { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedRatios[game.homeTeamId] > 1 ? `${game.expectedRatios[game.homeTeamId].toFixed(2)} : 1` : `1 : ${game.expectedRatios[game.awayTeamId].toFixed(2)}` } },
             { data: "awayTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
-            { data: 'awayTeam.name', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.awayTeam.getRankingPoints(game.date) + "</div>"; }  },
+            { data: 'awayTeam.name', width: '30em', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.awayTeam.getRankingPoints(game.date) + "</div>"; }  },
         ],
         data: games,
         rowGroup: {

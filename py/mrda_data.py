@@ -90,7 +90,7 @@ print(f"MRDA Central API game_data saved to {game_data_json_file_path} for futur
 for game_day in games:
     event_id = games.index(game_day) - len(games)
     event = {
-        "start_dt": datetime.strptime(game_day[0][0], "%Y-%m-%d"),
+        "start_dt": datetime.strptime(game_day[0][0], "%Y-%m-%d")
     }
     if len(game_day[0]) > 5:
         event["name"] = game_day[0][5]
@@ -204,7 +204,7 @@ for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_d
 for event_id in mrda_events.keys():
     mrda_events[event_id]["start_dt"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=mrda_events[event_id]["start_dt"])
     if "end_dt" in mrda_events[event_id]:
-        mrda_events[event_id]["end_dt"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=mrda_events[event_id]["end_dt"])    
+        mrda_events[event_id]["end_dt"] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=mrda_events[event_id]["end_dt"])
 write_json_to_file(mrda_events, "mrda_events.js", "mrda_events")
 # Save mrda_events JSON file for external use
 write_json_to_file(mrda_events, "mrda_events.json")

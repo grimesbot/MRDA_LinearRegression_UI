@@ -14,12 +14,14 @@ POSTSEASON_EVENT_NAMES = ["Western Hemisphere Cup", "Qualifiers", "Mens Roller D
 START_DATE = date(2023,10,25) # Start calculations from first Wednesday after WHC 2023
 
 # Global variables
-q1_cutoff = date(2023,3,1) # Most recent Q1 ranking deadline to START_DATE (First Wednesday of March)
+q1_cutoff = date(2023,3,1) # Most recent Q1 ranking deadline from START_DATE (First Wednesday of March)
 rankings_history = {}
 last_games = []
 last_calc_games = []
 last_calc_compliance_games = []
 last_calc_seeding = {}
+scored_games = [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game] # Filter out games without scores (upcoming games)
+
 
 # Methods
 def linear_regression(games, seeding_team_rankings=None):
@@ -135,7 +137,7 @@ def rank_teams(team_ratings, games, compliance_games):
             if "forfeit" in game and game["forfeit"]:
                 if "forfeit_team_id" in game and game["forfeit_team_id"] == team_id:
                     forfeits += 1
-            elif "home_team_score" in game and "away_team_score" in game:
+            else:
                 team_score = game["home_team_score"] if game["home_team_id"] == team_id else game["away_team_score"]
                 opponent_score = game["away_team_score"] if game["home_team_id"] == team_id else game["home_team_score"]
                 if team_score > opponent_score:
@@ -153,7 +155,7 @@ def rank_teams(team_ratings, games, compliance_games):
         unique_opponents = []
         distance_clause_applies = team_id in team_info and "distance_clause_applies" in team_info[team_id] and team_info[team_id]["distance_clause_applies"]
         for game in [game for game in compliance_games if game["home_team_id"] == team_id or game["away_team_id"] == team_id]:
-            if ("home_team_score" in game and "away_team_score" in game and ("forfeit" not in game or not game["forfeit"])) or ("forfeit" in game and game["forfeit"] and "forfeit_team_id" in game and game["forfeit_team_id"] != team_id):
+            if "forfeit" not in game or not game["forfeit"] or ("forfeit" in game and game["forfeit"] and "forfeit_team_id" in game and game["forfeit_team_id"] != team_id):
                 game_count += 1
                 opponent = game["away_team_id"] if game["home_team_id"] == team_id else game["home_team_id"]
                 if not opponent in unique_opponents:
@@ -168,7 +170,6 @@ def rank_teams(team_ratings, games, compliance_games):
             team_result["pe"] = postseason_eligible
 
         result[team_id] = team_result
-
 
     # Apply Ranking Points and Error from team_ratings
     for team_id in team_ratings:
@@ -188,9 +189,7 @@ def rank_teams(team_ratings, games, compliance_games):
         rank += 1
 
     # Apply forfeit penalties
-    for item in sorted({key: value for key, value in result.items() if "r" in value and value["r"] is not None and "f" in value and value["f"] > 0}.items(), key=lambda item: item[1]["r"], reverse=True):
-        team_id = item[0]
-        team_ranking = item[1]
+    for team_ranking in sorted([tr for tr in result.values() if "r" in tr and tr["r"] is not None and "f" in tr and tr["f"] > 0 ], key=lambda tr: tr["r"], reverse=True):
         # Two spots for teach forfeit
         for forfeit in range(team_ranking["f"]):
             for spot in range(2):
@@ -246,9 +245,9 @@ def get_rankings(date):
     # But if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
     # future seeding rankings depending on the time of the year the rankings are calculated.
     if seeding_team_rankings is None:
-        games = [game for game in mrda_games if game["date"].date() < date ]
+        games = [game for game in scored_games if game["date"].date() < date ]
     else:
-        games = [game for game in mrda_games if seed_date <= game["date"].date() < date ]
+        games = [game for game in scored_games if seed_date <= game["date"].date() < date ]
 
     # Filter compliance games to exclude postseason events prior to Q1 cutoff date
     compliance_games = games
@@ -260,7 +259,7 @@ def get_rankings(date):
             compliance_games = [game for game in compliance_games if "event_id" not in game or "name" not in mrda_events[game["event_id"]] or postseasonEventName not in mrda_events[game["event_id"]]["name"] or game["date"].date() >= q1_cutoff]
 
     # Filter forfeits from calc_games
-    calc_games = [game for game in games if ("forfeit" not in game or not game["forfeit"]) and "home_team_score" in game and "away_team_score" in game]
+    calc_games = [game for game in games if ("forfeit" not in game or not game["forfeit"])]
     
     # Calculate linear regression results if calc games or seeding rankings have changed since last calculation.    
     if calc_games != last_calc_games or seeding_team_rankings != last_calc_seeding:
@@ -292,7 +291,7 @@ def summary_to_clipboard():
 
     game_count = 0
     error_sum = 0
-    for game in [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game and ("forfeit" not in game or not game["forfeit"])]:
+    for game in [game for game in scored_games if "forfeit" not in game or not game["forfeit"]]:
         ranking = get_ranking_history(game["date"].date())
         if ranking is not None and game["home_team_id"] in ranking and game["away_team_id"] in ranking: 
             predicted_ratio = ranking[game["home_team_id"]]["rp"]/ranking[game["away_team_id"]]["rp"]
@@ -302,30 +301,35 @@ def summary_to_clipboard():
 
     table_str = f"Mean Absolute Log Error: {str(round((math.exp(error_sum/game_count) - 1) * 100,2))}%\n\n"
 
-    # Hypothetical game on Saturday December 6th, 2025 to analyze the results on Wednesday, December 10th, 2025.
-    # No games in this week in history otherwise, so results are in isolation.
+    # Hypothetical game analysis
+    home_id = "17404a" #DRH
+    away_id = "13122a" #Kent
+    game_dt = datetime(2025, 12, 6) #No other games on this week in history, isolated results
+    
+    #home_id = "2699a" #Concussion 
+    #away_id = Kent #"2735a" #Toronto 
+    #game_dt = datetime(2026, 2, 14) #Rainy City Rumble
 
-    dhr_id = "17404a"
-    kent_id = "13122a"
-    hypothetical_game_dt = datetime(2025, 12, 6)
-    current_ranking = get_ranking_history(hypothetical_game_dt.date())
-    dhr_rp = current_ranking[dhr_id]["rp"] * RANKING_SCALE
-    kent_rp = current_ranking[kent_id]["rp"] * RANKING_SCALE
-    table_str += f"DHR vs. Kent hypothetical game on Saturday December 6th, 2025. Expected score ratio: {str(round(dhr_rp/kent_rp,2))}\n\n"
-    table_str += "Ratio\tDHR RP Δ\tKent RP Δ\tWeight\n"
+    current_ranking = get_ranking_history(game_dt.date())
+    home_rp = current_ranking[home_id]["rp"] * RANKING_SCALE
+    away_rp = current_ranking[away_id]["rp"] * RANKING_SCALE
+    table_str += f"Hypothetical game between {mrda_teams[home_id]["name"]} vs. {mrda_teams[away_id]["name"]} on {'{d.year}-{d.month}-{d.day}'.format(d=game_dt)}. Expected score ratio: {str(round(home_rp/away_rp,2))}\n\n"
+    table_str += f"Ratio\t{mrda_teams[home_id]["name"]} RP Δ\t{mrda_teams[away_id]["name"]} RP Δ\tWeight\n"
 
     for score_ratio in range(2, 31):
         hypothetical_game = {
-                "date": hypothetical_game_dt,
-                "home_team_id": dhr_id, 
+                "date": game_dt,
+                "home_team_id": home_id, 
                 "home_team_score": score_ratio,
-                "away_team_id": kent_id,
+                "away_team_id": away_id,
                 "away_team_score": 1
             }
-        mrda_games.append(hypothetical_game)
-        new_ranking = get_rankings(date(2025,12,10))
-        table_str += f"{score_ratio}\t{str(round(new_ranking[dhr_id]["rp"] * RANKING_SCALE - dhr_rp,2))}\t{str(round(new_ranking[kent_id]["rp"] * RANKING_SCALE - kent_rp,2))}\t{hypothetical_game["weight"]}\n"
-        mrda_games.remove(hypothetical_game)
+        scored_games.append(hypothetical_game)
+        new_ranking = get_rankings((game_dt + timedelta(weeks=1)).date())
+        new_home_rp = new_ranking[home_id]["rp"] * RANKING_SCALE
+        new_away_rp = new_ranking[away_id]["rp"] * RANKING_SCALE
+        table_str += f"{score_ratio}\t{str(round(new_home_rp - home_rp,2))}\t{str(round(new_away_rp - away_rp,2))}\t{hypothetical_game["weight"]}\n"
+        scored_games.remove(hypothetical_game)
 
     # Copy to clipboard using tkinter
     r = Tk()
