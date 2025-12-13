@@ -589,7 +589,8 @@ function calculateAndDisplayRankings() {
 function setupApiGames() {
     // Filter to games within ranking period
     let games = mrdaLinearRegressionSystem.mrdaGames
-        .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt);
+        .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt
+            && game.homeTeamId in game.scores && game.awayTeamId in game.scores);
 
     // Add virtual games
     let seedingRankings = mrdaLinearRegressionSystem.getRankingHistory(rankingPeriodStartDt);
