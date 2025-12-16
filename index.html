@@ -8,10 +8,12 @@
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
+I
         <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
         <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap5.min.css" />        
         <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.bootstrap5.min.css" />
         <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.6.0/css/rowGroup.bootstrap5.min.css" />
+
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
@@ -20,7 +22,7 @@
                 <a class="navbar-brand" href="#">
                     <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" height="40" class="d-inline-block">
                     Rankings Algorithm
-                    <span class="betaFlag">BETA</span>
+                    <span class="beta-flag" data-toggle="tooltip" title="This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly.">BETA</span>
                 </a>
                 <div class="me-2 form-floating">
                     <select class="form-select" name="date" id="date" aria-label="Rankings Date"></select>
@@ -48,13 +50,13 @@
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#gamesModal">All Scores</a>
                         </li>
-                        <li class="nav-item onlyCollapsed">
+                        <li class="nav-item only-collapsed">
                             <a class="nav-link" href="https://mrda.org/rankings/">Official MRDA Rankings <i class="bi bi-box-arrow-up-right"></i></a>                
                         </li>
-                        <li class="nav-item onlyCollapsed">
+                        <li class="nav-item only-collapsed">
                             <a class="nav-link" href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation <i class="bi bi-box-arrow-up-right"></i></a> 
                         </li>
-                        <li class="nav-item onlyCollapsed">
+                        <li class="nav-item only-collapsed">
                             <a class="nav-link" href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code <i class="bi bi-box-arrow-up-right"></i></a>
                         </li>
                     </ul>
@@ -67,23 +69,24 @@
 
         <div id="postseasonLegend" class="container-xl text-center">
             <div class="d-inline-block">Potential Postseason Tournament Invites:</div>
-            <div class="postseasonPosition-GUR d-inline-block" data-toggle="tooltip" title="The top 7 ranked teams globally will receive a bye to MRDA Championships.">
-                MRDA Championships
+            <div class="postseason-position GUR d-inline-block" data-toggle="tooltip" title="The top 7 ranked teams globally will receive a bye to MRDA Championships.">
+                MRDA Championships <i class="bi bi-question-circle"></i>
             </div>
-            <div class="postseasonPosition-EUR d-inline-block">
+            <div class="postseason-position EUR d-inline-block">
                 European 
-                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked European teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA European Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event European Qualifiers are not held, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships.">Qualifiers</span>
-                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event European Qualifiers are not held, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships.<br><br>If there are no more eligible European teams, the next eligible team(s) from any region will be invited.">Champs Invites</span>
+                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked European teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA European Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event European Qualifiers are not held, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships.">Qualifiers <i class="bi bi-question-circle"></i></span>
+                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event European Qualifiers are not held, the next 2 highest ranked eligible European teams will receive an invite to MRDA Championships.<br><br>If there are no more eligible European teams, the next eligible team(s) from any region will be invited.">Champs Invites <i class="bi bi-question-circle"></i></span>
             </div>
-            <div class="postseasonPosition-AA d-inline-block">
+            <div class="postseason-position AA d-inline-block">
                 Australasian 
-                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked Australasian teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Australasian Qualifiers. The winning team will receive invitations to MRDA Championships. <br><br> In the event Australasian Qualifiers are not held, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.">Qualifiers</span>
-                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event Australasian Qualifiers are not held, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.<br><br>If there are no eligible Australasian teams, the next eligible team from any region will be invited.">Champs Invite</span>
+                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked Australasian teams who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Australasian Qualifiers. The winning team will receive invitations to MRDA Championships. <br><br> In the event Australasian Qualifiers are not held, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.">Qualifiers <i class="bi bi-question-circle"></i></span>
+                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event Australasian Qualifiers are not held, the next highest ranked eligible Australasian team will receive an invite to MRDA Championships.<br><br>If there are no eligible Australasian teams, the next eligible team from any region will be invited.">Champs Invite <i class="bi bi-question-circle"></i></span>
             </div>
-            <div class="postseasonPosition-AM d-inline-block">
+            <div class="postseason-position AM d-inline-block">
                 Americas
-                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked teams from the Americas who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Americas Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event Americas Qualifiers are not held, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.">Qualifiers</span>
-                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event Americas Qualifiers are not held, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.<br><br>If there are no more eligible teams from the Americas, the next eligible team(s) from any region will be invited.">Champs Invites</span></div>
+                <span class="qualifiers" data-toggle="tooltip" data-bs-html="true" title="The top ranked teams from the Americas who did not receive a bye to MRDA Championships, up to 8, will receive an invite to MRDA Americas Qualifiers. The top 2 placing teams will receive invitations to MRDA Championships. <br><br> In the event Americas Qualifiers are not held, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.">Qualifiers <i class="bi bi-question-circle"></i></span>
+                <span class="invites" data-toggle="tooltip" data-bs-html="true" title="In the event Americas Qualifiers are not held, the next 2 highest ranked eligible teams from the Americas will receive an invite to MRDA Championships.<br><br>If there are no more eligible teams from the Americas, the next eligible team(s) from any region will be invited.">Champs Invites <i class="bi bi-question-circle"></i></span>
+            </div>
         </div>
         
         <main id="mrdaRankingPointsContainer" role="main" class="container-xl table-responsive" >
@@ -91,14 +94,14 @@
                 <thead>
                     <tr>
                         <th></th>
-                        <th data-toggle="tooltip" class="noIcon" title="Change in rank from last quarter."><i class="bi bi-triangle" style="font-size: .75em;"></i></th>                        
+                        <th data-toggle="tooltip" title="Change in rank from last quarter."><i class="bi bi-triangle" style="font-size: .75em;"></i></th>                        
                         <th colspan="2">Team</th>
-                        <th data-toggle="tooltip" class="noWrap" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP</th>
-                        <th data-toggle="tooltip" class="noWrap" title="Relative Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">RSE</th>
-                        <th data-toggle="tooltip" class="noIcon" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
-                        <th data-toggle="tooltip" class="noIcon" title="Wins">W</th>
-                        <th data-toggle="tooltip" class="noIcon" title="Losses">L</th>
-                        <th data-toggle="tooltip" class="noIcon" title="Display team's Ranking Point history in line chart above."><i class="bi bi-graph-up"></i></th>
+                        <th data-toggle="tooltip" class="noWrap" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP <i class="bi bi-question-circle"></i></th>
+                        <th data-toggle="tooltip" class="noWrap" title="Relative Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">RSE <i class="bi bi-question-circle"></i></th>
+                        <th data-toggle="tooltip" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
+                        <th data-toggle="tooltip" title="Wins">W</th>
+                        <th data-toggle="tooltip" title="Losses">L</th>
+                        <th data-toggle="tooltip" title="Display team's Ranking Point history in line chart above."><i class="bi bi-graph-up"></i></th>
                     </tr>
                 </thead>
             </table>
@@ -271,6 +274,8 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+
         <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/2.3.5/js/dataTables.bootstrap5.min.js"></script>
         <script src="https://cdn.datatables.net/buttons/3.2.5/js/dataTables.buttons.min.js"></script>
@@ -280,7 +285,6 @@
         <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/dataTables.rowGroup.min.js"></script>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/moment"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-error-bars/build/index.umd.min.js"></script>
 

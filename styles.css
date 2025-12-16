@@ -15,10 +15,11 @@ body,
 }
 
 /* Navbar styling */
-.navbar-collapse:not(.collapsing):not(.show) .onlyCollapsed {
+.navbar-collapse:not(.collapsing):not(.show) .only-collapsed {
     display:none;
 }
-.betaFlag {
+
+.beta-flag {
     background: #970D00;
     border-radius: 5px;
     color: #fff;
@@ -50,20 +51,20 @@ nav .form-floating>label {
 }
 
 /* Postseason Position Background Colors */
-div.postseasonPosition-GUR,
-.postseasonPosition-GUR td {
+div.postseason-position.GUR,
+.postseason-position.GUR td {
     background-color: rgba(99,212,113, 0.2) !important;    
 }
-div.postseasonPosition-AA,
-.postseasonPosition-AA td {
+div.postseason-position.AA,
+.postseason-position.AA td {
     background-color: rgba(255,212,73, 0.4) !important;    
 }
-div.postseasonPosition-AM,
-.postseasonPosition-AM td {
+div.postseason-position.AM,
+.postseason-position.AM td {
     background-color: rgba(151,13,0, 0.16) !important;    
 }
-div.postseasonPosition-EUR,
-.postseasonPosition-EUR td {
+div.postseason-position.EUR,
+.postseason-position.EUR td {
     background-color: rgba(184,217,238, 0.7) !important;    
 }
 
@@ -78,7 +79,7 @@ table.table.dataTable.table-striped>tbody>tr:nth-of-type(2n+1)>* {
 }
 
 /* Postseason Position legend */
-div[class^="postseasonPosition-"] {
+div.postseason-position {
     margin-top:.25em;
     padding:.25em;
     border-radius: 5px;

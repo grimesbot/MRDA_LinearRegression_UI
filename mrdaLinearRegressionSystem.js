@@ -306,6 +306,26 @@ class MrdaLinearRegressionSystem {
         return seedDate;
     }
 
+    // Gets next Ranking Period Deadline Date, which is the first Wednesday of March, June, September or December.
+    getNextRankingPeriodDate(date) {
+        let searchDt = new Date(date);
+        searchDt.setHours(0, 0, 0, 0);
+
+        if ((searchDt.getMonth() + 1) % 3 == 0 && searchDt.getDate() <= 7 && searchDt.getDay() <= 3) {
+            if (searchDt.getDay() == 3)
+                return searchDt;
+            else {
+                searchDt.setDate(searchDt.getDate() + ((3 - searchDt.getDay() + 7) % 7));
+                return searchDt;
+            }
+        } else {
+            searchDt.setMonth(searchDt.getMonth() + (3 - ((searchDt.getMonth() + 1) % 3)));
+            searchDt.setDate(1); // Set to first of month
+            searchDt.setDate(1 + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
+            return searchDt;
+        }
+    }
+
     getRankingHistory(date, seedDt = null) {
         if (!date)
             return null;
@@ -375,8 +395,8 @@ class MrdaLinearRegressionSystem {
 
         // Regional Qualifiers
         REGIONS.forEach(r => {
-            let qualInfo = $("#postseasonLegend .postseasonPosition-" + r + " .qualifiers");
-            let inviteInfo = $("#postseasonLegend .postseasonPosition-" + r + " .invites");
+            let qualInfo = $(`#postseasonLegend .postseason-position.${r} .qualifiers`);
+            let inviteInfo = $(`#postseasonLegend .postseason-position.${r} .invites`);
 
             // Austrasia gets 1 spot, other regions get 2
             let spots = r == "AA" ? 1 : 2;

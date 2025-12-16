@@ -4,41 +4,26 @@ const urlParams = new URLSearchParams(window.location.search);
 
 let rankingPeriodDeadlineDt = null;
 let rankingPeriodStartDt = null;
-let lastQtrDate = null;
+let previousQuarterDt = null;
+let region = null;
 
-function setRankingDates() {
-    rankingPeriodDeadlineDt = new Date(`${$("#date").val()} 00:00:00`);
+function setRankingDates($dateSelect) {
+    rankingPeriodDeadlineDt = new Date(`${$dateSelect.val()} 00:00`);
     rankingPeriodStartDt = mrdaLinearRegressionSystem.getSeedDate(rankingPeriodDeadlineDt);
 
-    let lastQtrDateStr = $("#date option:selected").nextAll().filter((i,e) => $(e).text().trim().startsWith("Q")).first().val();
-    
-    lastQtrDate = lastQtrDateStr ? new Date(`${lastQtrDateStr} 00:00:00`) : null;
+    let prevQtrDateStr = $dateSelect.find("option:selected").nextAll().filter((i,e) => $(e).text().trim().startsWith("Q")).first().val();
+    previousQuarterDt = prevQtrDateStr ? new Date(`${prevQtrDateStr} 00:00`) : null;
 }
 
-function getNextRankingDeadline(date) {
-    let searchDt = new Date(date);
-    searchDt.setHours(0, 0, 0, 0);
-
-    if ((searchDt.getMonth() + 1) % 3 == 0 && searchDt.getDate() <= 7 && searchDt.getDay() <= 3) {
-        if (searchDt.getDay() == 3)
-            return searchDt;
-        else {
-            searchDt.setDate(searchDt.getDate() + ((3 - searchDt.getDay() + 7) % 7));
-            return searchDt;
-        }
-    } else {
-        searchDt.setMonth(searchDt.getMonth() + (3 - ((searchDt.getMonth() + 1) % 3)));
-        searchDt.setDate(1); // Set to first of month
-        searchDt.setDate(1 + ((3 - searchDt.getDay() + 7) % 7)); // Set to Wednesday = 3
-        return searchDt;
-    }
+function setRegion($regionSelect) {
+    region = $regionSelect.val();
 }
 
-function populateRankingDates() {
+function setupRankingDates($dateSelect) {
     let allRankingDts = [...mrdaLinearRegressionSystem.mrdaRankingsHistory.keys()].sort((a, b) => a - b);
 
-    let searchDt = getNextRankingDeadline(allRankingDts[0]);
-    let newestRankingDt = getNextRankingDeadline(allRankingDts.at(-1));
+    let searchDt = mrdaLinearRegressionSystem.getNextRankingPeriodDate(allRankingDts[0]);
+    let newestRankingDt = allRankingDts.at(-1);
 
     let dateOptions = [];
 
@@ -61,14 +46,16 @@ function populateRankingDates() {
             queryDt = null;
         else {
             queryDt.setHours(0, 0, 0, 0);
-            queryDt.setDate(queryDt.getDate() + ((3 - queryDt.getDay() + 7) % 7));
+            queryDt.setDate(queryDt.getDate() + ((3 - queryDt.getDay() + 7) % 7)); // Set most recent Wednesday = 3
         }
     }
 
     let current = new Date();
     if (current < newestRankingDt) {
         current.setHours(0, 0, 0, 0);
-        current.setDate(current.getDate() + ((3 - current.getDay() + 7) % 7)); // Set to next Wednesday = 3
+        current.setDate(current.getDate() + ((3 - current.getDay() - 7) % 7)); // Set most recent Wednesday = 3
+        if (mrdaLinearRegressionSystem.mrdaGames.some(game => game.date >= current && game.homeTeamId in game.scores && game.awayTeamId in game.scores))
+            current.setDate(current.getDate() + 7); // Set to next Wednesday if there are newer scores
         let currentDateOptions = dateOptions.filter(o => o.date.getTime() == current.getTime());
         if (currentDateOptions.length == 0) {
                 dateOptions.push({
@@ -82,7 +69,7 @@ function populateRankingDates() {
         }
     }
 
-    if (queryDt) {
+    if (queryDt && queryDt.getTime() != current.getTime()) {
         let queryDtDateOptions = dateOptions.filter(o => o.date.getTime() == queryDt.getTime());
         if (queryDtDateOptions.length == 0) {
                 dateOptions.push({
@@ -95,28 +82,28 @@ function populateRankingDates() {
             queryDtDateOptions[0].selected = true;
         }
     }
-
-    let $dropdown = $("#date");
     
     dateOptions.sort((a,b) => b.date - a.date).forEach(o => {
-        $dropdown.append(new Option(o.text, o.value, o.selected, o.selected));
+        $dateSelect.append(new Option(o.text, o.value, o.selected, o.selected));
     });
 
-    setRankingDates();
-    $dropdown.on( "change", setRankingDates );
+    setRankingDates($dateSelect);
+    $dateSelect.on( "change", function() { setRankingDates($dateSelect) } );
 }
 
-function setRegion() {
-    $region = $("#region");
-    if (urlParams.has("region") && $region.find(`option[value='${urlParams.get("region")}']`).length > 0)
-        $region.val(urlParams.get("region"));
-    return;
-
-    var offset = new Date().getTimezoneOffset();
-    if ((-6*60) < offset && offset < (3*60))
-        $("#region").val("EUR");
-    else
-        $("#region").val("AM");
+function setupRegion($regionSelect) {
+    if (urlParams.has("region") && $regionSelect.find(`option[value='${urlParams.get("region")}']`).length > 0)
+        $regionSelect.val(urlParams.get("region"));
+    else if (false) { // Don't auto-select region, regional rankings unpopular with membership
+        // Automatically set European region with very rudimentary timezone math
+        var offset = new Date().getTimezoneOffset();
+        if ((-6*60) < offset && offset < (3*60))
+            $("#region").val("EUR");
+        else
+            $("#region").val("AM");
+    }
+    setRegion($regionSelect);
+    $regionSelect.on( "change", function() { setRegion($regionSelect) } );
 }
 
 function teamDetailsModal() {
@@ -430,7 +417,6 @@ function displayRankingChart(teams) {
 }
 
 function regionChange() {
-    let region = $("#region").val();
     let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
         .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR"))
         .sort((a, b) => a.rankSort - b.rankSort);
@@ -455,9 +441,7 @@ function regionChange() {
 
 function calculateAndDisplayRankings() {
 
-    let region = $("#region").val();
-
-    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, lastQtrDate);
+    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
 
     let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
         .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR"))
@@ -488,7 +472,7 @@ function calculateAndDisplayRankings() {
                 render: function (data, type, full) { 
                     if (type === 'sort')
                         return full.rankSort;
-                    else if ($("#region").val() != "GUR")
+                    else if (region != "GUR")
                         return full.regionRank;
                     else
                         return data;
@@ -496,7 +480,7 @@ function calculateAndDisplayRankings() {
             },
             { data: 'delta', width: '1em', className: 'dt-teamDetailsClick noWrap delta dt-center px-1',
                 render: function (data, type, full) {
-                    let delta = $("#region").val() == "GUR" ? full.delta : full.regionDelta;
+                    let delta = region == "GUR" ? full.delta : full.regionDelta;
                     if (type === 'display') {
                         if (!full.rank)
                             return "";
@@ -574,7 +558,7 @@ function calculateAndDisplayRankings() {
         },
         createdRow: function (row, data, dataIndex) {
             if (data.postseasonPosition != null) {
-                $(row).addClass('postseasonPosition-' + data.postseasonPosition);
+                $(row).addClass('postseason-position ' + data.postseasonPosition);
             }
         },
         drawCallback: function (settings) {
@@ -797,22 +781,20 @@ $(function() {
 
     //document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
-    populateRankingDates();
+    let $dateSelect = $("#date");
+    setupRankingDates($dateSelect);
 
-    $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
-
-    setRegion();
+    let $regionSelect = $("#region");
+    setupRegion($regionSelect);
 
     calculateAndDisplayRankings();
-    $("#date").on( "change", calculateAndDisplayRankings);
-    
+
+    $dateSelect.on( "change", calculateAndDisplayRankings);
+    $regionSelect.on( "change", regionChange);
+        
+    $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
+
     $('[data-toggle="tooltip"]').tooltip();
-    $('[data-toggle="tooltip"]:not(.noIcon):not(:has(.dt-column-title))').not('th').append(' <i class="bi bi-question-circle"></i>');
-    $('th[data-toggle="tooltip"]:not(.noIcon) .dt-column-title').append(' <i class="bi bi-question-circle"></i>');
-
-    $('.betaFlag').tooltip({title: "This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly."});
-
-    $("#region").on( "change", regionChange);
 
     //These are all initially hidden until user input. Setup last.
     teamDetailsModal();
