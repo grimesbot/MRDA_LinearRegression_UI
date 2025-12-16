@@ -106,6 +106,241 @@ function setupRegion($regionSelect) {
     $regionSelect.on('change', function() { setRegion($regionSelect) } );
 }
 
+function setupRankingChart(teams) {
+    let rankingChart = Chart.getChart('rankings-chart');
+
+    if (rankingChart != undefined) {
+        rankingChart.options.scales.x.min = rankingPeriodStartDt;
+        rankingChart.options.scales.x.max = rankingPeriodDeadlineDt;
+        rankingChart.update();
+        return;
+    }
+
+    let datasets = [];
+
+    teams.slice(0, 5).forEach(team => {
+        team.chart = true;
+        datasets.push({
+            teamId: team.teamId,
+            region: team.region,
+            label: team.name,
+            data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
+            showLine: true
+        });
+    });
+
+    rankingChart = new Chart(document.getElementById('rankings-chart'), {
+        type: 'line',
+        data: {
+            datasets: datasets
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'time',
+                    min: rankingPeriodStartDt,
+                    max: rankingPeriodDeadlineDt
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'nearest',
+                axis: 'x'
+            },
+            plugins: {
+                tooltip: {
+                    itemSort: function(a, b) {
+                        return b.raw.y - a.raw.y;
+                    },
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].raw.x.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+                        },
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw.y.toFixed(2)}`;
+                        }
+                    }
+                },
+                colors: {
+                    forceOverride: true
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        },
+    });
+
+    $('#rankings-table-container').on('change', 'input.chart', function (e) {
+        let tr = e.target.closest('tr');
+        let dt = $('#rankings-table').DataTable();
+        let row = dt.row(tr);
+        let team = row.data();
+        team.chart = $(this).prop('checked');
+        if (team.chart) {
+            rankingChart.data.datasets.push({
+                teamId: team.teamId,
+                label: team.name,
+                data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
+                showLine: true
+            });
+        } else 
+            rankingChart.data.datasets = rankingChart.data.datasets.filter(dataset => dataset.teamId != team.teamId);
+        rankingChart.update();
+    });
+}
+
+function setupRankings() {
+
+    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
+
+    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
+        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
+        .sort((a, b) => a.rankSort - b.rankSort);
+
+    setupRankingChart(teams);
+
+    if (DataTable.isDataTable('#rankings-table')) {
+        $('#rankings-table').DataTable().clear().rows.add(teams).draw();
+        return;
+    }
+
+    let annotations = document.createElement('div');
+    annotations.className = 'annotations';
+    annotations.innerHTML = '*Not enough games to be Postseason Eligible.';
+    annotations.innerHTML += '<br><sup>↓</sup>Two rank penalty applied for each forfeit.';    
+
+    let exportOptions = { 
+        columns: [0,3,4,5,6], 
+        format: { 
+            header: function (data, columnIdx) { return ['Rank','Team','Ranking Points','Relative Standard Error','Game Count'][columnIdx]; } 
+        },        
+    };
+
+    new DataTable('#rankings-table', {
+        columns: [
+            { name: 'rank', data: 'rank', width: '1em', className: 'dt-center pe-1', 
+                render: function (data, type, full) { 
+                    if (type === 'sort')
+                        return full.rankSort;
+                    else if (region != 'GUR')
+                        return full.regionRank;
+                    else
+                        return data;
+                }
+            },
+            { data: 'delta', width: '1em', className: 'no-wrap delta dt-center px-1',
+                render: function (data, type, full) {
+                    let delta = region == 'GUR' ? full.delta : full.regionDelta;
+                    if (type === 'display') {
+                        if (!full.rank)
+                            return '';
+                        else if (delta > 0) 
+                            return `<i class="bi bi-triangle-fill up text-success"></i> <span class="up text-success">${delta}</span>`;
+                        else if (delta < 0)
+                            return `<i class="bi bi-triangle-fill down text-danger"></i> <span class="down text-danger">${-delta}</span>`;
+                        else if (delta == null)
+                            return '<i class="bi bi-star-fill text-body-secondary"></i>'
+                        else
+                            return '<i class="bi bi-circle-fill text-body-tertiary"></i>';
+                    } else
+                        return delta;
+                }
+             },
+            { data: 'logo', width: '1em', orderable: false, className: 'px-1', render: function (data, type, full) { return data ? `<img class="team-logo" src="${data}">` : ''; } },            
+            { data: 'name', orderable: false, className: 'px-1 text-overflow-ellipsis', 
+                render: function (data, type, full) {
+                    if (['display','export'].includes(type) && full.activeStatus) {
+                        let result = data;
+                        for (let i = 0; i < full.forfeits; i++) {
+                            if (type === 'display')
+                                result += '<sup class="forfeit-penalty">↓</sup>';
+                            else if (type === 'export')
+                                result += ' ↓';
+                        }
+                        return result;
+                    }
+                    return data;
+                },
+                createdCell: function (td, cellData, rowData, row, col) {
+                    if (rowData.location) 
+                        $(td).append(`<div class="team-location">${rowData.location}</div>`);
+                }
+            },
+            { data: 'rankingPoints', width: '1em', className: 'px-1' },
+            { data: 'relStdErr', width: '1em', className: 'relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
+            { data: 'activeStatusGameCount', width: '1em', className: 'px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class="postseason-ineligible">*</span>` : data; } },
+            { data: 'wins', width: '1em', orderable: false, className: 'px-1 dt-center'},
+            { data: 'losses', width: '1.6em', orderable: false, className: 'px-1 dt-left'},
+            { data: 'chart', width: '1em', className: 'ps-1 dt-center no-pointer', orderable: false, render: function (data, type, full) { return `<input type="checkbox" class="chart"${data ? ' checked' : ''}></input>`; }}
+        ],
+        data: teams,
+        layout: {
+            topStart: null,
+            topEnd: null,
+            bottomStart: annotations,
+            bottomEnd: { 
+                buttons: [
+                    {
+                        extend: 'copy',
+                        text: '<i class="bi bi-copy"></i>',
+                        exportOptions: exportOptions,
+                        messageBottom: '*Not enough games to be Postseason Eligible.\n↓ Two rank penalty applied for each forfeit.',
+                        title: null,
+                    }, 
+                    {
+                        extend: 'csv',
+                        text: '<i class="bi bi-filetype-csv"></i>',
+                        exportOptions: exportOptions
+                    } 
+                ] 
+            }
+        },
+        paging: false,
+        searching: false,
+        info: false,
+        order: {
+            name: 'rank',
+            dir: 'asc'
+        },
+        fixedHeader: {
+            header: true,
+            headerOffset: $('nav.sticky-top').outerHeight()
+        },
+        createdRow: function (row, data, dataIndex) {
+            if (data.postseasonPosition != null) {
+                $(row).addClass('postseason-position ' + data.postseasonPosition);
+            }
+        },
+        drawCallback: function (settings) {
+            $('#rankings-table .forfeit-penalty').tooltip({title: 'Two rank penalty applied for each forfeit.'});
+            $('#rankings-table .postseason-ineligible').tooltip({title: 'Not enough games to be Postseason Eligible.'});
+        }
+    });
+}
+
+function regionChange() {
+    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
+        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
+        .sort((a, b) => a.rankSort - b.rankSort);
+    
+    let rankingChart = Chart.getChart('rankings-chart');
+    rankingChart.data.datasets = [];
+    teams.forEach((team, index) => {
+        team.chart = index < 5;
+        if (team.chart) {
+            rankingChart.data.datasets.push({
+                teamId: team.teamId,
+                label: team.name,
+                data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
+                showLine: true
+            });
+        }
+    });    
+    rankingChart.update();
+
+    $('#rankings-table').DataTable().clear().rows.add(teams).draw();
+}
+
 function setupTeamDetails() {
     let $teamDetailModal = $('#team-modal');
     let $olderGamesBtn = $('#load-older-games');
@@ -327,297 +562,6 @@ function setupTeamDetails() {
     });
 }
 
-function displayRankingChart(teams) {
-    let rankingChart = Chart.getChart('rankings-chart');
-
-    if (rankingChart != undefined) {
-        rankingChart.options.scales.x.min = rankingPeriodStartDt;
-        rankingChart.options.scales.x.max = rankingPeriodDeadlineDt;
-        rankingChart.update();
-        return;
-    }
-
-    let datasets = [];
-
-    teams.slice(0, 5).forEach(team => {
-        team.chart = true;
-        datasets.push({
-            teamId: team.teamId,
-            region: team.region,
-            label: team.name,
-            data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
-            showLine: true
-        });
-    });
-
-    rankingChart = new Chart(document.getElementById('rankings-chart'), {
-        type: 'line',
-        data: {
-            datasets: datasets
-        },
-        options: {
-            scales: {
-                x: {
-                    type: 'time',
-                    min: rankingPeriodStartDt,
-                    max: rankingPeriodDeadlineDt
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'nearest',
-                axis: 'x'
-            },
-            plugins: {
-                tooltip: {
-                    itemSort: function(a, b) {
-                        return b.raw.y - a.raw.y;
-                    },
-                    callbacks: {
-                        title: function(context) {
-                            return context[0].raw.x.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
-                        },
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.raw.y.toFixed(2)}`;
-                        }
-                    }
-                },
-                colors: {
-                    forceOverride: true
-                }
-            },
-            responsive: true,
-            maintainAspectRatio: false
-        },
-    });
-
-    $('#rankings-table-container').on('change', 'input.chart', function (e) {
-        let tr = e.target.closest('tr');
-        let dt = $('#rankings-table').DataTable();
-        let row = dt.row(tr);
-        let team = row.data();
-        team.chart = $(this).prop('checked');
-        if (team.chart) {
-            rankingChart.data.datasets.push({
-                teamId: team.teamId,
-                label: team.name,
-                data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
-                showLine: true
-            });
-        } else 
-            rankingChart.data.datasets = rankingChart.data.datasets.filter(dataset => dataset.teamId != team.teamId);
-        rankingChart.update();
-    });
-}
-
-function calculateAndDisplayRankings() {
-
-    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
-
-    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
-        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
-        .sort((a, b) => a.rankSort - b.rankSort);
-
-    displayRankingChart(teams);
-
-    if (DataTable.isDataTable('#rankings-table')) {
-        $('#rankings-table').DataTable().clear().rows.add(teams).draw();
-        return;
-    }
-
-    let annotations = document.createElement('div');
-    annotations.className = 'annotations';
-    annotations.innerHTML = '*Not enough games to be Postseason Eligible.';
-    annotations.innerHTML += '<br><sup>↓</sup>Two rank penalty applied for each forfeit.';    
-
-    let exportOptions = { 
-        columns: [0,3,4,5,6], 
-        format: { 
-            header: function (data, columnIdx) { return ['Rank','Team','Ranking Points','Relative Standard Error','Game Count'][columnIdx]; } 
-        },        
-    };
-
-    new DataTable('#rankings-table', {
-        columns: [
-            { name: 'rank', data: 'rank', width: '1em', className: 'dt-center pe-1', 
-                render: function (data, type, full) { 
-                    if (type === 'sort')
-                        return full.rankSort;
-                    else if (region != 'GUR')
-                        return full.regionRank;
-                    else
-                        return data;
-                }
-            },
-            { data: 'delta', width: '1em', className: 'no-wrap delta dt-center px-1',
-                render: function (data, type, full) {
-                    let delta = region == 'GUR' ? full.delta : full.regionDelta;
-                    if (type === 'display') {
-                        if (!full.rank)
-                            return '';
-                        else if (delta > 0) 
-                            return `<i class="bi bi-triangle-fill up text-success"></i> <span class="up text-success">${delta}</span>`;
-                        else if (delta < 0)
-                            return `<i class="bi bi-triangle-fill down text-danger"></i> <span class="down text-danger">${-delta}</span>`;
-                        else if (delta == null)
-                            return '<i class="bi bi-star-fill text-body-secondary"></i>'
-                        else
-                            return '<i class="bi bi-circle-fill text-body-tertiary"></i>';
-                    } else
-                        return delta;
-                }
-             },
-            { data: 'logo', width: '1em', orderable: false, className: 'px-1', render: function (data, type, full) { return data ? `<img class="team-logo" src="${data}">` : ''; } },            
-            { data: 'name', orderable: false, className: 'px-1 text-overflow-ellipsis', 
-                render: function (data, type, full) {
-                    if (['display','export'].includes(type) && full.activeStatus) {
-                        let result = data;
-                        for (let i = 0; i < full.forfeits; i++) {
-                            if (type === 'display')
-                                result += '<sup class="forfeit-penalty">↓</sup>';
-                            else if (type === 'export')
-                                result += ' ↓';
-                        }
-                        return result;
-                    }
-                    return data;
-                },
-                createdCell: function (td, cellData, rowData, row, col) {
-                    if (rowData.location) 
-                        $(td).append(`<div class="team-location">${rowData.location}</div>`);
-                }
-            },
-            { data: 'rankingPoints', width: '1em', className: 'px-1' },
-            { data: 'relStdErr', width: '1em', className: 'relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
-            { data: 'activeStatusGameCount', width: '1em', className: 'px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class="postseason-ineligible">*</span>` : data; } },
-            { data: 'wins', width: '1em', orderable: false, className: 'px-1 dt-center'},
-            { data: 'losses', width: '1.6em', orderable: false, className: 'px-1 dt-left'},
-            { data: 'chart', width: '1em', className: 'ps-1 dt-center no-pointer', orderable: false, render: function (data, type, full) { return `<input type="checkbox" class="chart"${data ? ' checked' : ''}></input>`; }}
-        ],
-        data: teams,
-        layout: {
-            topStart: null,
-            topEnd: null,
-            bottomStart: annotations,
-            bottomEnd: { 
-                buttons: [
-                    {
-                        extend: 'copy',
-                        text: '<i class="bi bi-copy"></i>',
-                        exportOptions: exportOptions,
-                        messageBottom: '*Not enough games to be Postseason Eligible.\n↓ Two rank penalty applied for each forfeit.',
-                        title: null,
-                    }, 
-                    {
-                        extend: 'csv',
-                        text: '<i class="bi bi-filetype-csv"></i>',
-                        exportOptions: exportOptions
-                    } 
-                ] 
-            }
-        },
-        paging: false,
-        searching: false,
-        info: false,
-        order: {
-            name: 'rank',
-            dir: 'asc'
-        },
-        fixedHeader: {
-            header: true,
-            headerOffset: $('nav.sticky-top').outerHeight()
-        },
-        createdRow: function (row, data, dataIndex) {
-            if (data.postseasonPosition != null) {
-                $(row).addClass('postseason-position ' + data.postseasonPosition);
-            }
-        },
-        drawCallback: function (settings) {
-            $('#rankings-table .forfeit-penalty').tooltip({title: 'Two rank penalty applied for each forfeit.'});
-            $('#rankings-table .postseason-ineligible').tooltip({title: 'Not enough games to be Postseason Eligible.'});
-        }
-    });
-}
-
-function regionChange() {
-    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
-        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
-        .sort((a, b) => a.rankSort - b.rankSort);
-    
-    let rankingChart = Chart.getChart('rankings-chart');
-    rankingChart.data.datasets = [];
-    teams.forEach((team, index) => {
-        team.chart = index < 5;
-        if (team.chart) {
-            rankingChart.data.datasets.push({
-                teamId: team.teamId,
-                label: team.name,
-                data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
-                showLine: true
-            });
-        }
-    });    
-    rankingChart.update();
-
-    $('#rankings-table').DataTable().clear().rows.add(teams).draw();
-}
-
-function setupAllGames() {
-    // Filter to games within ranking period
-    let games = mrdaLinearRegressionSystem.mrdaGames
-        .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt
-            && game.homeTeamId in game.scores && game.awayTeamId in game.scores);
-
-    // Add virtual games
-    let seedingRankings = mrdaLinearRegressionSystem.getRankingHistory(rankingPeriodStartDt);
-    if (seedingRankings) {
-        for (const [teamId, ranking] of Object.entries(seedingRankings)) {
-            if (games.some(game => !game.forfeit && (game.homeTeamId == teamId || game.awayTeamId == teamId))) {
-                games.push(new MrdaGame({
-                    date: rankingPeriodStartDt,
-                    home_team_id: teamId,
-                    home_team_score: ranking.rankingPoints.toFixed(2),
-                    away_team_score: 1,
-                    weight: .25,
-                }, mrdaLinearRegressionSystem.mrdaTeams, mrdaLinearRegressionSystem.mrdaEvents, true));
-            }
-        }
-    }
-
-    if (DataTable.isDataTable('#all-games-table')) {
-        $('#all-games-table').DataTable().clear().rows.add(games).draw();
-        return;
-    }
-
-    new DataTable('#all-games-table', {
-            columns: [
-                { data: 'event.startDt', visible: false },
-                { data: 'eventId', visible: false },                
-                { data: 'date', visible: false },
-                { data: 'homeTeam.name', title: 'Home Team', className: 'dt-right', render: function(data, type, game) { return game.forfeit && game.forfeitTeamId == game.homeTeamId ? `${data}<sup class="forfeit-info">↓</sup>` : data; } },
-                { data: 'homeTeam.logo', width: '1em', render: function(data, type, game) { return `<img class="ms-2 team-logo" src="${data}">`; } },
-                { name: 'score', width: '7em', className: 'dt-center', title: 'Score', render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}${game.status < 6 ? '<sup class="unvalidated-info">†</sup>' : ''}`} },
-                { data: 'awayTeam.logo', width: '1em', render: function(data, type, game) { return `<img class="ms-2 team-logo" src="${data}">`; } },                
-                { data: 'awayTeam.name', title: 'Away Team', render: function(data, type, game) { return game.forfeit && game.forfeitTeamId == game.awayTeamId ? `${data}<sup class="forfeit-info">↓</sup>` : data; } },
-                { data: 'weight', title: 'Weight', width: '1em', render: function(data, type, game) { return data ? `${(data * 100).toFixed(0)}%` : ''; } }
-            ],
-            data: games,
-            rowGroup: {
-                dataSrc: ['event.getEventTitle()','getGameDay()'],
-                emptyDataGroup: null
-            },
-            lengthChange: false,
-            order: [[0, 'desc'], [1, 'desc'], [2, 'desc']],
-            ordering: {
-                handler: false
-            },
-            drawCallback: function (settings) {
-                $('.unvalidated-info').tooltip({title: 'Score not yet validated'});            
-                $('.forfeit-info').tooltip({title: 'Forfeit'});
-            }
-        });
-}
-
 async function setupUpcomingGames() {
     let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !(game.homeTeamId in game.scores) || !(game.awayTeamId in game.scores));
 
@@ -695,6 +639,62 @@ function setupPredictor() {
 
     $teamSelects.change(predictGame);
     $date.change(predictGame);
+}
+
+function setupAllGames() {
+    // Filter to games within ranking period
+    let games = mrdaLinearRegressionSystem.mrdaGames
+        .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt
+            && game.homeTeamId in game.scores && game.awayTeamId in game.scores);
+
+    // Add virtual games
+    let seedingRankings = mrdaLinearRegressionSystem.getRankingHistory(rankingPeriodStartDt);
+    if (seedingRankings) {
+        for (const [teamId, ranking] of Object.entries(seedingRankings)) {
+            if (games.some(game => !game.forfeit && (game.homeTeamId == teamId || game.awayTeamId == teamId))) {
+                games.push(new MrdaGame({
+                    date: rankingPeriodStartDt,
+                    home_team_id: teamId,
+                    home_team_score: ranking.rankingPoints.toFixed(2),
+                    away_team_score: 1,
+                    weight: .25,
+                }, mrdaLinearRegressionSystem.mrdaTeams, mrdaLinearRegressionSystem.mrdaEvents, true));
+            }
+        }
+    }
+
+    if (DataTable.isDataTable('#all-games-table')) {
+        $('#all-games-table').DataTable().clear().rows.add(games).draw();
+        return;
+    }
+
+    new DataTable('#all-games-table', {
+            columns: [
+                { data: 'event.startDt', visible: false },
+                { data: 'eventId', visible: false },                
+                { data: 'date', visible: false },
+                { data: 'homeTeam.name', title: 'Home Team', className: 'dt-right', render: function(data, type, game) { return game.forfeit && game.forfeitTeamId == game.homeTeamId ? `${data}<sup class="forfeit-info">↓</sup>` : data; } },
+                { data: 'homeTeam.logo', width: '1em', render: function(data, type, game) { return `<img class="ms-2 team-logo" src="${data}">`; } },
+                { name: 'score', width: '7em', className: 'dt-center', title: 'Score', render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}${game.status < 6 ? '<sup class="unvalidated-info">†</sup>' : ''}`} },
+                { data: 'awayTeam.logo', width: '1em', render: function(data, type, game) { return `<img class="ms-2 team-logo" src="${data}">`; } },                
+                { data: 'awayTeam.name', title: 'Away Team', render: function(data, type, game) { return game.forfeit && game.forfeitTeamId == game.awayTeamId ? `${data}<sup class="forfeit-info">↓</sup>` : data; } },
+                { data: 'weight', title: 'Weight', width: '1em', render: function(data, type, game) { return data ? `${(data * 100).toFixed(0)}%` : ''; } }
+            ],
+            data: games,
+            rowGroup: {
+                dataSrc: ['event.getEventTitle()','getGameDay()'],
+                emptyDataGroup: null
+            },
+            lengthChange: false,
+            order: [[0, 'desc'], [1, 'desc'], [2, 'desc']],
+            ordering: {
+                handler: false
+            },
+            drawCallback: function (settings) {
+                $('.unvalidated-info').tooltip({title: 'Score not yet validated'});            
+                $('.forfeit-info').tooltip({title: 'Forfeit'});
+            }
+        });
 }
 
 function setupMeanAbsoluteLogError() {
@@ -782,9 +782,9 @@ $(function() {
     let $regionSelect = $('#region');
     setupRegion($regionSelect);
 
-    calculateAndDisplayRankings();
+    setupRankings();
 
-    $dateSelect.on('change', calculateAndDisplayRankings);
+    $dateSelect.on('change', setupRankings);
     $regionSelect.on('change', regionChange);
         
     $('#rankings-generated-dt').text(new Date(rankings_generated_utc).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'long'}));
@@ -794,13 +794,12 @@ $(function() {
     //These are all initially hidden until user input. Setup last.
     setupTeamDetails();
 
-    setupUpcomingGames();
-
     setupPredictor();
+
+    setupUpcomingGames();
 
     setupAllGames();
     $dateSelect.on('change', setupAllGames);
 
     setupMeanAbsoluteLogError();
-
 })
