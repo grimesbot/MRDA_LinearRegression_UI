@@ -627,7 +627,7 @@ function setupApiGames() {
 async function setupUpcomingGames() {
     let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !(game.homeTeamId in game.scores) || !(game.awayTeamId in game.scores));
 
-    new DataTable('#upcomingGames', {
+    new DataTable('#upcoming-games-table', {
         columns: [
             { data: 'event.startDt', visible: false },
             { data: 'date', visible: false },
