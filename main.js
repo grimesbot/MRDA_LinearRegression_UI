@@ -792,7 +792,7 @@ $(function() {
     $dateSelect.on( "change", calculateAndDisplayRankings);
     $regionSelect.on( "change", regionChange);
         
-    $('#rankingsGeneratedDt').text(new Date(rankings_generated_utc));
+    $('#rankings-generated-dt').text(new Date(rankings_generated_utc).toLocaleString(undefined, {dateStyle: "short", timeStyle: "long"}));
 
     $('[data-toggle="tooltip"]').tooltip();
 
