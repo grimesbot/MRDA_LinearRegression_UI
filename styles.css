@@ -114,6 +114,10 @@ th.narrow {
     vertical-align: text-top;
 }
 
+.team-logo {
+    height: 2.5em;
+}
+
 .team-location,
 .team-rp,
 .team-rank {
@@ -188,6 +192,10 @@ td.delta i.down {
 
 #team-games-table thead .dtrg-level-0 th:first-child {
     background-color: var(--bs-table-bg); 
+}
+
+.opponent-logo {
+    height: 2em;
 }
 
 /* Predictor */

@@ -13,9 +13,9 @@ class MrdaGame {
         this.homeTeamId = game.home_team_id;
         this.awayTeamId = game.away_team_id;
         this.scores = {};
-        if("home_team_score" in game)
+        if('home_team_score' in game)
             this.scores[this.homeTeamId] = game.home_team_score;
-        if("away_team_score" in game)
+        if('away_team_score' in game)
             this.scores[this.awayTeamId] = game.away_team_score;
         this.forfeit = game.forfeit;
         this.forfeitTeamId = game.forfeit_team_id;
@@ -33,9 +33,9 @@ class MrdaGame {
         this.event = mrdaEvents[this.eventId];
 
         if (virtualGame) {
-            this.awayTeam = new MrdaTeam(null, { name: "Virtual Team" });
+            this.awayTeam = new MrdaTeam(null, { name: 'Virtual Team' });
             this.eventId = null;
-            this.event = new MrdaEvent(null, {start_dt: this.date, name: "Virtual Games"});
+            this.event = new MrdaEvent(null, {start_dt: this.date, name: 'Virtual Games'});
             return;
         }
 
@@ -80,11 +80,11 @@ class MrdaGame {
     }
 
     getWL(teamId) {
-        return this.scores[teamId] > this.scores[this.getOpponentTeamId(teamId)] ? "W" : "L";
+        return this.scores[teamId] > this.scores[this.getOpponentTeamId(teamId)] ? 'W' : 'L';
     }
 
     getAtVs(teamId) {
-        return this.homeTeamId == teamId ? "vs" : "@"
+        return this.homeTeamId == teamId ? 'vs' : '@'
     }
 
     getTeamsScore(teamId) {
@@ -97,14 +97,14 @@ class MrdaGame {
 
     getGameDay() {
         if (this.event.startDt != this.event.endDt)
-            return this.date.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+            return this.date.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     }
 
     getGameAndEventTitle() {
         if (this.event.name){
-            return `${this.date.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})}: ${this.event.getShortName()}`;
+            return `${this.date.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}: ${this.event.getShortName()}`;
         } else
-            return this.date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric",weekday:"long"});
+            return this.date.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric',weekday:'long'});
     }
 }
 
@@ -121,23 +121,23 @@ class MrdaEvent {
         if (this.startDt == this.endDt){
             // If the single day event has a title, return the date but don't include the weekday for brevity
             if (this.name)
-                return this.startDt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+                return this.startDt.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
             else
-                return this.startDt.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+                return this.startDt.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
         } else {
         // Multi-day events use short month for brevity
-            let dtFmtOpts = {year:"numeric",month:"short",day:"numeric"};
+            let dtFmtOpts = {year:'numeric',month:'short',day:'numeric'};
             let dateStr = this.startDt.toLocaleDateString(undefined,dtFmtOpts);            
             if (this.startDt.getFullYear() != this.endDt.getFullYear())
                 return `${dateStr} - ${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`;
             else if (this.startDt.getMonth() != this.endDt.getMonth()) {
-                dtFmtOpts = {month:"short",day:"numeric"};
+                dtFmtOpts = {month:'short',day:'numeric'};
                 let monthAndDay = this.startDt.toLocaleDateString(undefined,dtFmtOpts);
                 return dateStr.replace(monthAndDay, `${monthAndDay} - ${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
             } else {
-                dtFmtOpts = {day:"numeric"};
+                dtFmtOpts = {day:'numeric'};
                 let day = this.startDt.toLocaleDateString(undefined,dtFmtOpts);
-                return dateStr.replace(new RegExp(`\\b${day}\\b`, "g"), `${day}-${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
+                return dateStr.replace(new RegExp(`\\b${day}\\b`, 'g'), `${day}-${this.endDt.toLocaleDateString(undefined,dtFmtOpts)}`);
             }
         }
     }
@@ -159,9 +159,9 @@ class MrdaEvent {
     }
 
     getShortName() {
-        return this.name ? this.name.replace("Mens Roller Derby Association", "MRDA")
-                                .replace("Men's Roller Derby Association", "MRDA")
-                                .replace(this.startDt.getFullYear(),"").trim() : null;
+        return this.name ? this.name.replace('Mens Roller Derby Association', 'MRDA')
+                                .replace('Men\'s Roller Derby Association', 'MRDA')
+                                .replace(this.startDt.getFullYear(),'').trim() : null;
     }
 
     getEventTitleWithDate() {
@@ -197,9 +197,9 @@ class MrdaTeam {
         this.name = team.name;
         this.region = team.region;
         this.location = team.location;
-        this.logo = team.logo ?? "team-logos/MRDA-Logo-Acronym.png";
-        if (this.logo.startsWith("/central/"))
-            this.logo = "https://assets.mrda.org" + team.logo;
+        this.logo = team.logo ?? 'team-logos/MRDA-Logo-Acronym.png';
+        if (this.logo.startsWith('/central/'))
+            this.logo = 'https://assets.mrda.org' + team.logo;
         this.games = []
         this.gameHistory = []
         this.activeStatus = false;
@@ -280,7 +280,7 @@ class MrdaLinearRegressionSystem {
         this.mrdaGames = [];
 
         // Build mrdaRankingsHistoryDts map 
-        for (const dt of Object.keys(mrda_rankings_history_json).map(day => new Date(day + " 00:00:00")).sort((a, b) => a - b)) {
+        for (const dt of Object.keys(mrda_rankings_history_json).map(day => new Date(day + ' 00:00:00')).sort((a, b) => a - b)) {
             let jsonRanking = mrda_rankings_history_json[`${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`];
             let teamRankings = {};
             for (const teamId of Object.keys(jsonRanking))
@@ -390,7 +390,7 @@ class MrdaLinearRegressionSystem {
                                                 .sort((a, b) => a.rank - b.rank );
         for (let i = 0; i < 7; i++) {
             let team = sortedPostseasonTeams[i];
-            team.postseasonPosition = "GUR";
+            team.postseasonPosition = 'GUR';
         }
 
         // Regional Qualifiers
@@ -399,7 +399,7 @@ class MrdaLinearRegressionSystem {
             let inviteInfo = $(`#postseason-legend .postseason-position.${r} .invites`);
 
             // Austrasia gets 1 spot, other regions get 2
-            let spots = r == "AA" ? 1 : 2;
+            let spots = r == 'AA' ? 1 : 2;
 
             let regionPostseasonTeams = Object.values(this.mrdaTeams).filter(team => team.postseasonEligible && r == team.region && team.postseasonPosition == null)
                                             .sort((a, b) => a.rank - b.rank );
