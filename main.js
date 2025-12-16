@@ -159,7 +159,7 @@ function teamDetailsModal() {
             });
 
     // Initialize the team game history DataTable. Data will be set on team row click.
-    let teamGameHistoryDT = new DataTable('#teamGameHistory', {
+    let teamGameTable = new DataTable('#team-games-table', {
         columns: [
             { width: '1em', className: 'dt-center timeTooltip', name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? `<div data-toggle="tooltip" title="${data.toLocaleTimeString(undefined,{timeStyle: "short"})}">${data.toLocaleDateString(undefined,{weekday: "short"})}</div>` : data }},
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getWL(team.teamId) }},
@@ -312,7 +312,7 @@ function teamDetailsModal() {
         teamChart.options.scales.x.max = rankingPeriodDeadlineDt;
         teamChart.update();
 
-        teamGameHistoryDT.clear().rows.add(team.gameHistory.filter(game => minGameDt <= game.date && game.date < rankingPeriodDeadlineDt)).draw();
+        teamGameTable.clear().rows.add(team.gameHistory.filter(game => minGameDt <= game.date && game.date < rankingPeriodDeadlineDt)).draw();
 
         if (team.gameHistory.some(game => game.date < minGameDt))
             $olderGamesBtn.show();
@@ -324,7 +324,7 @@ function teamDetailsModal() {
 
     $olderGamesBtn.on('click', function (e) {
         let newMinDt = mrdaLinearRegressionSystem.getSeedDate(minGameDt);
-        teamGameHistoryDT.rows.add(team.gameHistory.filter(game => newMinDt <= game.date && game.date < minGameDt)).draw();
+        teamGameTable.rows.add(team.gameHistory.filter(game => newMinDt <= game.date && game.date < minGameDt)).draw();
         minGameDt = newMinDt;
         if (team.gameHistory.some(game => game.date < minGameDt))
             $olderGamesBtn.show();

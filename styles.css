@@ -142,22 +142,22 @@ th.narrow {
     text-overflow: ellipsis;
 }
 
-#teamGameHistory .dtrg-level-0 th {
+#team-games-table .dtrg-level-0 th {
     vertical-align: middle;    
 }
 
-#teamGameHistory .rpBeforeAfter {
+#team-games-table .rpBeforeAfter {
     text-align: right;
     overflow: hidden;
     white-space: nowrap;
 }
 
-#teamGameHistory tbody .rpBeforeAfter {
+#team-games-table tbody .rpBeforeAfter {
     font-weight: var(--bs-body-font-weight);
     font-size: var(--bs-body-font-size);
 }
 
-#teamGameHistory thead .dtrg-level-0 th:first-child {
+#team-games-table thead .dtrg-level-0 th:first-child {
     background-color: var(--bs-table-bg); 
 }
 

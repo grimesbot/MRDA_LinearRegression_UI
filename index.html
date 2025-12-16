@@ -130,27 +130,29 @@ I
                         <div id="team-chart-container">
                             <canvas id="team-chart"></canvas>
                         </div>
-                        <table id="teamGameHistory" class="table table-striped" width="100%">
-                            <thead>
-                                <tr class="dtrg-group dtrg-level-0">
-                                    <th colspan="5">Game History</th>
-                                    <th colspan="4" class="rpBeforeAfter" data-toggle="tooltip" title="Ranking Points from the Wednesday before and after the game(s)">RP: Before <i class='bi bi-arrow-right'></i> After</th>
-                                </tr>
-                                <tr>
-                                    <th></th>
-                                    <th></th>
-                                    <th></th>
-                                    <th></th>
-                                    <th></th>
-                                    <th>Score</th>
-                                    <th>Ratio</th>
-                                    <th data-toggle="tooltip" title="Expected score ratio as of game date">Exp</th>
-                                    <th data-toggle="tooltip" title="Game weight for least weighted squares linear regression algorithm. Weights diminish for games with score ratio beyond 4:1">Wt</th>
-                                </tr>
-                            </thead>
-                        </table>
-                        <div class="text-center">
-                            <button type="button" id="loadOlderGames" class="btn btn-outline-primary mt-3">Show games from previous ranking period</button>
+                        <div class="table-responsive">
+                            <table id="team-games-table" class="table table-striped">
+                                <thead>
+                                    <tr class="dtrg-group dtrg-level-0">
+                                        <th colspan="5">Game History</th>
+                                        <th colspan="4" class="rpBeforeAfter" data-toggle="tooltip" title="Ranking Points from the Wednesday before and after the game(s)">RP: Before <i class='bi bi-arrow-right'></i> After</th>
+                                    </tr>
+                                    <tr>
+                                        <th></th>
+                                        <th></th>
+                                        <th></th>
+                                        <th></th>
+                                        <th></th>
+                                        <th>Score</th>
+                                        <th>Ratio</th>
+                                        <th data-toggle="tooltip" title="Expected score ratio as of game date">Exp</th>
+                                        <th data-toggle="tooltip" title="Game weight for least weighted squares linear regression algorithm. Weights diminish for games with score ratio beyond 4:1">Wt</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            <div class="text-center">
+                                <button type="button" id="loadOlderGames" class="btn btn-outline-primary mt-3">Show games from previous ranking period</button>
+                            </div>
                         </div>
                     </div>
                 </div>
