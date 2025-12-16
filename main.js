@@ -334,7 +334,7 @@ function teamDetailsModal() {
 }
 
 function displayRankingChart(teams) {
-    let rankingChart = Chart.getChart("rankingsChart");
+    let rankingChart = Chart.getChart("rankings-chart");
 
     if (rankingChart != undefined) {
         rankingChart.options.scales.x.min = rankingPeriodStartDt;
@@ -356,7 +356,7 @@ function displayRankingChart(teams) {
         });
     });
 
-    rankingChart = new Chart(document.getElementById("rankingsChart"), {
+    rankingChart = new Chart(document.getElementById("rankings-chart"), {
         type: 'line',
         data: {
             datasets: datasets
@@ -421,7 +421,7 @@ function regionChange() {
         .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR"))
         .sort((a, b) => a.rankSort - b.rankSort);
     
-    let rankingChart = Chart.getChart("rankingsChart");
+    let rankingChart = Chart.getChart("rankings-chart");
     rankingChart.data.datasets = [];
     teams.forEach((team, index) => {
         team.chart = index < 5;

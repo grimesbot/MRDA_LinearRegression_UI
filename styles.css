@@ -43,7 +43,7 @@ nav .form-floating>label {
 }
 
 /* Chart heights */
-#rankingsChartContainer {
+#rankings-chart-container {
     height: 30rem;
 }
 #teamChartContainer {
