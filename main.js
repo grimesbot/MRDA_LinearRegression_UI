@@ -108,7 +108,7 @@ function setupRegion($regionSelect) {
 
 function teamDetailsModal() {
     let $teamDetailModal = $('#team-modal');
-    let $olderGamesBtn = $("#loadOlderGames");
+    let $olderGamesBtn = $("#load-older-games");
     let team = null;
     let date = rankingPeriodDeadlineDt;
     let minGameDt = rankingPeriodStartDt;
@@ -590,22 +590,22 @@ function setupApiGames() {
         }
     }
 
-    if (DataTable.isDataTable('#apiGames')) {
-        $('#apiGames').DataTable().clear().rows.add(games).draw();
+    if (DataTable.isDataTable('#all-games-table')) {
+        $('#all-games-table').DataTable().clear().rows.add(games).draw();
         return;
     }
 
-    new DataTable('#apiGames', {
+    new DataTable('#all-games-table', {
             columns: [
                 { data: 'event.startDt', visible: false },
                 { data: 'eventId', visible: false },                
                 { data: 'date', visible: false },
-                { data: 'homeTeam.name', title: "Home Team", className: 'dt-right' },
-                { data: "homeTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
-                { name: 'score', width: '7em', className: 'dt-center', title: "Score", render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}`} },
-                { data: "awayTeam.logo", width: '1em', render: function(data, type, game) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
-                { data: 'awayTeam.name', title: "Away Team" },
-                { data: 'weight', title: "Weight", width: '1em', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
+                { data: 'homeTeam.name', title: "Home Team", className: 'dt-right', render: function(data, type, game) { return game.forfeit && game.forfeitTeamId == game.homeTeamId ? `${data}<sup class='forfeitInfo'>↓</sup>` : data; } },
+                { data: "homeTeam.logo", width: '1em', render: function(data, type, game) { return `<img height='40' class='ms-2' src='${data}'>`; } },
+                { name: 'score', width: '7em', className: 'dt-center', title: "Score", render: function(data, type, game) {return `${game.scores[game.homeTeamId]} - ${game.scores[game.awayTeamId]}${game.status < 6 ? "<sup class='unvalidatedInfo'>†</sup>" : ""}`} },
+                { data: "awayTeam.logo", width: '1em', render: function(data, type, game) { return `<img height='40' class='ms-2' src='${data}'>`; } },                
+                { data: 'awayTeam.name', title: "Away Team", render: function(data, type, game) { return game.forfeit && game.forfeitTeamId == game.awayTeamId ? `${data}<sup class='forfeitInfo'>↓</sup>` : data; } },
+                { data: 'weight', title: "Weight", width: '1em', render: function(data, type, game) { return data ? `${(data * 100).toFixed(0)}%` : ""; } }
             ],
             data: games,
             rowGroup: {
