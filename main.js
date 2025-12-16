@@ -232,9 +232,9 @@ function teamDetailsModal() {
         }
     });
 
-    $('#mrdaRankingPointsContainer').on('click', 'td.dt-teamDetailsClick', function (e) {
+    $('#rankings-table-container').on('click', '#rankings-table td:not(.no-pointer)', function (e) {
         let tr = e.target.closest('tr');
-        let row = $('#mrdaRankingPoints').DataTable().row(tr);
+        let row = $('#rankings-table').DataTable().row(tr);
         let clickedTeam = row.data();
 
         if (team && clickedTeam.teamId == team.teamId && rankingPeriodDeadlineDt == date) {
@@ -397,9 +397,9 @@ function displayRankingChart(teams) {
         },
     });
 
-    $("#mrdaRankingPointsContainer").on('change', 'input.chart', function (e) {
+    $("#rankings-table-container").on('change', 'input.chart', function (e) {
         let tr = e.target.closest('tr');
-        let dt = $('#mrdaRankingPoints').DataTable();
+        let dt = $('#rankings-table').DataTable();
         let row = dt.row(tr);
         let team = row.data();
         team.chart = $(this).prop('checked');
@@ -436,7 +436,7 @@ function regionChange() {
     });    
     rankingChart.update();
 
-    $('#mrdaRankingPoints').DataTable().clear().rows.add(teams).draw();
+    $('#rankings-table').DataTable().clear().rows.add(teams).draw();
 }
 
 function calculateAndDisplayRankings() {
@@ -449,8 +449,8 @@ function calculateAndDisplayRankings() {
 
     displayRankingChart(teams);
 
-    if (DataTable.isDataTable('#mrdaRankingPoints')) {
-        $('#mrdaRankingPoints').DataTable().clear().rows.add(teams).draw();
+    if (DataTable.isDataTable('#rankings-table')) {
+        $('#rankings-table').DataTable().clear().rows.add(teams).draw();
         return;
     }
 
@@ -466,9 +466,9 @@ function calculateAndDisplayRankings() {
         },        
     };
 
-    new DataTable('#mrdaRankingPoints', {
+    new DataTable('#rankings-table', {
         columns: [
-            { name: 'rank', data: 'rank', width: '1em', className: 'dt-teamDetailsClick dt-center pe-1', 
+            { name: 'rank', data: 'rank', width: '1em', className: 'dt-center pe-1', 
                 render: function (data, type, full) { 
                     if (type === 'sort')
                         return full.rankSort;
@@ -478,7 +478,7 @@ function calculateAndDisplayRankings() {
                         return data;
                 }
             },
-            { data: 'delta', width: '1em', className: 'dt-teamDetailsClick noWrap delta dt-center px-1',
+            { data: 'delta', width: '1em', className: 'noWrap delta dt-center px-1',
                 render: function (data, type, full) {
                     let delta = region == "GUR" ? full.delta : full.regionDelta;
                     if (type === 'display') {
@@ -496,8 +496,8 @@ function calculateAndDisplayRankings() {
                         return delta;
                 }
              },
-            { data: 'logo', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
-            { data: 'name', orderable: false, className: 'dt-teamDetailsClick teamName px-1 text-overflow-ellipsis', 
+            { data: 'logo', width: '1em', orderable: false, className: 'px-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
+            { data: 'name', orderable: false, className: 'teamName px-1 text-overflow-ellipsis', 
                 render: function (data, type, full) {
                     if (['display','export'].includes(type) && full.activeStatus) {
                         let result = data;
@@ -516,12 +516,12 @@ function calculateAndDisplayRankings() {
                         $(td).append("<div class='teamLocation'>" + rowData.location + "</div>");
                 }
             },
-            { data: 'rankingPoints', width: '1em', className: 'dt-teamDetailsClick px-1' },
-            { data: 'relStdErr', width: '1em', className: 'dt-teamDetailsClick relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
-            { data: 'activeStatusGameCount', width: '1em', className: 'dt-teamDetailsClick px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class='postseasonIneligible'>*</span>` : data; } },
-            { data: 'wins', width: '1em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-center'},
-            { data: 'losses', width: '1.6em', orderable: false, className: 'dt-teamDetailsClick px-1 dt-left'},
-            { data: 'chart', width: '1em', className: 'ps-1 dt-center', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
+            { data: 'rankingPoints', width: '1em', className: 'px-1' },
+            { data: 'relStdErr', width: '1em', className: 'relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
+            { data: 'activeStatusGameCount', width: '1em', className: 'px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class='postseasonIneligible'>*</span>` : data; } },
+            { data: 'wins', width: '1em', orderable: false, className: 'px-1 dt-center'},
+            { data: 'losses', width: '1.6em', orderable: false, className: 'px-1 dt-left'},
+            { data: 'chart', width: '1em', className: 'ps-1 dt-center no-pointer', orderable: false, render: function (data, type, full) { return "<input type='checkbox' class='chart' " + (data ? "checked" : "") + "></input>"; }}
         ],
         data: teams,
         layout: {
@@ -562,8 +562,8 @@ function calculateAndDisplayRankings() {
             }
         },
         drawCallback: function (settings) {
-            $("#mrdaRankingPoints .forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
-            $("#mrdaRankingPoints .postseasonIneligible").tooltip({title: "Not enough games to be Postseason Eligible."});
+            $("#rankings-table .forfeitPenalty").tooltip({title: "Two rank penalty applied for each forfeit."});
+            $("#rankings-table .postseasonIneligible").tooltip({title: "Not enough games to be Postseason Eligible."});
         }
     });
 }
