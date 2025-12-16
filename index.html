@@ -94,10 +94,10 @@ I
                 <thead>
                     <tr>
                         <th></th>
-                        <th data-toggle="tooltip" title="Change in rank from last quarter."><i class="bi bi-triangle" style="font-size: .75em;"></i></th>                        
+                        <th class="delta" data-toggle="tooltip" title="Change in rank from last quarter."><i class="bi bi-triangle"></i></th>                        
                         <th colspan="2">Team</th>
-                        <th data-toggle="tooltip" class="noWrap" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP <i class="bi bi-question-circle"></i></th>
-                        <th data-toggle="tooltip" class="noWrap" title="Relative Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">RSE <i class="bi bi-question-circle"></i></th>
+                        <th class="no-wrap" data-toggle="tooltip" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP <i class="bi bi-question-circle"></i></th>
+                        <th class="no-wrap" data-toggle="tooltip" title="Relative Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">RSE <i class="bi bi-question-circle"></i></th>
                         <th data-toggle="tooltip" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
                         <th data-toggle="tooltip" title="Wins">W</th>
                         <th data-toggle="tooltip" title="Losses">L</th>
@@ -105,7 +105,7 @@ I
                     </tr>
                 </thead>
             </table>
-            <div style="font-size:.85rem; margin-top:.5rem;">
+            <div class="detail-footer">
                 Last refreshed at <span id="rankingsGeneratedDt"></span>.
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation</a> 
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>

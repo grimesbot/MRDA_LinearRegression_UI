@@ -173,7 +173,7 @@ function teamDetailsModal() {
                     return `<span class="teamRank" data-toggle="tooltip" title="Global rank as of ${teamRanking.date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"})}">${teamRanking.rank}</span> ${opponent.name}`
                 return opponent.name; 
             }},
-            { width: '1em', className: 'dt-center noWrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
+            { width: '1em', className: 'dt-center no-wrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.actualRatios ? row.actualRatios[team.teamId].toFixed(2) : "" } },            
             { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedRatios ? row.expectedRatios[team.teamId].toFixed(2) : "" } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
@@ -478,7 +478,7 @@ function calculateAndDisplayRankings() {
                         return data;
                 }
             },
-            { data: 'delta', width: '1em', className: 'noWrap delta dt-center px-1',
+            { data: 'delta', width: '1em', className: 'no-wrap delta dt-center px-1',
                 render: function (data, type, full) {
                     let delta = region == "GUR" ? full.delta : full.regionDelta;
                     if (type === 'display') {

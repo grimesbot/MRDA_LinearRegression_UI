@@ -92,10 +92,16 @@ div.postseason-position {
 td {
     vertical-align: middle;
 }
-.teamLocation,
-.teamRp,
-.teamRank {
-    font-size: .8em;
+
+td.narrow,
+th.narrow {
+    padding-left: .1em !important;
+    padding-right: .1em !important;
+}
+
+.no-wrap {
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 /* Tooltip icon in column title */
@@ -103,6 +109,13 @@ td {
     font-size:.75em;
     vertical-align: text-top;
 }
+
+.teamLocation,
+.teamRp,
+.teamRank {
+    font-size: .8em;
+}
+
 /* Click entire row to see team details */
 #rankings-table td:not(.no-pointer) {
     cursor: pointer;
@@ -110,6 +123,11 @@ td {
 
 .annotations {
     font-size: .85em;
+}
+
+#rankings-table-container .detail-footer {
+    margin-top:.5rem;
+    font-size:.85rem;
 }
 
 /* Team detail styling */
@@ -120,16 +138,7 @@ td {
     text-overflow: ellipsis;
 }
 
-td.narrow,
-th.narrow {
-    padding-left: .1em !important;
-    padding-right: .1em !important;
-}
 
-.noWrap {
-    overflow: hidden;
-    white-space: nowrap;
-}
 
 #teamGameHistory .dtrg-level-0 th {
     vertical-align: middle;    
@@ -148,6 +157,10 @@ th.narrow {
 
 #teamGameHistory thead .dtrg-level-0 th:first-child {
     background-color: var(--bs-table-bg); 
+}
+
+th.delta i {
+    font-size: .75em;
 }
 
 .delta i.bi-triangle-fill {
