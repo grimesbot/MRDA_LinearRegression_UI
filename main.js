@@ -114,7 +114,7 @@ function teamDetailsModal() {
     let minGameDt = rankingPeriodStartDt;
     
     // Initialize the Team Ranking Point History chart. Data will be set on team row click.
-    let teamChart = new Chart(document.getElementById("teamChart"), {
+    let teamChart = new Chart(document.getElementById("team-chart"), {
                 data: {
                     datasets: [{
                         type: 'scatter',
