@@ -90,7 +90,7 @@ I
         </div>
         
         <main id="rankings-table-container" role="main" class="container-xl table-responsive" >
-            <table id="rankings-table" class="table table-striped" width="100%">
+            <table id="rankings-table" class="table table-striped">
                 <thead>
                     <tr>
                         <th></th>
@@ -189,7 +189,7 @@ I
                     </div>
                     <div class="modal-body">
                         <div class="table-responsive">
-                            <table id="upcoming-games-table" class="table table-striped" width="100%">
+                            <table id="upcoming-games-table" class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th></th>
@@ -218,36 +218,36 @@ I
                     <div class="modal-body">
                         <div class="d-flex flex-row align-items-center justify-content-center">
                             <div class="p-2 form-floating">
-                                <select id="homeTeam" class="form-select" aria-label="Home Team"><option disabled selected value></option></select>
-                                <label for="homeTeam">Home Team</label>
+                                <select id="predictor-home" class="form-select" aria-label="Home Team"><option disabled selected value></option></select>
+                                <label for="predictor-home">Home Team</label>
                             </div>
                             <div class="p-2 form-floating">
-                                <input id="gameDate" class="form-control" type="date" aria-label="Game Date" />
-                                <label for="gameDate">Game Date</label>
+                                <input id="predictor-date" class="form-control" type="date" aria-label="Game Date" />
+                                <label for="predictor-date">Game Date</label>
                             </div>
                             <div class="p-2 form-floating">
-                                <select id="awayTeam" class="form-select" aria-label="Away Team"><option disabled selected value></option></select>
-                                <label for="awayTeam">Away Team</label>
+                                <select id="predictor-away" class="form-select" aria-label="Away Team"><option disabled selected value></option></select>
+                                <label for="predictor-away">Away Team</label>
                             </div>
                         </div>
                         <div class="d-flex flex-row align-items-center justify-content-center">
                             <div class="p-2 text-end">
-                                <label for="homeRankingPoints" style="font-weight: bold;">Ranking Points</label>
-                                <div id="homeRankingPoints">&nbsp;</div>
+                                <label for="predictor-home-rp" style="font-weight: bold;">Ranking Points</label>
+                                <div id="predictor-home-rp">&nbsp;</div>
                             </div>
                             <div class="p-2">
-                                <img id="predictorHomeTeamLogo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
+                                <img id="predictor-home-logo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2 text-center">
-                                <label for="expectedScoreRatio" style="font-weight: bold;">Expected Score Ratio</label>
-                                <div id="expectedScoreRatio">&nbsp;</div>
+                                <label for="predictor-ratio" style="font-weight: bold;">Expected Score Ratio</label>
+                                <div id="predictor-ratio">&nbsp;</div>
                             </div>
                             <div class="p-2">
-                                <img id="predictorAwayTeamLogo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
+                                <img id="predictor-away-logo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2">
-                                <label for="awayRankingPoints" style="font-weight: bold;">Ranking Points</label>
-                                <div id="awayRankingPoints">&nbsp;</div>
+                                <label for="predictor-away-rp" style="font-weight: bold;">Ranking Points</label>
+                                <div id="predictor-away-rp">&nbsp;</div>
                             </div>
                         </div>
                     </div>
@@ -264,7 +264,7 @@ I
                     </div>
                     <div class="modal-body">
                         <div class="table-responsive">
-                            <table id="meanAbsoluteLogError" class="table table-striped" width="100%">
+                            <table id="error-table" class="table table-striped">
                             </table>
                         </div>
                     </div>

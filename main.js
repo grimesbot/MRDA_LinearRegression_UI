@@ -651,42 +651,56 @@ async function setupUpcomingGames() {
 }
 
 function calculatePredictedRatio() {
-    let gameDate = $('#gameDate')[0].valueAsDate;
-    let seedDate = mrdaLinearRegressionSystem.getSeedDate(gameDate);
+    let date = $('#predictor-date')[0].valueAsDate;
+    let ranking = mrdaLinearRegressionSystem.getRankingHistory(date);
 
-    let homeTeam = mrdaLinearRegressionSystem.mrdaTeams[$('#homeTeam').val()];
-    let awayTeam = mrdaLinearRegressionSystem.mrdaTeams[$('#awayTeam').val()];
+    let homeTeam = mrdaLinearRegressionSystem.mrdaTeams[$('#predictor-home').val()];
+    let awayTeam = mrdaLinearRegressionSystem.mrdaTeams[$('#predictor-away').val()];
 
     let homeRp = null;
     let awayRp = null;    
 
     if (homeTeam) {
-        $('#predictorHomeTeamLogo').attr("src",homeTeam.logo);
-        let homeRanking = homeTeam.getRanking(gameDate,false,seedDate);
+        $('#predictor-home-logo').attr("src",homeTeam.logo);
+        let homeRanking = ranking[homeTeam.teamId];
         if (homeRanking && homeRanking.rankingPoints) {
             homeRp = homeRanking.rankingPoints;
-            $('#homeRankingPoints').text(`${homeRp} ±${homeRanking.relativeStandardError}%`);
+            $('#predictor-home-rp').text(`${homeRp} ±${homeRanking.relativeStandardError}%`);
         } else
-            $('#homeRankingPoints').html("&nbsp;");
+            $('#predictor-home-rp').html("&nbsp;");
     }
 
     if (awayTeam) {
-        $('#predictorAwayTeamLogo').attr("src",awayTeam.logo);
-        let awayRanking = awayTeam.getRanking(gameDate,false,seedDate);
+        $('#predictor-away-logo').attr("src",awayTeam.logo);
+        let awayRanking = ranking[awayTeam.teamId];
         if (awayRanking && awayRanking.rankingPoints) {
             awayRp = awayRanking.rankingPoints;
-            $('#awayRankingPoints').text(`${awayRp} ±${awayRanking.relativeStandardError}%`);
+            $('#predictor-away-rp').text(`${awayRp} ±${awayRanking.relativeStandardError}%`);
         } else
-            $('#awayRankingPoints').html("&nbsp;");
+            $('#predictor-away-rp').html("&nbsp;");
     }
 
     if (homeRp && awayRp) {
         if (homeRp > awayRp)
-            $('#expectedScoreRatio').text(`${(homeRp/awayRp).toFixed(2)} : 1`);
+            $('#predictor-ratio').text(`${(homeRp/awayRp).toFixed(2)} : 1`);
         else
-            $('#expectedScoreRatio').text(`1 : ${(awayRp/homeRp).toFixed(2)}`);
+            $('#predictor-ratio').text(`1 : ${(awayRp/homeRp).toFixed(2)}`);
     } else
-        $('#expectedScoreRatio').html("&nbsp;");
+        $('#predictor-ratio').html("&nbsp;");
+}
+
+function setupPredictedRatioCalc() {
+    let $date = $('#predictor-date');
+    let $teamSelects = $('#predictor-home,#predictor-away')
+
+    $date[0].valueAsDate = new Date();
+
+    Object.values(mrdaLinearRegressionSystem.mrdaTeams).sort((a, b) => a.name.localeCompare(b.name)).forEach(team => {
+        $teamSelects.append($("<option />").val(team.teamId).text(team.name));
+    });
+
+    $teamSelects.change(calculatePredictedRatio);
+    $date.change(calculatePredictedRatio);
 }
 
 function setupMeanAbsoluteLogError() {
@@ -747,7 +761,7 @@ function setupMeanAbsoluteLogError() {
         }
     }
 
-    new DataTable('#meanAbsoluteLogError', {
+    new DataTable('#error-table', {
         columns: [
             { data: 'title'},
             { title: 'Start Date', data: 'minDt', render: DataTable.render.date()},
@@ -762,19 +776,6 @@ function setupMeanAbsoluteLogError() {
         info: false,
         ordering: false
     });
-}
-
-function setupPredictedRatioCalc() {
-    $('#gameDate')[0].valueAsDate = new Date();
-
-    Object.values(mrdaLinearRegressionSystem.mrdaTeams).sort((a, b) => a.name.localeCompare(b.name)).forEach(team => {
-        $('#homeTeam').append($("<option />").val(team.teamId).text(team.name));
-        $('#awayTeam').append($("<option />").val(team.teamId).text(team.name));
-    });
-
-    $('#homeTeam').change(calculatePredictedRatio);
-    $('#awayTeam').change(calculatePredictedRatio);
-    $('#gameDate').change(calculatePredictedRatio);
 }
 
 $(function() {
