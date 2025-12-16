@@ -395,8 +395,8 @@ class MrdaLinearRegressionSystem {
 
         // Regional Qualifiers
         REGIONS.forEach(r => {
-            let qualInfo = $(`#postseasonLegend .postseason-position.${r} .qualifiers`);
-            let inviteInfo = $(`#postseasonLegend .postseason-position.${r} .invites`);
+            let qualInfo = $(`#postseason-legend .postseason-position.${r} .qualifiers`);
+            let inviteInfo = $(`#postseason-legend .postseason-position.${r} .invites`);
 
             // Austrasia gets 1 spot, other regions get 2
             let spots = r == "AA" ? 1 : 2;
