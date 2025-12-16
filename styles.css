@@ -146,13 +146,13 @@ th.narrow {
     vertical-align: middle;    
 }
 
-#team-games-table .rpBeforeAfter {
+#team-games-table .rp-change {
     text-align: right;
     overflow: hidden;
     white-space: nowrap;
 }
 
-#team-games-table tbody .rpBeforeAfter {
+#team-games-table tbody .rp-change {
     font-weight: var(--bs-body-font-weight);
     font-size: var(--bs-body-font-size);
 }

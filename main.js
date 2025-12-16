@@ -196,7 +196,7 @@ function teamDetailsModal() {
 
                 th = document.createElement('th');
                 th.colSpan = 3;
-                th.className = "rpBeforeAfter";
+                th.className = "rp-change";
 
                 let rpBefore = team.getRankingPoints(group.startDt);
                 let rpAfter = team.getRankingPoints(group.endDt, true);
