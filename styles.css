@@ -15,8 +15,8 @@ body,
 }
 
 /* Navbar styling */
-.navbar-collapse:not(.collapsing):not(.show) .only-collapsed {
-    display:none;
+.navbar-brand img {
+    height: 2em;
 }
 
 .beta-flag {
@@ -40,6 +40,10 @@ nav .form-floating>.form-select {
 nav .form-floating>label {
     font-size: .9em !important;
     padding: 0.5em 0.5em !important;
+}
+
+.navbar-collapse:not(.collapsing):not(.show) .only-collapsed {
+    display:none;
 }
 
 /* Chart heights */
@@ -112,13 +116,34 @@ th.narrow {
 
 .team-location,
 .team-rp,
-.teamRank {
+.team-rank {
     font-size: .8em;
 }
 
-/* Click entire row to see team details */
+th.delta i {
+    font-size: .75em;
+}
+
+.delta i.bi-triangle-fill {
+    font-size: .4em;
+}
+
+td.delta i.bi-circle-fill {
+    font-size: .3em;
+}
+
+td.delta i.bi-star-fill, 
+td.delta span {
+    font-size: .75em;
+}
+
+td.delta i.down {
+    display: inline-block;
+    transform: rotate(180deg);    
+}
+
 #rankings-table td:not(.no-pointer) {
-    cursor: pointer;
+    cursor: pointer; /* Click entire row to see team details */
 }
 
 .annotations {
@@ -131,6 +156,10 @@ th.narrow {
 }
 
 /* Team detail styling */
+#team-logo {
+    height: 4em;
+}
+
 #team-rp {
     font-weight: bold;
 }
@@ -161,24 +190,11 @@ th.narrow {
     background-color: var(--bs-table-bg); 
 }
 
-th.delta i {
-    font-size: .75em;
+/* Predictor */
+.predictor-result label {
+    font-weight: bold;
 }
 
-.delta i.bi-triangle-fill {
-    font-size: .4em;
-}
-
-td.delta i.bi-circle-fill {
-    font-size: .3em;
-}
-
-td.delta i.bi-star-fill, 
-td.delta span {
-    font-size: .75em;
-}
-
-td.delta i.down {
-    display: inline-block;
-    transform: rotate(180deg);    
+.predictor-logo {
+    height: 10em;
 }

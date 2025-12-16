@@ -8,7 +8,7 @@
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
-I
+
         <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
         <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap5.min.css" />        
         <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.bootstrap5.min.css" />
@@ -20,7 +20,7 @@ I
         <nav class="navbar navbar-expand-lg sticky-top bg-light">
             <div class="container-xl d-flex flex-row align-items-center justify-content-center">
                 <a class="navbar-brand" href="#">
-                    <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" height="40" class="d-inline-block">
+                    <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" class="d-inline-block">
                     Rankings Algorithm
                     <span class="beta-flag" data-toggle="tooltip" title="This rankings table remains unofficial, is in beta and may have unexpected data. Official rankings are determined by the Rankings Panel and are published quarterly.">BETA</span>
                 </a>
@@ -118,7 +118,7 @@ I
             <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <img id="team-logo" class="me-2" src="" height="70">
+                        <img id="team-logo" class="me-2" src="team-logos/MRDA-Logo-Acronym.png">
                         <div>
                             <h3 class="modal-title" id="team-modal-label"><span id="team-name"></span></h3>
                             <h5 id="team-location"></h5>
@@ -230,23 +230,23 @@ I
                                 <label for="predictor-away">Away Team</label>
                             </div>
                         </div>
-                        <div class="d-flex flex-row align-items-center justify-content-center">
+                        <div class="d-flex flex-row align-items-center justify-content-center predictor-result">
                             <div class="p-2 text-end">
-                                <label for="predictor-home-rp" style="font-weight: bold;">Ranking Points</label>
+                                <label for="predictor-home-rp">Ranking Points</label>
                                 <div id="predictor-home-rp">&nbsp;</div>
                             </div>
                             <div class="p-2">
-                                <img id="predictor-home-logo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
+                                <img id="predictor-home-logo" class="predictor-logo" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2 text-center">
-                                <label for="predictor-ratio" style="font-weight: bold;">Expected Score Ratio</label>
+                                <label for="predictor-ratio">Expected Score Ratio</label>
                                 <div id="predictor-ratio">&nbsp;</div>
                             </div>
                             <div class="p-2">
-                                <img id="predictor-away-logo" height="150" src="team-logos\MRDA-Logo-Acronym.png" >
+                                <img id="predictor-away-logo" class="predictor-logo" src="team-logos\MRDA-Logo-Acronym.png" >
                             </div>
                             <div class="p-2">
-                                <label for="predictor-away-rp" style="font-weight: bold;">Ranking Points</label>
+                                <label for="predictor-away-rp">Ranking Points</label>
                                 <div id="predictor-away-rp">&nbsp;</div>
                             </div>
                         </div>

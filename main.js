@@ -106,7 +106,7 @@ function setupRegion($regionSelect) {
     $regionSelect.on( "change", function() { setRegion($regionSelect) } );
 }
 
-function teamDetailsModal() {
+function setupTeamDetails() {
     let $teamDetailModal = $('#team-modal');
     let $olderGamesBtn = $("#load-older-games");
     let team = null;
@@ -161,7 +161,7 @@ function teamDetailsModal() {
     // Initialize the team game history DataTable. Data will be set on team row click.
     let teamGameTable = new DataTable('#team-games-table', {
         columns: [
-            { width: '1em', className: 'dt-center timeTooltip', name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? `<div data-toggle="tooltip" title="${data.toLocaleTimeString(undefined,{timeStyle: "short"})}">${data.toLocaleDateString(undefined,{weekday: "short"})}</div>` : data }},
+            { width: '1em', className: 'dt-center', name: 'date', data: 'date', render: function (data, type, row) { return type === 'display' ? `<div data-toggle="tooltip" title="${data.toLocaleTimeString(undefined,{timeStyle: "short"})}">${data.toLocaleDateString(undefined,{weekday: "short"})}</div>` : data }},
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getWL(team.teamId) }},
             { width: '1em', className: 'dt-center narrow', render: function (data, type, row) { return row.getAtVs(team.teamId) }},
             //{ width: '5em', className: 'dt-right', render: function (data, type, row) { return row.getWlAtVs(team.teamId) }},
@@ -170,7 +170,7 @@ function teamDetailsModal() {
                 let opponent = game.getOpponentTeam(team.teamId);
                 let teamRanking = opponent.getRanking(game.date);
                 if (teamRanking && teamRanking.rank)
-                    return `<span class="teamRank" data-toggle="tooltip" title="Global rank as of ${teamRanking.date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"})}">${teamRanking.rank}</span> ${opponent.name}`
+                    return `<span class="team-rank" data-toggle="tooltip" title="Global rank as of ${teamRanking.date.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"})}">${teamRanking.rank}</span> ${opponent.name}`
                 return opponent.name; 
             }},
             { width: '1em', className: 'dt-center no-wrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
@@ -179,10 +179,15 @@ function teamDetailsModal() {
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ""; } }
         ],
         data: [],
-        dom: 't',
         paging: false,
         searching: false,
         info: false,
+        layout: {
+            topStart: null,
+            topEnd: null,
+            bottomStart: null,
+            bottomEnd: null
+        },
         rowGroup: {
             dataSrc: ['event'],
             startRender: function (rows, group) {
@@ -224,11 +229,8 @@ function teamDetailsModal() {
             handler: false,
             indicators: false
         },
-        layout: {
-            bottomStart: $('<div class="outsideRankingPeriod">Not in current Ranking Period.</div>')
-        },
         drawCallback: function (settings) {
-            $('.timeTooltip [data-toggle="tooltip"], .teamRank[data-toggle="tooltip"]').tooltip();
+            $('#team-games-table [data-toggle="tooltip"]').tooltip();
         }
     });
 
@@ -248,16 +250,8 @@ function teamDetailsModal() {
         
         $('#team-name').text(team.name);
         $('#team-rp').text(team.rankingPoints);
-
-        if (team.logo)
-            $('#team-logo').attr('src', team.logo).show();
-        else
-            $('#team-logo').hide();
-
-        if (team.location)
-            $('#team-location').text(team.location).show();
-        else
-            $('#team-location').hide();
+        $('#team-logo').attr('src', team.logo);
+        $('#team-location').text(team.location);
 
         let minChartDt = [...team.rankingHistory.keys()].sort((a, b) => a - b)[0];
         let oldestGame = team.gameHistory.filter(game => game.gamePoints[team.teamId]).sort((a,b) => a.date - b.date)[0];
@@ -416,29 +410,6 @@ function displayRankingChart(teams) {
     });
 }
 
-function regionChange() {
-    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
-        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR"))
-        .sort((a, b) => a.rankSort - b.rankSort);
-    
-    let rankingChart = Chart.getChart("rankings-chart");
-    rankingChart.data.datasets = [];
-    teams.forEach((team, index) => {
-        team.chart = index < 5;
-        if (team.chart) {
-            rankingChart.data.datasets.push({
-                teamId: team.teamId,
-                label: team.name,
-                data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
-                showLine: true
-            });
-        }
-    });    
-    rankingChart.update();
-
-    $('#rankings-table').DataTable().clear().rows.add(teams).draw();
-}
-
 function calculateAndDisplayRankings() {
 
     mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
@@ -566,6 +537,29 @@ function calculateAndDisplayRankings() {
             $("#rankings-table .postseasonIneligible").tooltip({title: "Not enough games to be Postseason Eligible."});
         }
     });
+}
+
+function regionChange() {
+    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
+        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == "GUR"))
+        .sort((a, b) => a.rankSort - b.rankSort);
+    
+    let rankingChart = Chart.getChart("rankings-chart");
+    rankingChart.data.datasets = [];
+    teams.forEach((team, index) => {
+        team.chart = index < 5;
+        if (team.chart) {
+            rankingChart.data.datasets.push({
+                teamId: team.teamId,
+                label: team.name,
+                data: Array.from(team.rankingHistory, ([date, ranking]) => ({ x: date, y: ranking.rankingPoints})),
+                showLine: true
+            });
+        }
+    });    
+    rankingChart.update();
+
+    $('#rankings-table').DataTable().clear().rows.add(teams).draw();
 }
 
 function setupApiGames() {
@@ -798,7 +792,7 @@ $(function() {
     $('[data-toggle="tooltip"]').tooltip();
 
     //These are all initially hidden until user input. Setup last.
-    teamDetailsModal();
+    setupTeamDetails();
 
     setupUpcomingGames();
 
