@@ -631,11 +631,11 @@ async function setupUpcomingGames() {
         columns: [
             { data: 'event.startDt', visible: false },
             { data: 'date', visible: false },
-            { data: 'homeTeam.name', width: '30em', className: 'dt-right', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.homeTeam.getRankingPoints(game.date) + "</div>"; } },
-            { data: "homeTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },
+            { data: 'homeTeam.name', width: '30em', className: 'dt-right', render: function(data, type, game) {return `${data}<div class='team-rp'>${game.homeTeam.getRankingPoints(game.date)}</div>`; } },
+            { data: "homeTeam.logo", width: '1em', render: function(data, type, full) {return `<img height='40' class='ms-2' src='${data}'>`; } },
             { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedRatios[game.homeTeamId] > 1 ? `${game.expectedRatios[game.homeTeamId].toFixed(2)} : 1` : `1 : ${game.expectedRatios[game.awayTeamId].toFixed(2)}` } },
-            { data: "awayTeam.logo", width: '1em', render: function(data, type, full) {return "<img height='40' class='ms-2' src='" + data + "'>"; } },                
-            { data: 'awayTeam.name', width: '30em', render: function(data, type, game) {return data + "<div class='teamRp'>" + game.awayTeam.getRankingPoints(game.date) + "</div>"; }  },
+            { data: "awayTeam.logo", width: '1em', render: function(data, type, full) {return `<img height='40' class='ms-2' src='${data}'>`; } },                
+            { data: 'awayTeam.name', width: '30em', render: function(data, type, game) {return `${data}<div class='team-rp'>${game.awayTeam.getRankingPoints(game.date)}</div>`; }  },
         ],
         data: games,
         rowGroup: {
