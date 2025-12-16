@@ -53,6 +53,49 @@ def write_json_to_file(data, file_name, var_name=None, utc_timestamp_var=None):
             f.write(var_name + " = ")
         json.dump( data , f) #, indent=4) pretty print
 
+def get_team_id(api_game, home_or_away):
+    team_id = str(api_game["event"][f"{home_or_away}_league"])
+    if api_game["event"][f"{home_or_away}_league_charter"] == "primary":
+        team_id += "a"
+    elif api_game["event"][f"{home_or_away}_league_charter"] == "secondary":
+        team_id += "b"
+    else:
+        return None
+    return team_id
+
+def get_mrda_team(api_game, team_id, home_or_away):
+    mrda_team = {}
+
+    # Use nice names from team_info if present, otherwise derive from api_game
+    if team_id in team_info and "name" in team_info[team_id]:
+        mrda_team["name"] = team_info[team_id]["name"]
+    else:
+        mrda_team["name"] = api_game["event"][f"{home_or_away}_league_name"]
+        if api_game["event"][f"{home_or_away}_league_charter"] == "primary":
+            mrda_team["name"] += " (A)"
+        elif api_game["event"][f"{home_or_away}_league_charter"] == "secondary":
+            mrda_team["name"] += " (B)"
+        else:
+            return None
+
+    # Get most recent logo from api_game, otherwise use backup defined in team_info
+    if f"{home_or_away}_league_logo" in api_game["event"] and api_game["event"][f"{home_or_away}_league_logo"]:
+        mrda_team["logo"] = api_game["event"][f"{home_or_away}_league_logo"]
+    elif team_id in team_info and "logo" in team_info[team_id]:
+        mrda_team["logo"] = team_info[team_id]["logo"]
+    
+    # Get region from team_info if present, not provided in api_game. Default to Americas
+    if team_id in team_info and "region" in team_info[team_id]:
+        mrda_team["region"] = team_info[team_id]["region"]
+    else:
+        mrda_team["region"] = "AM"
+
+    # Location is defined in team_info, not provided in api_game
+    if team_id in team_info and "location" in team_info[team_id]:
+        mrda_team["location"] = team_info[team_id]["location"]
+
+    return mrda_team
+
 # Get 2024+ games from API
 print("Begin MRDA Central API game data retrieval...")
 game_data = get_api_game_data(date(2024, 1, 1))
@@ -88,6 +131,7 @@ print(f"MRDA Central API game_data saved to {game_data_json_file_path} for futur
 
 # Add 2023 events and games from game_history.py to mrda_events and mrda_games
 for game_day in games:
+    # Derive negative event_id so we don't collide with event_id from API
     event_id = games.index(game_day) - len(games)
     event = {
         "start_dt": datetime.strptime(game_day[0][0], "%Y-%m-%d")
@@ -111,92 +155,111 @@ for game_day in games:
         if mrda_game["date"].date() > event["start_dt"].date() and ("end_dt" not in event or mrda_game["date"] > event["end_dt"]):
             event["end_dt"] = mrda_game["date"]
 
-        if (game[2] == 0 and game[4] == 100) or (game[2] == 100 and game[4] == 0):
+        # Forfeits are hardcoded in game_history.py as 100-0 score
+        if (mrda_game["home_team_score"] == 0 and mrda_game["away_team_score"] == 100) or (mrda_game["home_team_score"] == 100 and mrda_game["away_team_score"] == 0):
             mrda_game["forfeit"] = True
-            mrda_game["forfeit_team_id"] = team_abbrev_id_map[game[1]] if game[2] == 0 and game[4] == 100 else team_abbrev_id_map[game[3]]
+            if mrda_game["home_team_score"] == 0 and mrda_game["away_team_score"] == 100:
+                mrda_game["forfeit_team_id"] = mrda_game["home_team_id"]
+            elif mrda_game["away_team_score"] == 0 and mrda_game["home_team_score"] == 100:
+                mrda_game["forfeit_team_id"] = mrda_game["away_team_id"]
 
         mrda_games.append(mrda_game)
 
 print("Added " + str(len(mrda_games)) + " games from 2023 in game_history.py")
 
 # Validate and add data from API to mrda_events, mrda_teams and mrda_games
-for data in sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")):
+sorted_game_data = sorted(game_data, key=lambda x: datetime.strptime(x["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S"))
+for api_game in sorted_game_data:
     # Required fields
-    if "sanctioning" not in data or data["sanctioning"] is None:
+    if "event" not in api_game or api_game["event"] is None:
+        print(f"event not found at index {sorted_game_data.index(api_game)}")
         continue
-    if "event" not in data or data["event"] is None:
+    if "game_datetime" not in api_game["event"] or api_game["event"]["game_datetime"] is None:
+        print(f"game_datetime not found, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
         continue
-    if "game_datetime" not in data["event"] or data["event"]["game_datetime"] is None:
-        continue
-    if "home_league" not in data["event"] or data["event"]["home_league"] is None:
-        continue
-    if "home_league_charter" not in data["event"] or data["event"]["home_league_charter"] is None:
-        continue
-    if "away_league" not in data["event"] or data["event"]["away_league"] is None:
-        continue
-    if "away_league_charter" not in data["event"] or data["event"]["away_league_charter"] is None:
-        continue
-    if "forfeit" in data["event"] and data["event"]["forfeit"] == 1 and ("forfeit_league" not in data["event"] or data["event"]["forfeit_league"] is None):
+    if "forfeit" in api_game["event"] and api_game["event"]["forfeit"] == 1 and ("forfeit_league" not in api_game["event"] or api_game["event"]["forfeit_league"] is None):
+        print(f"forfeit_league not found where forfeit == 1, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
         continue
 
-    game_dt = datetime.strptime(data["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
+    valid = True
+    for home_or_away in ["home","away"]:
+        if f"{home_or_away}_league" not in api_game["event"] or api_game["event"][f"{home_or_away}_league"] is None:
+            print(f"{home_or_away}_league not found, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
+            valid = False
+        if f"{home_or_away}_league_charter" not in api_game["event"] or api_game["event"][f"{home_or_away}_league_charter"] is None or api_game["event"][f"{home_or_away}_league_charter"] not in ["primary","secondary"]:
+            print(f"{home_or_away}_league_charter is not primary or secondary, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
+            valid = False
+    if not valid:
+        continue
+
+    game_dt = datetime.strptime(api_game["event"]["game_datetime"], "%Y-%m-%d %H:%M:%S")
     
-    # Scores are not required as they're used by the upcoming games predictor, 
-    # but filter out Approved games without scores older than 45 days
-    if "status" in data["event"] and data["event"]["status"] == "3" and game_dt < (datetime.today() - timedelta(days=45)):
-        if "home_league_score" not in data["event"] or data["event"]["home_league_score"] is None:
-            continue
-        if "away_league_score" not in data["event"] or data["event"]["away_league_score"] is None:
-            continue
+    # Scores are not required as they're used by the upcoming games predictor
+    has_score = True
+    for home_or_away in ["home","away"]:
+        if f"{home_or_away}_league_score" not in api_game["event"] or api_game["event"][f"{home_or_away}_league_score"] is None:
+            has_score = False
+
+    # Filter out games without scores older than 45 days
+    if not has_score and game_dt < (datetime.today() - timedelta(days=45)):
+        continue
 
     # Map API data
-    home_team_id = str(data["event"]["home_league"]) + ("a" if data["event"]["home_league_charter"] == "primary" else "b")
-    away_team_id = str(data["event"]["away_league"]) + ("a" if data["event"]["away_league_charter"] == "primary" else "b")
-
-    # Add teams to mrda_teams    
-    if not home_team_id in mrda_teams:
-        mrda_teams[home_team_id] = {
-            "name": team_info[home_team_id]["name"] if home_team_id in team_info and "name" in team_info[home_team_id] else data["event"]["home_league_name"] + (" (A)" if data["event"]["home_league_charter"] == "primary" else " (B)"),
-            "region": team_info[home_team_id]["region"] if home_team_id in team_info and "region" in team_info[home_team_id] else "AM",
-            "logo": data["event"]["home_league_logo"] if "home_league_logo" in data["event"] and data["event"]["home_league_logo"] is not None else team_info[home_team_id]["logo"] if "logo" in team_info[home_team_id] else None,
-            "location": team_info[home_team_id]["location"] if home_team_id in team_info and "location" in team_info[home_team_id] else None
-        }
-    if not away_team_id in mrda_teams:
-        mrda_teams[away_team_id] = {
-            "name": team_info[away_team_id]["name"] if away_team_id in team_info and "name" in team_info[away_team_id] else data["event"]["away_league_name"] + (" (A)" if data["event"]["away_league_charter"] == "primary" else " (B)"),
-            "region": team_info[away_team_id]["region"] if away_team_id in team_info and "region" in team_info[away_team_id] else "AM",
-            "logo": data["event"]["away_league_logo"] if "away_league_logo" in data["event"] and data["event"]["away_league_logo"] is not None else team_info[away_team_id]["logo"] if "logo" in team_info[away_team_id] else None,
-            "location": team_info[away_team_id]["location"] if away_team_id in team_info and "location" in team_info[away_team_id] else None
-        }
-        
     game = {
         "date": game_dt,
-        "home_team_id": home_team_id,
-        "away_team_id": away_team_id,
-        "status": data["event"]["status"]
+        "status": api_game["event"]["status"]
     }
 
-    if "forfeit" in data["event"] and data["event"]["forfeit"] == 1:
+    # Team IDs
+    for home_or_away in ["home","away"]:
+        team_id = get_team_id(api_game, home_or_away)
+        game[f"{home_or_away}_team_id"] = team_id
+        
+        # Add teams to mrda_teams
+        if team_id not in mrda_teams:
+            mrda_teams[team_id] = get_mrda_team(api_game, team_id, home_or_away)
+
+    # Scores
+    if has_score:
+        game["home_team_score"] = api_game["event"]["home_league_score"]
+        game["away_team_score"] = api_game["event"]["away_league_score"]
+
+    # Forfeits
+    if "forfeit" in api_game["event"] and api_game["event"]["forfeit"] == 1:
         game["forfeit"] = True
-        game["forfeit_team_id"] = home_team_id if data["event"]["forfeit_league"] == data["event"]["home_league"] else away_team_id
+        if "forfeit_league" in api_game["event"] and api_game["event"]["forfeit_league"] is not None:
+            if api_game["event"]["forfeit_league"] == api_game["event"]["home_league"]:
+                game["forfeit_team_id"] = game["home_team_id"]
+            elif api_game["event"]["forfeit_league"] == api_game["event"]["away_league"]:
+                game["forfeit_team_id"] = game["away_team_id"]
+            else:
+                print(f"forfeit_league for forfeit did not match home_league or away_league, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
+        else:
+            print(f"forfeit_league not found for forfeit, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
+        # Calculate forfeit_team_id based on score if we don't have it
+        if "forfeit_team_id" not in game:
+            if game["home_team_score"] < game["away_team_score"]:
+                game["forfeit_team_id"] = game["home_team_id"]
+            elif game["home_team_score"] > game["away_team_score"]:
+                game["forfeit_team_id"] = game["away_team_id"]
+            else:
+                print(f"forfeit_league could not be determined for forfeit, sanctioning_events_id: {api_game["event"]["sanctioning_events_id"]}")
 
-    if "home_league_score" in data["event"] and data["event"]["home_league_score"] is not None and "away_league_score" in data["event"] and data["event"]["away_league_score"] is not None:
-        game["home_team_score"] = data["event"]["home_league_score"]
-        game["away_team_score"] = data["event"]["away_league_score"]
-
-    if "sanctioning_id" in data["event"] and data["event"]["sanctioning_id"] is not None:
-        game["event_id"] = data["event"]["sanctioning_id"]
+    # Event
+    if "sanctioning_id" in api_game["event"] and api_game["event"]["sanctioning_id"] is not None:
+        game["event_id"] = api_game["event"]["sanctioning_id"]
 
         # Add event to mrda_events
         if game["event_id"] not in mrda_events:
             event = {
                 "start_dt": game_dt
             }
-            if "event_name" in data["sanctioning"] and data["sanctioning"]["event_name"] is not None:
-                event["name"] = data["sanctioning"]["event_name"]
+            if "sanctioning" in api_game and "event_name" in api_game["sanctioning"] and api_game["sanctioning"]["event_name"] is not None:
+                event["name"] = api_game["sanctioning"]["event_name"]
             mrda_events[game["event_id"]] = event
+        # Set or update end_dt for multi-day events if newer 
         elif game_dt.date() > mrda_events[game["event_id"]]["start_dt"].date() and ("end_dt" not in mrda_events[game["event_id"]] or game_dt > mrda_events[game["event_id"]]["end_dt"]):
-            mrda_events[data["event"]["sanctioning_id"]]["end_dt"] = game_dt
+            mrda_events[api_game["event"]["sanctioning_id"]]["end_dt"] = game_dt
 
     mrda_games.append(game)
 
