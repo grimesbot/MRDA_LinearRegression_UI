@@ -110,7 +110,7 @@ th.narrow {
     vertical-align: text-top;
 }
 
-.teamLocation,
+.team-location,
 .teamRp,
 .teamRank {
     font-size: .8em;
@@ -131,14 +131,16 @@ th.narrow {
 }
 
 /* Team detail styling */
+#team-rp {
+    font-weight: bold;
+}
+
 .text-overflow-ellipsis {
     max-width: 14em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
-
-
 
 #teamGameHistory .dtrg-level-0 th {
     vertical-align: middle;    

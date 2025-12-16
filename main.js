@@ -107,7 +107,7 @@ function setupRegion($regionSelect) {
 }
 
 function teamDetailsModal() {
-    let $teamDetailModal = $('#teamDetailModal');
+    let $teamDetailModal = $('#team-modal');
     let $olderGamesBtn = $("#loadOlderGames");
     let team = null;
     let date = rankingPeriodDeadlineDt;
@@ -237,7 +237,7 @@ function teamDetailsModal() {
         let row = $('#rankings-table').DataTable().row(tr);
         let clickedTeam = row.data();
 
-        if (team && clickedTeam.teamId == team.teamId && rankingPeriodDeadlineDt == date) {
+        if (clickedTeam == team && rankingPeriodDeadlineDt == date) {
             $teamDetailModal.modal('show');
             return; 
         }
@@ -246,18 +246,18 @@ function teamDetailsModal() {
         date = rankingPeriodDeadlineDt;
         minGameDt = rankingPeriodStartDt;
         
-        $('#teamName').text(team.name);
-        $('#teamAverageRankingPoints').text(team.rankingPoints);
+        $('#team-name').text(team.name);
+        $('#team-rp').text(team.rankingPoints);
 
         if (team.logo)
-            $('#teamLogo').attr('src', team.logo).show();
+            $('#team-logo').attr('src', team.logo).show();
         else
-            $('#teamLogo').hide();
+            $('#team-logo').hide();
 
         if (team.location)
-            $('#teamLocation').text(team.location).show();
+            $('#team-location').text(team.location).show();
         else
-            $('#teamLocation').hide();
+            $('#team-location').hide();
 
         let minChartDt = [...team.rankingHistory.keys()].sort((a, b) => a - b)[0];
         let oldestGame = team.gameHistory.filter(game => game.gamePoints[team.teamId]).sort((a,b) => a.date - b.date)[0];
@@ -497,7 +497,7 @@ function calculateAndDisplayRankings() {
                 }
              },
             { data: 'logo', width: '1em', orderable: false, className: 'px-1', render: function (data, type, full) { return data ? "<img height='40' src='" + data + "'>" : ""; } },            
-            { data: 'name', orderable: false, className: 'teamName px-1 text-overflow-ellipsis', 
+            { data: 'name', orderable: false, className: 'px-1 text-overflow-ellipsis', 
                 render: function (data, type, full) {
                     if (['display','export'].includes(type) && full.activeStatus) {
                         let result = data;
@@ -513,7 +513,7 @@ function calculateAndDisplayRankings() {
                 },
                 createdCell: function (td, cellData, rowData, row, col) {
                     if (rowData.location) 
-                        $(td).append("<div class='teamLocation'>" + rowData.location + "</div>");
+                        $(td).append("<div class='team-location'>" + rowData.location + "</div>");
                 }
             },
             { data: 'rankingPoints', width: '1em', className: 'px-1' },
