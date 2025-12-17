@@ -107,15 +107,6 @@ function setupRegion($regionSelect) {
 }
 
 function setupRankingChart(teams) {
-    let rankingChart = Chart.getChart('rankings-chart');
-
-    if (rankingChart != undefined) {
-        rankingChart.options.scales.x.min = rankingPeriodStartDt;
-        rankingChart.options.scales.x.max = rankingPeriodDeadlineDt;
-        rankingChart.update();
-        return;
-    }
-
     let datasets = [];
 
     teams.slice(0, 5).forEach(team => {
@@ -129,7 +120,7 @@ function setupRankingChart(teams) {
         });
     });
 
-    rankingChart = new Chart(document.getElementById('rankings-chart'), {
+    let rankingChart = new Chart(document.getElementById('rankings-chart'), {
         type: 'line',
         data: {
             datasets: datasets
@@ -189,20 +180,7 @@ function setupRankingChart(teams) {
     });
 }
 
-function setupRankings() {
-
-    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
-
-    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
-        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
-        .sort((a, b) => a.rankSort - b.rankSort);
-
-    setupRankingChart(teams);
-
-    if (DataTable.isDataTable('#rankings-table')) {
-        $('#rankings-table').DataTable().clear().rows.add(teams).draw();
-        return;
-    }
+function setupRankingsTable(teams) {
 
     let annotations = document.createElement('div');
     annotations.className = 'annotations';
@@ -235,7 +213,7 @@ function setupRankings() {
                         if (!full.rank)
                             return '';
                         else if (delta > 0) 
-                            return `<i class="bi bi-triangle-fill up text-success"></i> <span class="up text-success">${delta}</span>`;
+                            return `<i class="bi bi-triangle-fill text-success"></i> <span class="text-success">${delta}</span>`;
                         else if (delta < 0)
                             return `<i class="bi bi-triangle-fill down text-danger"></i> <span class="down text-danger">${-delta}</span>`;
                         else if (delta == null)
@@ -318,11 +296,33 @@ function setupRankings() {
     });
 }
 
-function regionChange() {
-    let teams = Object.values(mrdaLinearRegressionSystem.mrdaTeams)
-        .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
-        .sort((a, b) => a.rankSort - b.rankSort);
+function setupRankings() {
+    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
+
+    let teams = mrdaLinearRegressionSystem.getOrderedTeams(region);
+
+    setupRankingChart(teams);
+
+    setupRankingsTable(teams);
+}
+
+function handleRankingPeriodChange() {
+    // Move the chart to new dates
+    let rankingChart = Chart.getChart('rankings-chart');
+    rankingChart.options.scales.x.min = rankingPeriodStartDt;
+    rankingChart.options.scales.x.max = rankingPeriodDeadlineDt;
+    rankingChart.update();
+
+    // Re-rank teams for new dates and update table
+    mrdaLinearRegressionSystem.rankTeams(rankingPeriodDeadlineDt, rankingPeriodStartDt, previousQuarterDt);
+    $('#rankings-table').DataTable().clear().rows.add(mrdaLinearRegressionSystem.getOrderedTeams(region)).draw();
+}
+
+function handleRegionChange() {
+    // Get ordered teams for region
+    let teams = mrdaLinearRegressionSystem.getOrderedTeams(region);
     
+    // Clear the chart and re-add top 5 teams, set all other team.chart = false
     let rankingChart = Chart.getChart('rankings-chart');
     rankingChart.data.datasets = [];
     teams.forEach((team, index) => {
@@ -338,6 +338,7 @@ function regionChange() {
     });    
     rankingChart.update();
 
+    // Update table with region's teams
     $('#rankings-table').DataTable().clear().rows.add(teams).draw();
 }
 
@@ -489,10 +490,12 @@ function setupTeamDetails() {
         $('#team-location').text(team.location);
 
         let minChartDt = [...team.rankingHistory.keys()].sort((a, b) => a - b)[0];
-        let oldestGame = team.gameHistory.filter(game => game.gamePoints[team.teamId]).sort((a,b) => a.date - b.date)[0];
+        let chartGames = team.gameHistory.filter(game => game.gamePoints[team.teamId]);        
+        let oldestGame = chartGames.sort((a,b) => a.date - b.date)[0];
         if (oldestGame && oldestGame.date < minChartDt)
             minChartDt = new Date(minChartDt).setDate(minChartDt.getDate() - 7);
 
+        // Set up Ranking Point data with error bars, only displayed on an interval or for > 5% change
         let rankingHistory = [];
         let errorBarMinFrequency = (date - minChartDt) / 16;
         let lastDtWithErrorBars = null;
@@ -528,8 +531,9 @@ function setupTeamDetails() {
                 label: `RP: ${ranking.rankingPoints} ± ${ranking.relativeStandardError}% (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
             });
         }
-            
-        teamChart.data.datasets[0].data = team.gameHistory.filter(game => game.gamePoints[team.teamId]).map(game => {
+        
+        // Game chart data
+        teamChart.data.datasets[0].data = chartGames.map(game => {
             return { 
                 x: game.date, 
                 y: game.gamePoints[team.teamId],
@@ -541,8 +545,10 @@ function setupTeamDetails() {
         teamChart.options.scales.x.max = rankingPeriodDeadlineDt;
         teamChart.update();
 
+        // Game table data filtered to current ranking period.
         teamGameTable.clear().rows.add(team.gameHistory.filter(game => minGameDt <= game.date && game.date < rankingPeriodDeadlineDt)).draw();
 
+        // Only show "load older games" button if there are games older than the current ranking period.
         if (team.gameHistory.some(game => game.date < minGameDt))
             $olderGamesBtn.show();
         else
@@ -563,7 +569,7 @@ function setupTeamDetails() {
 }
 
 async function setupUpcomingGames() {
-    let games = mrdaLinearRegressionSystem.mrdaGames.filter(game => !(game.homeTeamId in game.scores) || !(game.awayTeamId in game.scores));
+    let gamesWithoutScores = mrdaLinearRegressionSystem.mrdaGames.filter(game => !(game.homeTeamId in game.scores) || !(game.awayTeamId in game.scores));
 
     new DataTable('#upcoming-games-table', {
         columns: [
@@ -575,7 +581,7 @@ async function setupUpcomingGames() {
             { data: 'awayTeam.logo', width: '1em', render: function(data, type, full) {return `<img class="team-logo" class="ms-2" src="${data}">`; } },                
             { data: 'awayTeam.name', width: '30em', render: function(data, type, game) {return `${data}<div class="team-rp">${game.awayTeam.getRankingPoints(game.date)}</div>`; }  },
         ],
-        data: games,
+        data: gamesWithoutScores,
         rowGroup: {
             dataSrc: ['event.getEventTitle()','getGameDay()'],
             emptyDataGroup: null
@@ -783,9 +789,8 @@ $(function() {
     setupRegion($regionSelect);
 
     setupRankings();
-
-    $dateSelect.on('change', setupRankings);
-    $regionSelect.on('change', regionChange);
+    $dateSelect.on('change', handleRankingPeriodChange);
+    $regionSelect.on('change', handleRegionChange);
         
     $('#rankings-generated-dt').text(new Date(rankings_generated_utc).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'long'}));
 
@@ -799,7 +804,8 @@ $(function() {
     setupUpcomingGames();
 
     setupAllGames();
-    $dateSelect.on('change', setupAllGames);
+    // update all games table when ranking period changes to filter games to new ranking period and recalculate virtual games
+    $dateSelect.on('change', setupAllGames); 
 
     setupMeanAbsoluteLogError();
 })

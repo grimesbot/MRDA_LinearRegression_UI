@@ -197,7 +197,7 @@ class MrdaTeam {
         this.name = team.name;
         this.region = team.region;
         this.location = team.location;
-        this.logo = team.logo ?? 'img/skull.png';
+        this.logo = team.logo ?? 'img/blank.png';
         if (this.logo.startsWith('/central/'))
             this.logo = 'https://assets.mrda.org' + team.logo;
         this.games = []
@@ -432,5 +432,11 @@ class MrdaLinearRegressionSystem {
                 }
             }
         });
+    }
+
+    getOrderedTeams(region) {
+        return Object.values(this.mrdaTeams)
+            .filter(team => (team.wins + team.losses) > 0 && (team.region == region || region == 'GUR'))
+            .sort((a, b) => a.rankSort - b.rankSort);
     }
 }

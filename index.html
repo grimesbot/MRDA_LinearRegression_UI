@@ -104,22 +104,22 @@
                         <th data-toggle="tooltip" title="Display team's Ranking Point history in line chart above."><i class="bi bi-graph-up"></i></th>
                     </tr>
                 </thead>
-            </table>
+            </table>      
             <div class="detail-footer">
                 Last refreshed at <span id="rankings-generated-dt"></span>.
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/blob/main/README.md">Documentation</a> 
                 <a href="https://github.com/grimesbot/MRDA_LinearRegression_UI/">Source Code</a>
                 <a href="https://mrda.org/rankings/">Official MRDA Rankings</a>
                 <a href="#" data-bs-toggle="modal" data-bs-target="#error-modal">Error Summary</a>
-                <div>Team logos are the property of their respective owners. All rights remain with the original copyright holders. Default <a href="https://www.flaticon.com/free-icons/skull" title="skull icons">skull icon by Freepik - Flaticon</a></div>
             </div>
+            <div class="detail-footer">Team logos are the property of their respective owners. All rights remain with the original copyright holders.</div>      
         </main>
 
         <div id="team-modal" class="modal fade" tabindex="-1" aria-labelledby="team-modal-label" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <img id="team-logo" class="me-2" src="img/skull.png">
+                        <img id="team-logo" class="me-2" src="img/blank.png">
                         <div>
                             <h3 class="modal-title" id="team-modal-label"><span id="team-name"></span></h3>
                             <h5 id="team-location"></h5>
@@ -217,14 +217,14 @@
                                 <div id="predictor-home-rp">&nbsp;</div>
                             </div>
                             <div class="p-2">
-                                <img id="predictor-home-logo" class="predictor-logo" src="img\skull.png" >
+                                    <img id="predictor-home-logo" class="predictor-logo" src="img\blank.png" >
                             </div>
                             <div class="p-2 text-center">
                                 <label for="predictor-ratio">Expected Score Ratio</label>
                                 <div id="predictor-ratio">&nbsp;</div>
                             </div>
                             <div class="p-2">
-                                <img id="predictor-away-logo" class="predictor-logo" src="img\skull.png" >
+                                <img id="predictor-away-logo" class="predictor-logo" src="img\blank.png" >
                             </div>
                             <div class="p-2">
                                 <label for="predictor-away-rp">Ranking Points</label>
