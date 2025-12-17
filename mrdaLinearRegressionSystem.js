@@ -197,7 +197,7 @@ class MrdaTeam {
         this.name = team.name;
         this.region = team.region;
         this.location = team.location;
-        this.logo = team.logo ?? 'team-logos/MRDA-Logo-Acronym.png';
+        this.logo = team.logo ?? 'img/skull.png';
         if (this.logo.startsWith('/central/'))
             this.logo = 'https://assets.mrda.org' + team.logo;
         this.games = []
