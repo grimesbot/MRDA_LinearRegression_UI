@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width">
         
-        <title>MRDA Rankings Algorithm using Linear Regression</title>
+        <title>MRDA Rankings Algorithm</title>
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.min.css">
@@ -21,7 +21,7 @@
             <div class="container-xl d-flex flex-row align-items-center justify-content-center">
                 <a class="navbar-brand" href="#">
                     MRDA <!-- <img src="https://central.mrda.org/assets/img/logo-full-large.png" alt="MRDA Logo" class="d-inline-block"> -->
-                    Rankings Algorithm
+                    Differentials Algorithm
                     <span class="unofficial-flag" data-toggle="tooltip" data-bs-html="true" title="This is an unofficial tool to calculate relative strengths of MRDA teams based on their sanctioned scores in the last year.<br>Official rankings are determined by the Rankings Panel and are published quarterly.">UNOFFICIAL</span>
                 </a>
                 <div class="me-2 form-floating">
@@ -96,8 +96,8 @@
                         <th></th>
                         <th class="delta" data-toggle="tooltip" title="Change in rank from last quarter."><i class="bi bi-triangle"></i></th>                        
                         <th colspan="2">Team</th>
-                        <th class="no-wrap" data-toggle="tooltip" title="Ranking Points. The ratio between the Ranking Points of two teams indicates the predicted score ratio of a game played by those two teams.">RP <i class="bi bi-question-circle"></i></th>
-                        <th class="no-wrap" data-toggle="tooltip" title="Relative Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">RSE <i class="bi bi-question-circle"></i></th>
+                        <th class="no-wrap" data-toggle="tooltip" title="Ranking Points. The difference between the Ranking Points of two teams indicates the predicted score differential of a game played by those two teams.">RP <i class="bi bi-question-circle"></i></th>
+                        <th class="no-wrap" data-toggle="tooltip" title="Standard Error. Higher error indicates uncertainty, such as inconsistent performance or newer teams who've played fewer games.">SE <i class="bi bi-question-circle"></i></th>
                         <th data-toggle="tooltip" data-bs-html="true" title="Sanctioned Games Played in the Ranking Period for compliance:<br>3+ to be Ranked<br>5+ to be Postseason Eligible">GP</th>
                         <th data-toggle="tooltip" title="Wins">W</th>
                         <th data-toggle="tooltip" title="Losses">L</th>
@@ -145,9 +145,9 @@
                                         <th></th>
                                         <th></th>
                                         <th>Score</th>
-                                        <th>Ratio</th>
-                                        <th data-toggle="tooltip" title="Expected score ratio as of game date">Exp</th>
-                                        <th data-toggle="tooltip" title="Game weight for least weighted squares linear regression algorithm. Weights diminish for games with score ratio beyond 4:1">Wt</th>
+                                        <th data-toggle="tooltip" title="Actual score differential">Diff</th>
+                                        <th data-toggle="tooltip" title="Expected score differential as of game date">Exp</th>
+                                        <th data-toggle="tooltip" title="Game weight for least weighted squares linear regression algorithm. Weights diminish for games with score differential beyond 200">Wt</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -177,7 +177,7 @@
                                         <th></th>
                                         <th class="dt-right">Home Team<div class="team-rp">Ranking Points</div></th>
                                         <th></th>
-                                        <th class="dt-center">Predicted Ratio</th>
+                                        <th class="dt-center">Predicted Differential</th>
                                         <th></th>
                                         <th>Away Team<div class="team-rp">Ranking Points</div></th>
                                     </tr>
@@ -193,7 +193,7 @@
             <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="predictor-modal-label">Expected Score Ratio Calculator</h1>
+                        <h1 class="modal-title fs-5" id="predictor-modal-label">Expected Score Differential Calculator</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -220,8 +220,8 @@
                                     <img id="predictor-home-logo" class="predictor-logo" src="img\blank.png" >
                             </div>
                             <div class="p-2 text-center">
-                                <label for="predictor-ratio">Expected Score Ratio</label>
-                                <div id="predictor-ratio">&nbsp;</div>
+                                <label for="predictor-diff">Expected Score Differential</label>
+                                <div id="predictor-diff">&nbsp;</div>
                             </div>
                             <div class="p-2">
                                 <img id="predictor-away-logo" class="predictor-logo" src="img\blank.png" >
@@ -260,7 +260,7 @@
             <div class="modal-dialog modal-xl modal-fullscreen-xl-down">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="error-modal-label">Mean Absolute Log Error</h1>
+                        <h1 class="modal-title fs-5" id="error-modal-label">Error in predicted vs. actual scores</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -271,7 +271,7 @@
                     </div>
                 </div>
             </div>
-        </div>      
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

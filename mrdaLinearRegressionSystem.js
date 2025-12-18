@@ -1,11 +1,5 @@
 const REGIONS = ['EUR', 'AA', 'AM'];
-const RATIO_CAP = 4;
-
-function ratioCapped(homeScore,awayScore) {
-    homeScore = Math.max(homeScore, 0.1);
-    awayScore = Math.max(awayScore, 0.1);       
-    return Math.max(Math.min(homeScore/awayScore,RATIO_CAP),1/RATIO_CAP);
-}
+const DIFFERENTIAL_CAP = 150;
 
 class MrdaGame {
     constructor(game, mrdaTeams, mrdaEvents, virtualGame = false) {
@@ -22,8 +16,8 @@ class MrdaGame {
         this.eventId = game.event_id;
         this.status = game.status;
         this.weight = game.weight;
-        this.actualRatios = {};
-        this.expectedRatios = {};
+        this.actualDifferentials = {};
+        this.expectedDifferentials = {};
         this.gamePoints = {};
         this.absLogError = null;
 
@@ -43,8 +37,8 @@ class MrdaGame {
         let homeRankingPoints = this.homeTeam.getRankingPoints(this.date);
         let awayRankingPoints = this.awayTeam.getRankingPoints(this.date);
         if (homeRankingPoints && awayRankingPoints) {
-            this.expectedRatios[this.homeTeamId] = homeRankingPoints/awayRankingPoints;
-            this.expectedRatios[this.awayTeamId] = awayRankingPoints/homeRankingPoints;
+            this.expectedDifferentials[this.homeTeamId] = homeRankingPoints - awayRankingPoints;
+            this.expectedDifferentials[this.awayTeamId] = awayRankingPoints - homeRankingPoints;
         }
         
         // Done here if we don't have scores (upcoming games)
@@ -52,23 +46,32 @@ class MrdaGame {
             return;
 
         if (!this.forfeit) {
-            this.actualRatios[this.homeTeamId] = this.scores[this.homeTeamId]/this.scores[this.awayTeamId];
-            this.actualRatios[this.awayTeamId] = this.scores[this.awayTeamId]/this.scores[this.homeTeamId];
+            this.actualDifferentials[this.homeTeamId] = this.scores[this.homeTeamId] - this.scores[this.awayTeamId];
+            this.actualDifferentials[this.awayTeamId] = this.scores[this.awayTeamId] - this.scores[this.homeTeamId];
             if (homeRankingPoints && awayRankingPoints) {
-                this.gamePoints[this.homeTeamId] = homeRankingPoints * ratioCapped(this.scores[this.homeTeamId],this.scores[this.awayTeamId])/ratioCapped(homeRankingPoints,awayRankingPoints);
-                this.gamePoints[this.awayTeamId] = awayRankingPoints * ratioCapped(this.scores[this.awayTeamId],this.scores[this.homeTeamId])/ratioCapped(awayRankingPoints,homeRankingPoints);
-                this.absLogError = Math.abs(Math.log(this.expectedRatios[this.homeTeamId]/this.actualRatios[this.homeTeamId]));
-            } else if ((homeRankingPoints || awayRankingPoints) && this.actualRatios[this.homeTeamId] < RATIO_CAP && this.actualRatios[this.awayTeamId] < RATIO_CAP) {
+                this.gamePoints[this.homeTeamId] = homeRankingPoints + this.actualDifferentials[this.homeTeamId] - this.expectedDifferentials[this.homeTeamId];
+                this.gamePoints[this.awayTeamId] = awayRankingPoints + this.actualDifferentials[this.awayTeamId] - this.expectedDifferentials[this.awayTeamId];
+                this.calculateAbsLogError();
+            } else if ((homeRankingPoints || awayRankingPoints) && Math.abs(this.scores[this.homeTeamId] - this.scores[this.awayTeamId]) < DIFFERENTIAL_CAP) {
                 // Calculate game points for new team as seeding games for visualization
                 let newTeamId = homeRankingPoints ? this.awayTeamId : this.homeTeamId;
                 let establishedTeamId = homeRankingPoints ? this.homeTeamId : this.awayTeamId;
                 let establishedTeamRp = homeRankingPoints ? homeRankingPoints : awayRankingPoints;
-                this.gamePoints[newTeamId] = establishedTeamRp * ratioCapped(this.scores[newTeamId],this.scores[establishedTeamId]);
+                this.gamePoints[newTeamId] = establishedTeamRp + this.scores[newTeamId] - this.scores[establishedTeamId];
             }
         }
 
         this.homeTeam.gameHistory.push(this);
         this.awayTeam.gameHistory.push(this);
+    }
+
+    calculateAbsLogError() {
+        let avgScore = (this.scores[this.homeTeamId] + this.scores[this.awayTeamId])/2;
+        let homePredictedScore = avgScore + this.expectedDifferentials[this.homeTeamId]/2;
+        let awayPredictedScore = avgScore + this.expectedDifferentials[this.awayTeamId]/2;
+        let homePredictedRatio = homePredictedScore/awayPredictedScore;
+        let homeActualRatio = this.scores[this.homeTeamId]/this.scores[this.awayTeamId]
+        this.absLogError = Math.abs(Math.log(homePredictedRatio/homeActualRatio));
     }
 
     getOpponentTeamId(teamId) {
@@ -179,7 +182,6 @@ class MrdaTeamRanking {
         this.teamId = teamId;
         this.rankingPoints = teamRanking.rp ?? null;
         this.standardError = teamRanking.se ?? null;        
-        this.relativeStandardError = teamRanking.rse ?? null;
         this.gameCount = teamRanking.gc ?? 0;
         this.activeStatus = teamRanking.as == 1;
         this.postseasonEligible = teamRanking.pe == 1;
@@ -209,7 +211,7 @@ class MrdaTeam {
         this.losses = 0;
         this.forfeits = 0;
         this.rankingPoints = 0;
-        this.relStdErr = 0;
+        this.standardError = 0;
         this.rank = null;
         this.regionRank = null;        
         this.rankSort = null;
@@ -266,7 +268,7 @@ class MrdaTeam {
     getRankingPointsWithStandardError(date, addWeek=false, seedDate = null) {
         let ranking = this.getRanking(date, addWeek, seedDate);
         if (ranking)
-            return `${ranking.rankingPoints} ±${ranking.relativeStandardError}%` ;
+            return `${ranking.rankingPoints} ±${ranking.standardError}` ;
         else
             return null;
     }
@@ -345,7 +347,7 @@ class MrdaLinearRegressionSystem {
             if (teamId in ranking) {
                 let teamRanking = ranking[team.teamId];
                 team.rankingPoints = teamRanking.rankingPoints ? teamRanking.rankingPoints.toFixed(2) : null;
-                team.relStdErr = teamRanking.relativeStandardError ? teamRanking.relativeStandardError.toFixed(2) : null;
+                team.standardError = teamRanking.standardError ? teamRanking.standardError.toFixed(2) : null;
                 team.activeStatusGameCount = teamRanking.gameCount;                
                 team.activeStatus = teamRanking.activeStatus;
                 team.postseasonEligible = teamRanking.postseasonEligible;
@@ -358,7 +360,7 @@ class MrdaLinearRegressionSystem {
                 team.forfeits = teamRanking.forfeits;
             } else {
                 team.rankingPoints = null;
-                team.relStdErr = null;
+                team.standardError = null;
                 team.activeStatusGameCount = 0;                
                 team.activeStatus = false;
                 team.postseasonEligible = false;

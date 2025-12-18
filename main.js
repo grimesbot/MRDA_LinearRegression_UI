@@ -245,7 +245,7 @@ function setupRankingsTable(teams) {
                 }
             },
             { data: 'rankingPoints', width: '1em', className: 'px-1' },
-            { data: 'relStdErr', width: '1em', className: 'relStdErr px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}%` : data; }},
+            { data: 'standardError', width: '1em', className: 'px-1 dt-left', render: function (data, type, full) { return type === 'display' ? `±${data}` : data; }},
             { data: 'activeStatusGameCount', width: '1em', className: 'px-1', render: function (data, type, full) { return type === 'display' && !full.postseasonEligible ? `${data}<span class="postseason-ineligible">*</span>` : data; } },
             { data: 'wins', width: '1em', orderable: false, className: 'px-1 dt-center'},
             { data: 'losses', width: '1.6em', orderable: false, className: 'px-1 dt-left'},
@@ -354,7 +354,7 @@ function setupTeamDetails() {
                 data: {
                     datasets: [{
                         type: 'scatter',
-                        label: 'Game Points (2023 Algorithm)',
+                        label: 'Games',
                         data: [],
                         pointRadius: 5,
                     }, {
@@ -410,8 +410,8 @@ function setupTeamDetails() {
                 return opponent.name; 
             }},
             { width: '1em', className: 'dt-center no-wrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.actualRatios ? row.actualRatios[team.teamId].toFixed(2) : '' } },            
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedRatios ? row.expectedRatios[team.teamId].toFixed(2) : '' } },
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.actualDifferentials ? row.actualDifferentials[team.teamId].toFixed(2) : '' } },            
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedDifferentials ? row.expectedDifferentials[team.teamId].toFixed(2) : '' } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ''; } }
         ],
         data: [],
@@ -508,8 +508,10 @@ function setupTeamDetails() {
             else {
                 let lastRanking = teamRankingHistoryArray[index - 1];
                 let nextRanking = teamRankingHistoryArray[index + 1];
-                if (Math.abs(lastRanking[1].relativeStandardError - ranking.relativeStandardError) > 5
-                    || Math.abs(nextRanking[1].relativeStandardError - ranking.relativeStandardError) > 5)
+                if (lastRanking[1].standardError/ranking.standardError > 1.1
+                    || lastRanking[1].standardError/ranking.standardError < .9
+                    || nextRanking[1].standardError/ranking.standardError > 1.1
+                    || nextRanking[1].standardError/ranking.standardError < .9)
                     chartErrs = true;
             }
 
@@ -528,7 +530,7 @@ function setupTeamDetails() {
                 yMin: chartErrs ? errMin : null,
                 yMax: chartErrs ? errMax : null,
                 title: dt.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}),
-                label: `RP: ${ranking.rankingPoints} ± ${ranking.relativeStandardError}% (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
+                label: `RP: ${ranking.rankingPoints} ± ${ranking.standardError} (${errMin.toFixed(2)} .. ${errMax.toFixed(2)})`
             });
         }
         
@@ -577,7 +579,7 @@ async function setupUpcomingGames() {
             { data: 'date', visible: false },
             { data: 'homeTeam.name', width: '30em', className: 'dt-right', render: function(data, type, game) {return `${data}<div class="team-rp">${game.homeTeam.getRankingPoints(game.date)}</div>`; } },
             { data: 'homeTeam.logo', width: '1em', render: function(data, type, full) {return `<img class="team-logo" class="ms-2" src="${data}">`; } },
-            { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedRatios[game.homeTeamId] > 1 ? `${game.expectedRatios[game.homeTeamId].toFixed(2)} : 1` : `1 : ${game.expectedRatios[game.awayTeamId].toFixed(2)}` } },
+            { width: '1em', className: 'dt-center',  render: function(data, type, game) { return game.expectedDifferentials[game.homeTeamId].toFixed(2); } },
             { data: 'awayTeam.logo', width: '1em', render: function(data, type, full) {return `<img class="team-logo" class="ms-2" src="${data}">`; } },                
             { data: 'awayTeam.name', width: '30em', render: function(data, type, game) {return `${data}<div class="team-rp">${game.awayTeam.getRankingPoints(game.date)}</div>`; }  },
         ],
@@ -609,7 +611,7 @@ function predictGame() {
         let homeRanking = ranking[homeTeam.teamId];
         if (homeRanking && homeRanking.rankingPoints) {
             homeRp = homeRanking.rankingPoints;
-            $('#predictor-home-rp').text(`${homeRp} ±${homeRanking.relativeStandardError}%`);
+            $('#predictor-home-rp').text(`${homeRp} ±${homeRanking.standardError}`);
         } else
             $('#predictor-home-rp').html('&nbsp;');
     }
@@ -619,18 +621,15 @@ function predictGame() {
         let awayRanking = ranking[awayTeam.teamId];
         if (awayRanking && awayRanking.rankingPoints) {
             awayRp = awayRanking.rankingPoints;
-            $('#predictor-away-rp').text(`${awayRp} ±${awayRanking.relativeStandardError}%`);
+            $('#predictor-away-rp').text(`${awayRp} ±${awayRanking.standardError}`);
         } else
             $('#predictor-away-rp').html('&nbsp;');
     }
 
     if (homeRp && awayRp) {
-        if (homeRp > awayRp)
-            $('#predictor-ratio').text(`${(homeRp/awayRp).toFixed(2)} : 1`);
-        else
-            $('#predictor-ratio').text(`1 : ${(awayRp/homeRp).toFixed(2)}`);
+        $('#predictor-diff').text((homeRp - awayRp).toFixed(2));
     } else
-        $('#predictor-ratio').html('&nbsp;');
+        $('#predictor-diff').html('&nbsp;');
 }
 
 function setupPredictor() {
@@ -648,7 +647,7 @@ function setupPredictor() {
 }
 
 function setupAllGames() {
-    // Filter to games within ranking period
+    // Filter to games within ranking period with scores
     let games = mrdaLinearRegressionSystem.mrdaGames
         .filter(game => rankingPeriodStartDt <= game.date && game.date < rankingPeriodDeadlineDt
             && game.homeTeamId in game.scores && game.awayTeamId in game.scores);
@@ -703,7 +702,7 @@ function setupAllGames() {
         });
 }
 
-function setupMeanAbsoluteLogError() {
+function setupErrorSummary() {
     let tableData = [];
 
     let quarterOpts = $('#date option').filter((i,e) => $(e).text().trim().startsWith('Q'));
@@ -752,11 +751,18 @@ function setupMeanAbsoluteLogError() {
     for (const data of tableData) {
         let games = predictedGames.filter(game => (data.minDt == null || data.minDt <= game.date) && (data.maxDt == null || game.date < data.maxDt));
         data.gameCount = games.length;
-        if (data.gameCount > 0) {
+        if (games.length > 0) {
+            let errSum = 0;
             let absLogErrSum = 0;
-            games.forEach(game => absLogErrSum += game.absLogError);
+            for (const game of games) {
+                let error = Math.abs(game.scores[game.homeTeamId] - game.scores[game.awayTeamId] - game.expectedDifferentials[game.homeTeamId]);
+                errSum += error;
+                absLogErrSum += game.absLogError;
+            }
+            data.averageError = (errSum / games.length).toFixed(2);
             data.meal = Math.exp(absLogErrSum/data.gameCount) - 1;
         } else {
+            data.averageError = null;
             data.meal = null;
         }
     }
@@ -767,7 +773,8 @@ function setupMeanAbsoluteLogError() {
             { title: 'Start Date', data: 'minDt', render: DataTable.render.date()},
             { title: 'End Date', data: 'maxDt', render: DataTable.render.date()},            
             { title: 'Game Count', data: 'gameCount'},
-            { title: 'Error %', data: 'meal', render: function(data, type) {return data ? `${(data * 100).toFixed(2)}%` : ''; }}
+            { title: 'Average Error', data: 'averageError' },            
+            { title: 'Mean Absolute Log Error', data: 'meal', render: function(data, type) {return data ? `${(data * 100).toFixed(2)}%` : ''; }}
         ],
         data: tableData,
         dom: 't',
@@ -807,5 +814,5 @@ $(function() {
     // update all games table when ranking period changes to filter games to new ranking period and recalculate virtual games
     $dateSelect.on('change', setupAllGames); 
 
-    setupMeanAbsoluteLogError();
+    setupErrorSummary();
 })

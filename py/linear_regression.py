@@ -8,8 +8,8 @@ from team_info import team_info
 from mrda_data import mrda_teams, mrda_events, mrda_games, github_actions_run, write_json_to_file
 
 # Constants
-RANKING_SCALE = 100 # add scale since we are not using seeds here
-RATIO_CAP = 4
+RANKING_POINT_FLOOR = 1
+DIFFERENTIAL_CAP = 150
 POSTSEASON_EVENT_NAMES = ["Western Hemisphere Cup", "Qualifiers", "Mens Roller Derby Association Championships"]
 START_DATE = date(2023,10,25) # Start calculations from first Wednesday after WHC 2023
 
@@ -22,9 +22,11 @@ last_calc_compliance_games = []
 last_calc_seeding = {}
 scored_games = [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game] # Filter out games without scores (upcoming games)
 
-
+rp_min = 0
 # Methods
 def linear_regression(games, seeding_team_rankings=None):
+    global rp_min
+
     result = {}
 
     if len(games) == 0:
@@ -42,13 +44,8 @@ def linear_regression(games, seeding_team_rankings=None):
     W = []
 
     for game in games:
-        # Because ln(score_ratio) is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
-        # A blowout game like this will have a very low weight anyway.
-        home_score = max(game["home_team_score"],0.1)
-        away_score = max(game["away_team_score"],0.1)
-
-        # Add log of score ratio as observation 
-        Y.append(math.log(home_score/away_score))
+        # Add score differential as observation 
+        Y.append(game["home_team_score"] - game["away_team_score"])
         
         # Build x column of regressors (teams) and whether they played in the game
         x_col = []
@@ -63,8 +60,8 @@ def linear_regression(games, seeding_team_rankings=None):
 
         # Calculate weight based on score differential if hasn't already been set
         if "weight" not in game:
-            score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
-            game["weight"] = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
+            score_differential = abs(game["home_team_score"] - game["away_team_score"])
+            game["weight"] = 800*score_differential**(-4/3) if score_differential > DIFFERENTIAL_CAP else 1
 
         # Set game weight
         W.append(game["weight"])
@@ -76,9 +73,9 @@ def linear_regression(games, seeding_team_rankings=None):
             # Existing team if in seeding rankings
             if team_id in seeding_team_rankings:
 
-                # Add observation as score log ratio
-                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team_id]["rp"]/1.00))
+                # Add team's seeding RP as virtual game score differential.
+                # All existing teams play a virtual team whose RP is 0                       
+                Y.append(seeding_team_rankings[team_id]["rp"])
 
                 # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
                 x_col = []
@@ -100,17 +97,14 @@ def linear_regression(games, seeding_team_rankings=None):
     #print(wls_stderrs)
 
     for i, team_id in enumerate(team_ids):
-        # Convert log results back to normal scale and multiply by 100 to get normal-looking scaled Ranking Points
-        ranking_points = math.exp(wls_result[i])
-        # Convert standard error
-        standard_error = (math.exp(wls_stderrs[i]) - 1) * ranking_points
-        # Calculate relative standard error %
-        relative_standard_error = standard_error/ranking_points * 100
+        ranking_points = wls_result[i]
+        standard_error = wls_stderrs[i]
         result[team_id] = {
             "rp": ranking_points,
-            "se": standard_error,
-            "rse": relative_standard_error
+            "se": standard_error
         }
+        if ranking_points < rp_min:
+            rp_min = ranking_points
 
     #print(result)
 
@@ -177,8 +171,6 @@ def rank_teams(team_ratings, games, compliance_games):
             result[team_id]["rp"] = team_ratings[team_id]["rp"]
         if "se" in team_ratings[team_id]:
             result[team_id]["se"] = team_ratings[team_id]["se"]
-        if "rse" in team_ratings[team_id]:
-            result[team_id]["rse"] = team_ratings[team_id]["rse"]
 
     # Rank teams
     rank = 1
@@ -281,7 +273,7 @@ def get_rankings(date):
         print_result = result if result is not None else get_ranking_history(date)
         print("Rankings for " + date.strftime("%Y-%m-%d"))
         for item in sorted(print_result.items(), key=lambda item: (item[1]["r"] if "r" in item[1] else len(print_result), - item[1]["rp"] if "rp" in item[1] else 0)):
-            print(f"{item[1]["r"] if "r" in item[1] else "NR"}\t{str(round(item[1]["rp"] * RANKING_SCALE, 2)) if "rp" in item[1] else "No RP"}\t{mrda_teams[item[0]]["name"]}")
+            print(f"{item[1]["r"] if "r" in item[1] else "NR"}\t{str(round(item[1]["rp"] - rp_min + RANKING_POINT_FLOOR, 2)) if "rp" in item[1] else "No RP"}\t{mrda_teams[item[0]]["name"]}")
         print("")
         
     return result
@@ -294,41 +286,45 @@ def summary_to_clipboard():
     for game in [game for game in scored_games if "forfeit" not in game or not game["forfeit"]]:
         ranking = get_ranking_history(game["date"].date())
         if ranking is not None and game["home_team_id"] in ranking and game["away_team_id"] in ranking: 
-            predicted_ratio = ranking[game["home_team_id"]]["rp"]/ranking[game["away_team_id"]]["rp"]
-            actual_ratio = game["home_team_score"]/game["away_team_score"]
-            error_sum += abs(math.log(predicted_ratio/actual_ratio))
+            predicted_diff = ranking[game["home_team_id"]]["rp"] - ranking[game["away_team_id"]]["rp"]
+            actual_diff = game["home_team_score"] - game["away_team_score"]
+            error_sum += abs(predicted_diff - actual_diff)
             game_count += 1
 
-    table_str = f"Mean Absolute Log Error: {str(round((math.exp(error_sum/game_count) - 1) * 100,2))}%\n\n"
+    table_str = f"Average Error: {error_sum/game_count}\n\n"
 
     # Hypothetical game analysis
     home_id = "17404a" #DRH
     away_id = "13122a" #Kent
     game_dt = datetime(2025, 12, 6) #No other games on this week in history, isolated results
     
+    #home_id = "17916a" #Orcet
+    #away_id = "2719a" #Race City
+    #game_dt = datetime(2025, 12, 6)
+         
     #home_id = "2699a" #Concussion 
     #away_id = Kent #"2735a" #Toronto 
     #game_dt = datetime(2026, 2, 14) #Rainy City Rumble
 
     current_ranking = get_ranking_history(game_dt.date())
-    home_rp = current_ranking[home_id]["rp"] * RANKING_SCALE
-    away_rp = current_ranking[away_id]["rp"] * RANKING_SCALE
-    table_str += f"Hypothetical game between {mrda_teams[home_id]["name"]} vs. {mrda_teams[away_id]["name"]} on {'{d.year}-{d.month}-{d.day}'.format(d=game_dt)}. Expected score ratio: {str(round(home_rp/away_rp,2))}\n\n"
-    table_str += f"Ratio\t{mrda_teams[home_id]["name"]} RP Δ\t{mrda_teams[away_id]["name"]} RP Δ\tWeight\n"
+    home_rp = current_ranking[home_id]["rp"]
+    away_rp = current_ranking[away_id]["rp"]
+    table_str += f"Hypothetical game between {mrda_teams[home_id]["name"]} vs. {mrda_teams[away_id]["name"]} on {'{d.year}-{d.month}-{d.day}'.format(d=game_dt)}. Expected score differential: {str(round(home_rp-away_rp,2))}\n\n"
+    table_str += f"Diff\t{mrda_teams[home_id]["name"]} RP Δ\t{mrda_teams[away_id]["name"]} RP Δ\tWeight\n"
 
-    for score_ratio in range(2, 31):
+    for score_differential in range(25, 801, 25):
         hypothetical_game = {
                 "date": game_dt,
                 "home_team_id": home_id, 
-                "home_team_score": score_ratio,
+                "home_team_score": score_differential,
                 "away_team_id": away_id,
-                "away_team_score": 1
+                "away_team_score": 0
             }
         scored_games.append(hypothetical_game)
         new_ranking = get_rankings((game_dt + timedelta(weeks=1)).date())
-        new_home_rp = new_ranking[home_id]["rp"] * RANKING_SCALE
-        new_away_rp = new_ranking[away_id]["rp"] * RANKING_SCALE
-        table_str += f"{score_ratio}\t{str(round(new_home_rp - home_rp,2))}\t{str(round(new_away_rp - away_rp,2))}\t{hypothetical_game["weight"]}\n"
+        new_home_rp = new_ranking[home_id]["rp"]
+        new_away_rp = new_ranking[away_id]["rp"]
+        table_str += f"{score_differential}\t{str(round(new_home_rp - home_rp,2))}\t{str(round(new_away_rp - away_rp,2))}\t{hypothetical_game["weight"]}\n"
         scored_games.remove(hypothetical_game)
 
     # Copy to clipboard using tkinter
@@ -375,9 +371,9 @@ for dt in rankings_history.keys():
     for team in rankings_history[dt].keys():
         formatted_rankings_history[dt_key][team] = {}
         for key in rankings_history[dt][team]:
-            if key in ["rp","se"]:
-                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] * RANKING_SCALE, 2)
-            elif key == "rse":
+            if key == "rp":
+                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] - rp_min + RANKING_POINT_FLOOR, 2)
+            elif key == "se":
                 formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
             elif key in ["as","pe"]:
                 formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
