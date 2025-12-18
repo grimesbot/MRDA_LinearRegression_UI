@@ -7,7 +7,7 @@ from team_info import team_info
 from game_history import games, team_abbrev_id_map
 
 # Constants
-DATA_DIR = os.path.join("web", "data")
+DATA_DIR = "data"
 
 # Global variables
 github_actions_run = 'GITHUB_ACTIONS' in os.environ and os.environ['GITHUB_ACTIONS'] == 'true'
