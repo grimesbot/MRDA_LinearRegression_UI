@@ -596,7 +596,58 @@ async function setupUpcomingGames() {
     });
 }
 
-function predictGame() {
+async function populatePredictorChart(date, homeTeam, awayTeam, predictorChart) {
+    date = new Date(date);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + ((3 - date.getDay() + 7) % 7)); // Set to next Wednesday
+    let seedDate = mrdaLinearRegressionSystem.getSeedDate(date);
+
+    let data = {th: homeTeam.teamId, ta: awayTeam.teamId};
+
+    data.games = mrdaLinearRegressionSystem.mrdaGames
+    .filter(game => seedDate <= game.date && game.date < date
+        && !game.forfeit && game.homeTeamId in game.scores && game.awayTeamId in game.scores)
+        .map(game => ({th: game.homeTeamId, ta: game.awayTeamId, sh: game.scores[game.homeTeamId], sa:game.scores[game.awayTeamId]}));
+
+    data.seeding = Object.fromEntries(
+        Object.entries(mrdaLinearRegressionSystem.getRankingHistory(seedDate))
+            .map(([teamId, teamRanking]) => [teamId, teamRanking.rankingPoints])
+    );
+    
+    try {
+        let response = await fetch('http://grimesbot.pythonanywhere.com/diff-predict-game', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Request failed: ${response.status}`);
+        }
+        
+        let results = await response.json();
+
+        predictorChart.data.datasets.push({
+            label: homeTeam.name,
+            data: results.map(result => ({ x: result['d'], y: result['dh']})),
+        });
+        predictorChart.data.datasets.push({
+            label: awayTeam.name,
+            data: results.map(result => ({ x: result['d'], y: result['da']})),
+        });
+        predictorChart.update();
+    } catch (err) {
+        console.error('Request failed:', err);
+  }
+}
+
+
+function predictGame(predictorChart) {
+    predictorChart.data.datasets = [];
+    predictorChart.update();
+
     let date = $('#predictor-date')[0].valueAsDate;
     let ranking = mrdaLinearRegressionSystem.getRankingHistory(date);
 
@@ -626,8 +677,10 @@ function predictGame() {
             $('#predictor-away-rp').html('&nbsp;');
     }
 
-    if (homeRp && awayRp) {
-        $('#predictor-diff').text((homeRp - awayRp).toFixed(2));
+    if (homeRp && awayRp && homeTeam != awayTeam) {
+        let diff = homeRp - awayRp;
+        $('#predictor-diff').text(`${diff > 0 ? "+" : ""}${diff.toFixed(2)}`);
+        populatePredictorChart(date, homeTeam, awayTeam, predictorChart);
     } else
         $('#predictor-diff').html('&nbsp;');
 }
@@ -642,8 +695,72 @@ function setupPredictor() {
         $teamSelects.append($('<option />').val(team.teamId).text(team.name));
     });
 
-    $teamSelects.change(predictGame);
-    $date.change(predictGame);
+    let predictorChart = new Chart(document.getElementById('predictor-chart'), {
+        type: 'line',
+        data: {
+            datasets: []
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: -500,
+                    max: 500,
+                    title: {
+                        display: true,
+                        text: 'Potential Score Differential (Home - Away)',
+                    },
+                    ticks: {
+                        callback: function(value, index, ticks) {
+                            return value > 0 ? `+${value}` : value;
+                        }
+                    }
+                },
+                y: {
+                    suggestedMin: -1,
+                    suggestedMax: 1,
+                    title: {
+                        display: true,
+                        text: 'Estimated Change in Ranking Points',
+                    },
+                    ticks: {
+                        callback: function(value, index, ticks) {
+                            return value > 0 ? `+${value}` : value;
+                        }
+                    },
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'nearest',
+                axis: 'x'
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `Potential Score Differential: ${context[0].raw.x > 0 ? "+" : ""}${context[0].label}`;
+                        },
+                        label: function(context) {
+                            return `${context.dataset.label}: ` + (context.raw.y > 0 ? `+${context.raw.y}` : context.raw.y);
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Estimated Change in Ranking Points vs. Potential Score Differentials*',
+                },
+                colors: {
+                    forceOverride: true
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        },
+    });
+
+    $teamSelects.change(function() { predictGame(predictorChart); });
+    $date.change(function() { predictGame(predictorChart); });
 }
 
 function setupAllGames() {
