@@ -231,7 +231,13 @@
                                 <div id="predictor-away-rp">&nbsp;</div>
                             </div>
                         </div>
-                        <div id="predictor-chart-container">
+                        <div id="predictor-chart-container" class="position-relative">
+                            <div class="loading-overlay">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="unavailable"><i class="bi bi-exclamation-triangle"></i> Chart unavailable, 24-hour usage limit exceeded. Try again tomorrow.</div>
+                            </div>
                             <canvas id="predictor-chart"></canvas>
                         </div>
                         <div class="annotations">
