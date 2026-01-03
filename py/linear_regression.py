@@ -4,8 +4,8 @@ import time
 from datetime import datetime, date, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
-from team_info import team_info
 from mrda_data import mrda_teams, mrda_events, mrda_games, github_actions_run, write_json_to_file
+from team_ranking import TeamRanking
 
 # Constants
 RANKING_SCALE = 100 # add scale since we are not using seeds here
@@ -20,8 +20,6 @@ last_games = []
 last_calc_games = []
 last_calc_compliance_games = []
 last_calc_seeding = {}
-scored_games = [game for game in mrda_games if "home_team_score" in game and "away_team_score" in game] # Filter out games without scores (upcoming games)
-
 
 # Methods
 def linear_regression(games, seeding_team_rankings=None):
@@ -32,10 +30,10 @@ def linear_regression(games, seeding_team_rankings=None):
 
     team_ids = []
     for game in games:
-        if not game["home_team_id"] in team_ids:
-            team_ids.append(game["home_team_id"])
-        if not game["away_team_id"] in team_ids:
-            team_ids.append(game["away_team_id"])
+        if not game.home_team in team_ids:
+            team_ids.append(game.home_team)
+        if not game.away_team in team_ids:
+            team_ids.append(game.away_team)
 
     Y = []
     X = []
@@ -44,8 +42,8 @@ def linear_regression(games, seeding_team_rankings=None):
     for game in games:
         # Because ln(score_ratio) is undefined if either team's score is 0, we treat a score of 0 as 0.1. 
         # A blowout game like this will have a very low weight anyway.
-        home_score = max(game["home_team_score"],0.1)
-        away_score = max(game["away_team_score"],0.1)
+        home_score = max(game.home_score,0.1)
+        away_score = max(game.away_score,0.1)
 
         # Add log of score ratio as observation 
         Y.append(math.log(home_score/away_score))
@@ -53,21 +51,21 @@ def linear_regression(games, seeding_team_rankings=None):
         # Build x column of regressors (teams) and whether they played in the game
         x_col = []
         for team_id in team_ids:
-            if team_id == game["home_team_id"]:
+            if team_id == game.home_team:
                 x_col.append(1)
-            elif team_id == game["away_team_id"]:
+            elif team_id == game.away_team:
                 x_col.append(-1)
             else:
                 x_col.append(0)
         X.append(x_col)
 
         # Calculate weight based on score differential if hasn't already been set
-        if "weight" not in game:
+        if game.weight is None:
             score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
-            game["weight"] = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
+            game.weight = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
 
         # Set game weight
-        W.append(game["weight"])
+        W.append(game.weight)
 
     # Add virtual games if we have seeding_team_rankings
     if seeding_team_rankings is not None:
@@ -77,8 +75,8 @@ def linear_regression(games, seeding_team_rankings=None):
             if team_id in seeding_team_rankings:
 
                 # Add observation as score log ratio
-                # Virtual team's RP is 1.00. Result of virtual game is team's seeding (RP) to 1.                        
-                Y.append(math.log(seeding_team_rankings[team_id]["rp"]/1.00))
+                # Virtual team's RP is 1. Result of virtual game is team's seeding (RP) to 1.00                        
+                Y.append(math.log(seeding_team_rankings[team_id].ranking_points/1.00))
 
                 # Build x column of regressors (teams), real team is home team (1), no away team (-1) since it was virtual team
                 x_col = []
@@ -104,111 +102,77 @@ def linear_regression(games, seeding_team_rankings=None):
         ranking_points = math.exp(wls_result[i])
         # Convert standard error
         standard_error = (math.exp(wls_stderrs[i]) - 1) * ranking_points
-        # Calculate relative standard error %
-        relative_standard_error = standard_error/ranking_points * 100
-        result[team_id] = {
-            "rp": ranking_points,
-            "se": standard_error,
-            "rse": relative_standard_error
-        }
+
+        result[team_id] = TeamRanking(mrda_teams[team_id], ranking_points, standard_error)
 
     #print(result)
 
     return result
 
-def rank_teams(team_ratings, games, compliance_games):
+def rank_teams(team_rankings, games, compliance_games):
     result = {}
 
     team_ids = []
     for game in games:
-        if not game["home_team_id"] in team_ids:
-            team_ids.append(game["home_team_id"])
-        if not game["away_team_id"] in team_ids:
-            team_ids.append(game["away_team_id"])
+        if not game.home_team in team_ids:
+            team_ids.append(game.home_team)
+        if not game.away_team in team_ids:
+            team_ids.append(game.away_team)
 
     # Calculate team metrics 
     for team_id in team_ids:
-        team_result = {}
-                
-        wins = 0
-        losses = 0
-        forfeits = 0
-        for game in [game for game in games if game["home_team_id"] == team_id or game["away_team_id"] == team_id]:
-            if "forfeit" in game and game["forfeit"]:
-                if "forfeit_team_id" in game and game["forfeit_team_id"] == team_id:
-                    forfeits += 1
-            else:
-                team_score = game["home_team_score"] if game["home_team_id"] == team_id else game["away_team_score"]
-                opponent_score = game["away_team_score"] if game["home_team_id"] == team_id else game["home_team_score"]
-                if team_score > opponent_score:
-                    wins += 1
-                elif team_score < opponent_score:
-                    losses += 1
+        if team_id not in team_rankings:
+            team_ranking = TeamRanking(mrda_teams[team_id])
+            team_rankings[team_id] = team_ranking
+        else:
+            team_ranking = team_rankings[team_id]
+            team_ranking.reset_accumulators()
 
-        team_result["w"] = wins
-        team_result["l"] = losses
-        if forfeits > 0:
-            team_result["f"] = forfeits
+        for game in [game for game in games if game.home_team == team_id or game.away_team == team_id]:
+            if not game.forfeit:
+                team_score = game.home_score if game.home_team == team_id else game.away_score
+                opponent_score = game.away_score if game.home_team == team_id else game.home_score
+                if team_score > opponent_score:
+                    team_ranking.wins += 1
+                elif team_score < opponent_score:
+                    team_ranking.losses += 1
+            elif game.forfeit_team == team_id:
+                team_ranking.forfeits += 1
     
         # Active status and postseason eligibility only use compliance games
-        game_count = 0
         unique_opponents = []
-        distance_clause_applies = team_id in team_info and "distance_clause_applies" in team_info[team_id] and team_info[team_id]["distance_clause_applies"]
-        for game in [game for game in compliance_games if game["home_team_id"] == team_id or game["away_team_id"] == team_id]:
-            if "forfeit" not in game or not game["forfeit"] or ("forfeit" in game and game["forfeit"] and "forfeit_team_id" in game and game["forfeit_team_id"] != team_id):
-                game_count += 1
-                opponent = game["away_team_id"] if game["home_team_id"] == team_id else game["home_team_id"]
+        for game in [game for game in compliance_games if game.home_team == team_id or game.away_team == team_id]:
+            if not game.forfeit or game.forfeit_team != team_id:
+                team_ranking.game_count += 1
+                opponent = game.away_team if game.home_team == team_id else game.home_team
                 if not opponent in unique_opponents:
                     unique_opponents.append(opponent)
-        active_status = game_count >= 3 and len(unique_opponents) >= 2
-        postseason_eligible = active_status and (game_count >= 5 or distance_clause_applies)
+        team_ranking.active_status = team_ranking.game_count >= 3 and len(unique_opponents) >= 2
+        team_ranking.postseason_eligible = team_ranking.active_status and (team_ranking.game_count >= 5 or team_ranking.mrda_team.distance_clause_applies)
 
-        team_result["gc"] = game_count
-        if active_status:
-            team_result["as"] = active_status
-        if postseason_eligible:
-            team_result["pe"] = postseason_eligible
-
-        result[team_id] = team_result
-
-    # Apply Ranking Points and Error from team_ratings
-    for team_id in team_ratings:
-        if "rp" in team_ratings[team_id]:
-            result[team_id]["rp"] = team_ratings[team_id]["rp"]
-        if "se" in team_ratings[team_id]:
-            result[team_id]["se"] = team_ratings[team_id]["se"]
-        if "rse" in team_ratings[team_id]:
-            result[team_id]["rse"] = team_ratings[team_id]["rse"]
-
-    # Rank teams
+    # Rank teams globally
     rank = 1
-    for item in sorted({key: value for key, value in result.items() if "as" in value and value["as"]}.items(), key=lambda item: item[1]["rp"], reverse=True):
-        team_id = item[0]
-        team_ranking = item[1]
-        result[team_id]["r"] = rank
+    for team_ranking in sorted([tr for tr in team_rankings.values() if tr.active_status], key=lambda tr: tr.ranking_points, reverse=True):
+        team_ranking.rank = rank
         rank += 1
 
     # Apply forfeit penalties
-    for team_ranking in sorted([tr for tr in result.values() if "r" in tr and tr["r"] is not None and "f" in tr and tr["f"] > 0 ], key=lambda tr: tr["r"], reverse=True):
+    for team_ranking in sorted([tr for tr in team_rankings.values() if tr.rank is not None and tr.forfeits > 0 ], key=lambda tr: tr.rank, reverse=True):
         # Two spots for teach forfeit
-        for forfeit in range(team_ranking["f"]):
+        for forfeit in range(team_ranking.forfeits):
             for spot in range(2):
-                swap_team_ids = [key for key, value in result.items() if "r" in value and value["r"] == team_ranking["r"] + 1]
+                swap_team_ids = [team_id for team_id, tr in team_rankings.items() if tr.rank == team_ranking.rank + 1]
                 if len(swap_team_ids) > 0:
                     swap_team_id = swap_team_ids[0]
-                    result[swap_team_id]["r"] -= 1
-                    team_ranking["r"] += 1
+                    team_rankings[swap_team_id].rank -= 1
+                    team_ranking.rank += 1
 
-    #region ranking
-    for region in set([t["region"] for t in team_info.values() if "region" in t]):
+    # Rank teams regionally
+    for region in set([t.region for t in mrda_teams.values()]):
         region_rank = 1
-        for item in sorted({key: value for key, value in result.items() if region == mrda_teams[key]["region"] and "r" in value and value["r"] is not None}.items(), key=lambda item: item[1]["r"], reverse=False):
-            team_id = item[0]
-            team_ranking = item[1]
-            result[team_id]["rr"] = region_rank
-            region_rank += 1   
-
-    return result
+        for team_ranking in sorted([tr for tr in team_rankings.values() if region == tr.mrda_team.region and tr.rank is not None], key=lambda tr: tr.rank):
+            team_ranking.region_rank = region_rank
+            region_rank += 1
 
 def get_seed_date(date):
     result = date - relativedelta(weeks=52) #12 months in weeks
@@ -232,7 +196,7 @@ def get_rankings(date):
     global last_calc_compliance_games
     global last_calc_seeding
 
-    result = None
+    team_rankings = None
 
     seed_date = get_seed_date(date)
 
@@ -245,9 +209,9 @@ def get_rankings(date):
     # But if we only use 12 months of data, Apr-Aug '23 games would fall off entirely & not contribute to
     # future seeding rankings depending on the time of the year the rankings are calculated.
     if seeding_team_rankings is None:
-        games = [game for game in scored_games if game["date"].date() < date ]
+        games = [game for game in mrda_games if game.scores_submitted and game.datetime.date() < date ]
     else:
-        games = [game for game in scored_games if seed_date <= game["date"].date() < date ]
+        games = [game for game in mrda_games if game.scores_submitted and seed_date <= game.datetime.date() < date ]
 
     # Filter compliance games to exclude postseason events prior to Q1 cutoff date
     compliance_games = games
@@ -256,35 +220,37 @@ def get_rankings(date):
         q1_cutoff = date
     else:
         for postseasonEventName in POSTSEASON_EVENT_NAMES:
-            compliance_games = [game for game in compliance_games if "event_id" not in game or "name" not in mrda_events[game["event_id"]] or postseasonEventName not in mrda_events[game["event_id"]]["name"] or game["date"].date() >= q1_cutoff]
+            compliance_games = [game for game in compliance_games if game.event_id is None or mrda_events[game.event_id].name is None or postseasonEventName not in mrda_events[game.event_id].name or game.datetime.date() >= q1_cutoff]
 
     # Filter forfeits from calc_games
-    calc_games = [game for game in games if ("forfeit" not in game or not game["forfeit"])]
+    calc_games = [game for game in games if not game.forfeit]
     
     # Calculate linear regression results if calc games or seeding rankings have changed since last calculation.    
     if calc_games != last_calc_games or seeding_team_rankings != last_calc_seeding:
-        team_ratings = linear_regression(calc_games, seeding_team_rankings)
+        team_rankings = linear_regression(calc_games, seeding_team_rankings)
         last_calc_games = calc_games
         last_calc_seeding = seeding_team_rankings
         # Always rank teams if we got new ratings
-        result = rank_teams(team_ratings, games, compliance_games)
+        rank_teams(team_rankings, games, compliance_games)
         last_games = games
         last_calc_compliance_games = compliance_games
     # if games or compliance games have changed but we didn't get new ratings, re-rank teams with last ratings
     elif games != last_games or compliance_games != last_calc_compliance_games:
-        result = rank_teams(get_ranking_history(date), games, compliance_games)
+        team_rankings = get_ranking_history(date)
+        rank_teams(team_rankings, games, compliance_games)
         last_games = games
         last_calc_compliance_games = compliance_games
     
     # Print sorted results for ranking deadline dates when debugging
     if not github_actions_run and date.month in [3,6,9,12] and date.day <= 7:
-        print_result = result if result is not None else get_ranking_history(date)
+        print_result = team_rankings if team_rankings is not None else get_ranking_history(date)
         print("Rankings for " + date.strftime("%Y-%m-%d"))
-        for item in sorted(print_result.items(), key=lambda item: (item[1]["r"] if "r" in item[1] else len(print_result), - item[1]["rp"] if "rp" in item[1] else 0)):
-            print(f"{item[1]["r"] if "r" in item[1] else "NR"}\t{str(round(item[1]["rp"] * RANKING_SCALE, 2)) if "rp" in item[1] else "No RP"}\t{mrda_teams[item[0]]["name"]}")
+        for item in sorted(print_result.items(), key=lambda item: (item[1].rank if item[1].rank is not None else len(print_result), -item[1].ranking_points if item[1].ranking_points is not None else 0)):
+            tr = item[1]
+            print(f"{tr.rank if tr.rank is not None else "NR"}\t{str(round(tr.ranking_points * RANKING_SCALE, 2)) if tr.ranking_points is not None else "No RP"}\t{tr.mrda_team.name}")
         print("")
         
-    return result
+    return team_rankings
 
 # Find the next ranking deadline, which is the first Wednesday of the next March, June, September or December
 nextRankingDeadline = datetime.today().date()
@@ -311,41 +277,17 @@ while (rankingDate <= nextRankingDeadline):
 
 print("Completed " + str(calc_count) + " ranking calculations in " + str(round(time.perf_counter() - start_time, 2)) + " seconds.")
 
-# Format dates to Y-m-d and ranking points and error to 2 decimal points
-formatted_rankings_history = {}
-for dt in rankings_history.keys():
-    dt_key = '{d.year}-{d.month}-{d.day}'.format(d=dt)
-    formatted_rankings_history[dt_key] = {}
-    for team in rankings_history[dt].keys():
-        formatted_rankings_history[dt_key][team] = {}
-        for key in rankings_history[dt][team]:
-            if key in ["rp","se"]:
-                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key] * RANKING_SCALE, 2)
-            elif key == "rse":
-                formatted_rankings_history[dt_key][team][key] = round(rankings_history[dt][team][key], 2)
-            elif key in ["as","pe"]:
-                formatted_rankings_history[dt_key][team][key] = 1 if rankings_history[dt][team][key] else 0
-            else:
-                formatted_rankings_history[dt_key][team][key] = rankings_history[dt][team][key]
-
+# Format dates to Y-m-d and team rankings to formatted dict
+rankings_history_dicts = {'{d.year}-{d.month}-{d.day}'.format(d=dt): {team_id: tr.to_dict(RANKING_SCALE) for team_id, tr in team_rankings.items()} for dt, team_rankings in rankings_history.items()}
 # Save rankings JSON to JavaScript file as rankings_history variable for local web UI
-write_json_to_file(formatted_rankings_history, "mrda_rankings_history.js", "rankings_history", "rankings_generated_utc")
+write_json_to_file(rankings_history_dicts, "mrda_rankings_history.js", "rankings_history", "rankings_generated_utc")
 # Save rankings JSON file for external use
-write_json_to_file(formatted_rankings_history, "mrda_rankings_history.json")
+write_json_to_file(rankings_history_dicts, "mrda_rankings_history.json")
 print("Rankings updated and saved to mrda_rankings_history.js and mrda_rankings_history.json")
 
-# Format game dates to Y-m-d H:mm
-formatted_games = []
-for game in sorted(mrda_games, key=lambda game: game["date"]):
-    formatted_game = {}
-    for key in game.keys():
-        if key == "date":
-            formatted_game[key] = '{d.year}-{d.month}-{d.day} {d.hour}:{d.minute:02}'.format(d=game["date"])
-        else:
-            formatted_game[key] = game[key]
-    formatted_games.append(formatted_game)
-
-write_json_to_file(formatted_games, "mrda_games.js", "mrda_games")
+# Save mrda_games to JavaScript file for local web UI
+mrda_game_dicts = [mrda_game.to_dict() for mrda_game in sorted(mrda_games, key=lambda game: game.datetime)]
+write_json_to_file(mrda_game_dicts, "mrda_games.js", "mrda_games")
 # Save mrda_games JSON file for external use
-write_json_to_file(formatted_games, "mrda_games.json")
+write_json_to_file(mrda_game_dicts, "mrda_games.json")
 print("MRDA games updated and saved to mrda_games.js and mrda_games.json")

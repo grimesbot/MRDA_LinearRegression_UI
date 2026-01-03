@@ -50,7 +50,8 @@ nav .form-floating>label {
 #rankings-chart-container {
     height: 30rem;
 }
-#team-chart-container {
+#team-chart-container,
+#predictor-chart-container {
     height: 25rem;
 }
 
@@ -204,5 +205,5 @@ td.delta i.down {
 }
 
 .predictor-logo {
-    height: 10em;
+    height: 5em;
 }
