@@ -62,7 +62,7 @@ def linear_regression(games, seeding_team_rankings=None):
         # Calculate weight based on score differential if hasn't already been set
         if game.weight is None:
             score_ratio = home_score/away_score if home_score > away_score else away_score/home_score    
-            game.weight = max(3 ** ((RATIO_CAP - score_ratio)/2), 1/1000000) if score_ratio > RATIO_CAP else 1
+            game.weight = max(2 * score_ratio ** (-1/2), 1/1000000) if score_ratio > RATIO_CAP else 1
 
         # Set game weight
         W.append(game.weight)
