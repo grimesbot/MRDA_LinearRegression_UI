@@ -4,13 +4,13 @@ const DIFFERENTIAL_CAP = 150;
 class MrdaGame {
     constructor(game, mrdaTeams, mrdaEvents, virtualGame = false) {
         this.date = game.date instanceof Date ? game.date : new Date(game.date);
-        this.homeTeamId = game.home_team_id;
-        this.awayTeamId = game.away_team_id;
+        this.homeTeamId = game.home_team;
+        this.awayTeamId = game.away_team;
         this.scores = {};
-        if('home_team_score' in game)
-            this.scores[this.homeTeamId] = game.home_team_score;
-        if('away_team_score' in game)
-            this.scores[this.awayTeamId] = game.away_team_score;
+        if('home_score' in game)
+            this.scores[this.homeTeamId] = game.home_score;
+        if('away_score' in game)
+            this.scores[this.awayTeamId] = game.away_score;
         this.forfeit = game.forfeit;
         this.forfeitTeamId = game.forfeit_team_id;
         this.eventId = game.event_id;

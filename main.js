@@ -410,8 +410,8 @@ function setupTeamDetails() {
                 return opponent.name; 
             }},
             { width: '1em', className: 'dt-center no-wrap', render: function (data, type, row) { return row.getTeamsScore(team.teamId) }},
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.actualDifferentials ? row.actualDifferentials[team.teamId].toFixed(2) : '' } },            
-            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedDifferentials ? row.expectedDifferentials[team.teamId].toFixed(2) : '' } },
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.actualDifferentials ? (row.actualDifferentials[team.teamId] > 0 ? `+${row.actualDifferentials[team.teamId]}` : row.actualDifferentials[team.teamId]) : '' } },            
+            { width: '1em', className: 'dt-center', render: function (data, type, row) { return team.teamId in row.expectedDifferentials ? (row.expectedDifferentials[team.teamId] > 0 ? `+${row.expectedDifferentials[team.teamId].toFixed(2)}` : row.expectedDifferentials[team.teamId].toFixed(2)) : '' } },
             { width: '1em', className: 'dt-center', data: 'weight', render: function(data, type, game) {return data ? `${(data * 100).toFixed(0)}%` : ''; } }
         ],
         data: [],
@@ -787,9 +787,9 @@ function setupAllGames() {
             if (games.some(game => !game.forfeit && (game.homeTeamId == teamId || game.awayTeamId == teamId))) {
                 games.push(new MrdaGame({
                     date: rankingPeriodStartDt,
-                    home_team_id: teamId,
-                    home_team_score: ranking.rankingPoints.toFixed(2),
-                    away_team_score: 1,
+                    home_team: teamId,
+                    home_score: ranking.rankingPoints.toFixed(2),
+                    away_score: 0,
                     weight: .25,
                 }, mrdaLinearRegressionSystem.mrdaTeams, mrdaLinearRegressionSystem.mrdaEvents, true));
             }
