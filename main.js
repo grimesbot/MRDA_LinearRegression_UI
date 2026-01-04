@@ -596,7 +596,11 @@ async function setupUpcomingGames() {
     });
 }
 
-async function populatePredictorChart(date, homeTeam, awayTeam, predictorChart) {
+async function populatePredictorChart(date, homeTeam, awayTeam, predictorChart, $loadingOverlay) {
+    $loadingOverlay.find('.spinner-border').show();
+    $loadingOverlay.find('.unavailable').hide();
+    $loadingOverlay.show();
+
     date = new Date(date);
     date.setHours(0, 0, 0, 0);
     date.setDate(date.getDate() + ((3 - date.getDay() + 7) % 7)); // Set to next Wednesday
@@ -637,14 +641,17 @@ async function populatePredictorChart(date, homeTeam, awayTeam, predictorChart) 
             label: awayTeam.name,
             data: results.map(result => ({ x: result['d'], y: result['da']})),
         });
+        $loadingOverlay.hide();
         predictorChart.update();
     } catch (err) {
+        $loadingOverlay.find('.spinner-border').hide();
+        $loadingOverlay.find('.unavailable').show();    
         console.error('Request failed:', err);
   }
 }
 
 
-function predictGame(predictorChart) {
+function predictGame(predictorChart, $loadingOverlay) {
     predictorChart.data.datasets = [];
     predictorChart.update();
 
@@ -680,14 +687,18 @@ function predictGame(predictorChart) {
     if (homeRp && awayRp && homeTeam != awayTeam) {
         let diff = homeRp - awayRp;
         $('#predictor-diff').text(`${diff > 0 ? "+" : ""}${diff.toFixed(2)}`);
-        populatePredictorChart(date, homeTeam, awayTeam, predictorChart);
+        populatePredictorChart(date, homeTeam, awayTeam, predictorChart, $loadingOverlay);
     } else
         $('#predictor-diff').html('&nbsp;');
 }
 
 function setupPredictor() {
+    let $loadingOverlay = $('#predictor-chart-container .loading-overlay');
+    $loadingOverlay.hide();
+    $loadingOverlay.find('.unavailable').hide();
+
     let $date = $('#predictor-date');
-    let $teamSelects = $('#predictor-home,#predictor-away')
+    let $teamSelects = $('#predictor-home,#predictor-away');
 
     $date[0].valueAsDate = new Date();
 
@@ -759,8 +770,8 @@ function setupPredictor() {
         },
     });
 
-    $teamSelects.change(function() { predictGame(predictorChart); });
-    $date.change(function() { predictGame(predictorChart); });
+    $teamSelects.change(function() { predictGame(predictorChart, $loadingOverlay); });
+    $date.change(function() { predictGame(predictorChart, $loadingOverlay); });
 }
 
 function setupAllGames() {
